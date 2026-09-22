@@ -1,56 +1,95 @@
-# Welcome to your Expo app 👋
+# TransferBlack Conductor (Driver App) 🚗
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Aplicación móvil para conductores de **TransferBlack**, desarrollada con **React Native**, **Expo**, **TypeScript** y estilada con **NativeWind (Tailwind CSS)** bajo una arquitectura hexagonal simplificada.
 
-## Get started
+---
 
-1. Install dependencies
+## 🛠 Requisitos del Entorno
 
+Para asegurar consistencia entre ambos desarrolladores del proyecto, se recomienda utilizar el siguiente entorno:
+
+- **Node.js**: `v20.x` o superior (LTS)
+- **npm**: `v10.x` o superior
+- **Git**: versión actualizada
+- **Expo CLI**: `npx expo`
+- **JDK (Java Development Kit)**: JDK 17 (para compilaciones nativas Android)
+- **Android Studio & SDK**: Android SDK Platform 34+ (si se ejecutan emuladores o builds locales)
+- **Expo Go**: Para pruebas rápidas en dispositivo físico
+
+---
+
+## 🚀 Scripts y Ejecución
+
+1. **Instalar dependencias:**
    ```bash
    npm install
    ```
 
-2. Start the app
-
+2. **Iniciar el servidor de desarrollo (Expo Router con limpieza de caché):**
    ```bash
-   npx expo start
+   npx expo start -c
    ```
 
-In the output, you'll find options to open the app in a
+3. **Ejecutar en plataformas específicas:**
+   - **Android**: presionar `a` en la terminal de Expo o ejecutar `npx expo run:android`
+   - **iOS**: presionar `i` en la terminal de Expo o ejecutar `npx expo run:ios`
+   - **Web**: presionar `w` en la terminal de Expo
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+---
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## 🏛 Arquitectura del Proyecto
 
-## Get a fresh project
+El proyecto sigue una **Arquitectura Hexagonal Simplificada** para separar responsabilidades y permitir un desarrollo desacoplado y mantenible:
 
-When you're ready, run:
-
-```bash
-npm run reset-project
+```text
+src/
+├── core/                   # Lógica central del negocio y operaciones de la app
+│   ├── actions/            # Casos de uso y acciones de negocio
+│   └── api/                # Cliente HTTP base (Axios / transferApi)
+│
+├── infrastructure/         # Adaptadores técnicos y fuentes externas
+│   ├── interfaces/         # Tipos y DTOs provenientes de las APIs
+│   └── mappers/            # Transformadores de DTOs externos a modelos de la app
+│
+└── presentation/           # Interfaz de usuario (UI)
+    ├── components/         # Componentes visuales reutilizables
+    ├── hooks/              # Custom hooks vinculados a la presentación
+    └── screens/            # Pantallas de la aplicación
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### Reglas Clave de Arquitectura:
+- **La UI (`presentation/`) NO debe importar directamente `transferApi`**: debe consumir las funciones expuestas en `core/actions/`.
+- **`infrastructure/`** se encarga de tipar y mapear las respuestas de la API antes de que lleguen a la lógica del negocio.
 
-### Other setup steps
+---
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+## 🎨 Design Tokens
 
-## Learn more
+### Colores
+Configurados como clases de utilidad en Tailwind:
+- `obsidian`: `#0A0A0C` (ej: `bg-obsidian`)
+- `gold`: `#D4AF37` (ej: `text-gold`, `bg-gold`)
+- `platinum`: `#E4E4E5` (ej: `text-platinum`)
+- `ash`: `#8E8E93` (ej: `text-ash`)
+- `charcoal`: `#2C2C2E` (ej: `border-charcoal`, `bg-charcoal`)
 
-To learn more about developing your project with Expo, look at the following resources:
+*Nota: No utilizar los valores hexadecimales directamente en pantallas o componentes.*
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+### Tipografía (Montserrat)
+Fuente oficial única del proyecto con soporte para pesos:
+- **Regular** (`400`)
+- **Medium** (`500`)
+- **SemiBold** (`600`)
+- **Bold** (`700`)
 
-## Join the community
+### Jerarquía Tipográfica (Clases Globales)
+- `h1`: `text-4xl md:text-5xl font-montserrat-bold` (36–48px, Bold)
+- `h2`: `text-2xl md:text-3xl font-montserrat-bold` (24–30px, Bold)
+- `h3`: `text-lg md:text-xl font-montserrat-semibold` (18–20px, SemiBold)
+- `body-large`: `text-base font-montserrat-medium` (16px, Medium)
+- `body-large-bold`: `text-base font-montserrat-bold` (16px, Bold)
+- `body-regular`: `text-sm font-montserrat` (14px, Regular)
+- `caption`: `text-xs font-montserrat` (12px, Regular)
+- `caption-medium`: `text-xs font-montserrat-medium` (12px, Medium)
 
-Join our community of developers creating universal apps.
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.

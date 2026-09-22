@@ -1,18 +1,44 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
-
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
+import "../global.css";
+import { Stack, SplashScreen } from "expo-router";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { useEffect } from "react";
+import { 
+    useFonts, 
+    Montserrat_400Regular, 
+    Montserrat_500Medium, 
+    Montserrat_600SemiBold, 
+    Montserrat_700Bold 
+} from "@expo-google-fonts/montserrat";
 
 SplashScreen.preventAutoHideAsync();
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
-  return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <AppTabs />
-    </ThemeProvider>
-  );
-}
+const Layout = () => {
+    const [fontsLoaded, error] = useFonts({
+        Montserrat_400Regular,
+        Montserrat_500Medium,
+        Montserrat_600SemiBold,
+        Montserrat_700Bold,
+    });
+
+    useEffect(() => {
+        if (fontsLoaded || error) {
+            SplashScreen.hideAsync();
+        }
+    }, [fontsLoaded, error]);
+
+    if (!fontsLoaded && !error) {
+        return null;
+    }
+
+    return (
+        <GestureHandlerRootView style={{ flex: 1 }}>
+            <Stack
+                screenOptions={{
+                    headerShown: false,
+                }}
+            />
+        </GestureHandlerRootView>
+    );
+};
+
+export default Layout;
