@@ -1,14 +1,13 @@
-import "../global.css";
-import { Stack, SplashScreen } from "expo-router";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { useEffect } from "react";
-import { 
-    useFonts, 
-    Montserrat_400Regular, 
-    Montserrat_500Medium, 
-    Montserrat_600SemiBold, 
-    Montserrat_700Bold 
+import {
+    Montserrat_400Regular,
+    Montserrat_500Medium,
+    Montserrat_600SemiBold,
+    Montserrat_700Bold,
+    useFonts
 } from "@expo-google-fonts/montserrat";
+import { SplashScreen, Stack } from "expo-router";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import "../global.css";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -20,11 +19,6 @@ const Layout = () => {
         Montserrat_700Bold,
     });
 
-    useEffect(() => {
-        if (fontsLoaded || error) {
-            SplashScreen.hideAsync();
-        }
-    }, [fontsLoaded, error]);
 
     if (!fontsLoaded && !error) {
         return null;
