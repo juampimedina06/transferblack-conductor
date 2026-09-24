@@ -1,10 +1,5 @@
-import { DesignSystemTest } from "@/presentation/components/DesignSystemTest";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SplashVideoScreen } from "@/presentation/screens/SplashVideoScreen";
 
 export default function HomeScreen() {
-  return (
-    <SafeAreaView className="flex-1 bg-obsidian" edges={["top", "left", "right"]}>
-      <DesignSystemTest />
-    </SafeAreaView>
-  );
+  return <SplashVideoScreen />;
 }

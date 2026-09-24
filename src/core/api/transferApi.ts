@@ -8,11 +8,15 @@ export const transferApi = axios.create({
   },
 });
 
+import { authStorage } from '../../presentation/auth/store/authStorage';
+
 // Interceptor para inyectar token de autenticación
 transferApi.interceptors.request.use(
   async (config) => {
-    // Ejemplo: const token = await SecureStore.getItemAsync('token');
-    // if (token) config.headers.Authorization = `Bearer ${token}`;
+    const token = await authStorage.getAccessToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
     return config;
   },
   (error) => {

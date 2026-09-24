@@ -8,7 +8,11 @@
     "scheme": "transferblackconductor",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "infoPlist": {
+        "NSCameraUsageDescription": "TransferBlack necesita acceso a tu cámara para que puedas fotografiar tus documentos oficiales y vehículo.",
+        "NSPhotoLibraryUsageDescription": "TransferBlack necesita acceso a tu galería para que puedas adjuntar comprobantes de documentación y fotos del vehículo."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -28,12 +32,28 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#0A0A0C",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
       ],
-      "expo-font"
+      "expo-font",
+      "expo-video",
+      "expo-secure-store",
+      "@react-native-community/datetimepicker",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "TransferBlack necesita acceso a tu cámara para fotografiar tus documentos y tu vehículo."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "TransferBlack necesita acceso a tu galería para adjuntar fotos de tus documentos y de tu vehículo.",
+          "cameraPermission": "TransferBlack necesita acceso a tu cámara para fotografiar tus documentos y tu vehículo."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
