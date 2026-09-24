@@ -7,6 +7,7 @@ import {
 } from "@expo-google-fonts/montserrat";
 import { SplashScreen, Stack } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { QueryProvider } from "../presentation/providers/QueryProvider";
 import "../global.css";
 
 SplashScreen.preventAutoHideAsync();
@@ -26,11 +27,13 @@ const Layout = () => {
 
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
-            <Stack
-                screenOptions={{
-                    headerShown: false,
-                }}
-            />
+            <QueryProvider>
+                <Stack
+                    screenOptions={{
+                        headerShown: false,
+                    }}
+                />
+            </QueryProvider>
         </GestureHandlerRootView>
     );
 };

@@ -173,3 +173,134 @@ Docs: https://docs.expo.dev/eas/index.md
 ## Seguridad básica
 - No loguear tokens, contraseñas ni datos sensibles del usuario, ni en dev.
 - Sanitizar/validar cualquier dato que venga de un deep link o input externo antes de usarlo.
+
+## Principio rector: la app tiene que ser fácil y fluida de usar
+
+Antes de dar una tarea por terminada, preguntate: ¿esto le ahorra pasos, dudas o errores al usuario? Si hay una forma más simple de hacerlo con recursos nativos de RN/Expo, usala. Prioridad: claridad > velocidad percibida > estética.
+
+### Feedback y estados
+- Toda acción asíncrona muestra estado: cargando (botón deshabilitado + indicador), éxito y error. Nunca pantallas en blanco ni botones que "no hacen nada".
+- Skeletons o placeholders en lugar de spinners a pantalla completa cuando se pueda.
+- Mensajes de error en español, claros y accionables ("No se pudo subir el DNI. Reintentar"), nunca códigos técnicos crudos.
+- Pull-to-refresh en pantallas que muestran datos del back. Empty states con mensaje y acción sugerida.
+- Confirmar antes de acciones destructivas o irreversibles.
+- `expo-haptics` para confirmaciones y errores importantes (con moderación).
+
+### Formularios
+- React Hook Form + Zod: validar al perder foco (`mode: 'onTouched'`), mostrar el error debajo del campo y hacer scroll al primer campo con error.
+- Usar siempre el tipo de teclado correcto: `keyboardType`, `inputMode`, `autoCapitalize`, `autoComplete`, `textContentType`, `returnKeyType`.
+- Encadenar campos con `onSubmitEditing` + refs (el "siguiente" del teclado pasa al próximo input).
+- `KeyboardAvoidingView` + `ScrollView` con `keyboardShouldPersistTaps="handled"`. Ningún campo puede quedar tapado por el teclado.
+- Guardar el progreso de wizards largos en Zustand con persist: si el usuario cierra la app, retoma donde quedó.
+- Botón de envío deshabilitado con mensaje que explique qué falta, no solo gris sin explicación.
+- Pre-completar todo lo que ya se sabe; no pedir dos veces el mismo dato.
+
+### Permisos, cámara y archivos
+- Explicar para qué se pide el permiso antes de mostrar el diálogo del sistema.
+- Si se deniega: mensaje claro + botón a `Linking.openSettings()`. Nunca crashear ni dejar la pantalla muerta.
+- Ofrecer siempre alternativa (cámara, galería, archivo) según corresponda.
+- Comprimir y redimensionar imágenes antes de subir (`expo-image-manipulator`, calidad ~0.7) y mostrar preview con opción de reemplazar.
+- Mostrar progreso de subida y permitir reintentar solo lo que falló.
+
+### Navegación
+- Expo Router con `router.replace` para flujos que no deben volver atrás (onboarding, login, sala de espera).
+- Guards en los layouts según estado del usuario; contemplar deep links y back del sistema.
+- Mantener el flujo lo más corto posible; indicar progreso ("Paso 2 de 3").
+- Restaurar el estado de sesión al abrir la app con `expo-splash-screen` (mantener el splash hasta resolver auth y estado del perfil, sin parpadeos).
+
+### Red y errores
+- Manejar sin conexión con `@react-native-community/netinfo`: aviso visible y reintento automático al volver.
+- TanStack Query: `staleTime` razonable, `retry` acotado, refetch al volver a foco (`focusManager` + `AppState`), invalidación tras mutaciones.
+- Updates optimistas donde el riesgo sea bajo.
+- Interceptor de Axios: 401 → refresh de token → si falla, logout limpio con mensaje.
+
+### Performance
+- Listas con `FlashList` (o `FlatList` bien configurada): `keyExtractor`, `getItemType`, sin funciones inline pesadas en `renderItem`.
+- Imágenes con `expo-image` (cache, placeholder, transición).
+- `useCallback`/`useMemo` solo donde haya un problema medido; evitar re-renders con selectores de Zustand.
+- Animaciones con `react-native-reanimated` (thread de UI), no con `Animated` en JS para cosas complejas.
+
+### Accesibilidad y adaptación
+- `accessibilityLabel`, `accessibilityRole` y `accessibilityState` en elementos interactivos.
+- Áreas táctiles mínimas de 44x44 pt (`hitSlop` si el elemento es chico).
+- `react-native-safe-area-context` para notch y barras del sistema.
+- Respetar el tamaño de fuente del sistema; no fijar alturas que rompan con texto grande.
+- Soportar teclado en pantallas chicas y orientación cuando aplique.
+- Textos de UI siempre en español, tono simple y directo.
+
+### Guardado de datos
+- Tokens y datos sensibles en `expo-secure-store`, nunca en AsyncStorage.
+- AsyncStorage solo para preferencias y progreso de formularios.
+
+### Al proponer soluciones
+- Si una tarea permite una forma más cómoda para el usuario (autocompletar, escanear, elegir de una lista en vez de tipear, recordar la última opción), proponerla explícitamente en lugar de implementar solo lo literal que se pidió.
+- Ante una decisión de UX ambigua, elegir la opción con menos fricción y dejarlo anotado.
+- No agregar librerías nuevas si Expo/RN ya resuelve el caso; si hace falta una, justificarla en una línea.
+
+## Checklist de UX (revisar antes de cerrar cada tarea)
+
+Marcá cada punto. Si algo no aplica, decilo en una línea. Si algo falla, corregilo antes de dar la tarea por terminada.
+
+### Estados y feedback
+- [ ] Toda acción asíncrona tiene estado de carga, éxito y error visibles.
+- [ ] No hay pantallas en blanco en ningún caso (cargando, vacío, error, sin conexión).
+- [ ] Los mensajes de error están en español y dicen qué hacer, sin códigos técnicos.
+- [ ] Los botones se deshabilitan mientras se procesa (no se puede tocar dos veces).
+- [ ] Las acciones destructivas piden confirmación.
+
+### Formularios
+- [ ] Cada input tiene el teclado correcto (`keyboardType`, `inputMode`, `autoCapitalize`, `autoComplete`).
+- [ ] "Siguiente" en el teclado pasa al próximo campo; el último envía.
+- [ ] El teclado no tapa ningún campo ni el botón de envío.
+- [ ] Los errores aparecen debajo de cada campo y se hace scroll al primero con error.
+- [ ] Si el botón de envío está deshabilitado, se explica qué falta.
+- [ ] El progreso del wizard se persiste y se retoma al reabrir la app.
+- [ ] No se pide dos veces un dato que ya se tiene.
+
+### Permisos y archivos
+- [ ] Se explica para qué se pide cada permiso antes del diálogo del sistema.
+- [ ] El caso "denegado" tiene mensaje y botón a `Linking.openSettings()`.
+- [ ] Las imágenes se comprimen antes de subir y hay preview con opción de reemplazar.
+- [ ] Se muestra progreso de subida y se puede reintentar solo lo que falló.
+
+### Navegación
+- [ ] Los flujos sin vuelta atrás usan `router.replace`.
+- [ ] Hay guard por estado de usuario y funciona con deep links y back del sistema.
+- [ ] El splash se mantiene hasta resolver auth y perfil (sin parpadeos ni pantallas intermedias).
+- [ ] El usuario sabe en qué paso está y cuántos faltan.
+
+### Red
+- [ ] Sin conexión: aviso visible y reintento automático al volver.
+- [ ] Refetch al volver a foco y pull-to-refresh donde hay datos del back.
+- [ ] 401 hace refresh de token; si falla, logout limpio con mensaje.
+
+### Performance y fluidez
+- [ ] Listas con `FlashList` o `FlatList` bien configurada.
+- [ ] Imágenes con `expo-image`.
+- [ ] No hay re-renders innecesarios (selectores de Zustand, sin funciones pesadas inline).
+- [ ] Las animaciones no traban (Reanimated donde haga falta).
+
+### Accesibilidad
+- [ ] Los elementos interactivos tienen `accessibilityLabel` y `accessibilityRole`.
+- [ ] Las áreas táctiles son de al menos 44x44 pt.
+- [ ] Safe areas respetadas (notch y barras del sistema).
+- [ ] El layout aguanta fuente grande del sistema sin romperse.
+
+### Seguridad de datos
+- [ ] Tokens en `expo-secure-store`, nunca en AsyncStorage.
+- [ ] No se loguean datos sensibles (tokens, documentos, datos personales).
+
+### Cierre de tarea
+- [ ] Probé el camino feliz y al menos un camino de error.
+- [ ] Probé en pantalla chica y con teclado abierto.
+- [ ] Anoté las decisiones de UX que tomé por mi cuenta y cualquier mejora que quedó pendiente.
+- [ ] Propuse al menos una mejora que le ahorre pasos al usuario, si la había.
+
+## Loading states — usar Skeletons, no spinners
+- Prohibido usar `ActivityIndicator` como loading state de pantallas o listas con contenido predecible (perfil, cards, listas, detalle). Reservarlo solo para acciones puntuales muy cortas (ej. submit de un botón).
+- Cada pantalla/componente que consume datos async debe tener su propio Skeleton que replique el layout final (mismo alto, mismo ancho aproximado, misma cantidad de "bloques") para evitar layout shift al cargar los datos reales.
+- Usar una librería de skeleton (ej. `moti/skeleton`, `react-native-reanimated-skeleton`, o un componente propio con `Animated`/Reanimated + NativeWind) en vez de reinventar la animación en cada pantalla.
+- Crear un componente base reutilizable, ej. `<SkeletonBox className="h-4 w-32 rounded-md" />`, y componer los skeletons de cada pantalla a partir de ese bloque.
+- El skeleton debe vivir en el mismo archivo o carpeta que el componente que representa (ej. `UserCard.tsx` + `UserCardSkeleton.tsx`), no centralizado en un solo archivo gigante.
+- Mismo criterio para listas: renderizar N skeletons (3-6) en vez de un solo spinner centrado en pantalla.
+- Si el fetch falla, no dejar el skeleton infinito: siempre debe resolver a estado de error o vacío con feedback claro. 

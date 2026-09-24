@@ -9,7 +9,7 @@ interface InputProps extends TextInputProps {
   isPassword?: boolean;
 }
 
-export const Input = ({
+export const Input = React.forwardRef<TextInput, InputProps>(({
   label,
   error,
   isPassword,
@@ -17,7 +17,7 @@ export const Input = ({
   onFocus,
   onBlur,
   ...props
-}: InputProps): React.JSX.Element => {
+}, ref): React.JSX.Element => {
   const [isFocused, setIsFocused] = useState(false);
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [selection, setSelection] = useState<{ start: number; end: number } | undefined>(undefined);
@@ -34,6 +34,7 @@ export const Input = ({
         }`}
       >
         <TextInput
+          ref={ref}
           {...props}
           className="flex-1 h-full text-base text-white font-montserrat pr-2 py-0"
           placeholderTextColor={props.placeholderTextColor ?? THEME_COLORS.ash}
@@ -77,4 +78,7 @@ export const Input = ({
       {error && <Text className="mt-1 text-xs text-red-400 font-montserrat">{error}</Text>}
     </View>
   );
-};
+});
+
+Input.displayName = 'Input';
+

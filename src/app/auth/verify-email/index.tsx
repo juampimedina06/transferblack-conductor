@@ -1,5 +1,5 @@
-import { zodResolver } from '@hookform/resolvers/zod';
 import { Ionicons } from '@expo/vector-icons';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
@@ -76,7 +76,7 @@ export default function VerifyEmailScreen(): React.JSX.Element {
       const isDriver = user?.roles?.includes('driver');
 
       if (!isDriver) {
-        router.replace('/documentacion' as any);
+        router.replace('/(home)' as any);
       } else {
         router.replace('/(home)' as any);
       }
@@ -178,13 +178,12 @@ export default function VerifyEmailScreen(): React.JSX.Element {
                         key={index}
                         activeOpacity={1}
                         onPress={() => inputRef.current?.focus()}
-                        className={`w-12 h-16 rounded-2xl items-center justify-center bg-[#151518] border ${
-                          isCurrent
+                        className={`w-12 h-16 rounded-2xl items-center justify-center bg-[#151518] border ${isCurrent
                             ? 'border-gold'
                             : digit
-                            ? 'border-neutral-600'
-                            : 'border-[#262629]'
-                        }`}
+                              ? 'border-neutral-600'
+                              : 'border-[#262629]'
+                          }`}
                       >
                         <Text className="text-2xl font-montserrat-bold text-white">
                           {digit}

@@ -8,6 +8,7 @@ import * as z from 'zod';
 import { authActions } from '../../../core/auth/action/auth.actions';
 import { Button } from '../../../presentation/components/ui/Button';
 import { Input } from '../../../presentation/components/ui/Input';
+import { PhoneInput } from '../../../presentation/components/ui/PhoneInput';
 import { useAuthStore } from '../../../presentation/auth/store/useAuthStore';
 
 const registerSchema = z.object({
@@ -116,13 +117,11 @@ export default function RegisterScreen(): React.JSX.Element {
           control={control}
           name="phone_e164"
           render={({ field: { onChange, onBlur, value } }) => (
-            <Input
+            <PhoneInput
               label="Teléfono"
-              placeholder="+5493511234567"
-              keyboardType="phone-pad"
-              onBlur={onBlur}
-              onChangeText={onChange}
               value={value}
+              onChangePhone={onChange}
+              onBlur={onBlur}
               error={errors.phone_e164?.message}
             />
           )}

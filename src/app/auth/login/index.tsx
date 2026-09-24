@@ -44,7 +44,7 @@ export default function LoginScreen(): React.JSX.Element {
 
       const isDriver = profile.roles?.includes('driver');
       if (!isDriver) {
-        router.replace('/documentacion' as any);
+        router.replace('/(home)' as any);
         return;
       }
 

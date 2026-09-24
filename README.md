@@ -92,4 +92,27 @@ Fuente oficial única del proyecto con soporte para pesos:
 - `caption`: `text-xs font-montserrat` (12px, Regular)
 - `caption-medium`: `text-xs font-montserrat-medium` (12px, Medium)
 
+---
 
+## ⚙️ Stack y Decisiones Técnicas
+
+### Estado Global y Mutaciones
+- **Zustand**: Utilizado para el estado global de la app (ej: `useAuthStore`, `useOnboardingStore`). Evitar el prop-drilling.
+- **TanStack Query (React Query)**: Para el manejo de llamadas a la API, caché de solicitudes, y mutaciones de datos.
+- **Axios**: Cliente HTTP configurado con interceptores para manejar tokens e invalidación de sesión.
+
+### Loading States (UX Premium)
+- **Skeletons > Spinners**: Está PROHIBIDO usar `ActivityIndicator` (spinners) como estado de carga principal para pantallas o listas.
+- Cada vista que dependa de una llamada asíncrona debe implementar un Skeleton usando `<SkeletonBox />` (basado en `react-native-reanimated`) que replique la estructura final de la UI para evitar parpadeos y *layout shifts*.
+- Los spinners (`ActivityIndicator`) están reservados únicamente para acciones cortas (como presionar el botón de "Guardar" o "Subir archivo").
+
+### Formularios y Validación
+- **React Hook Form**: Gestión del estado interno de los formularios.
+- **Zod**: Esquemas de validación estrictos. Todo payload enviado desde la app debe estar fuertemente tipado e inferido a partir de esquemas de Zod que **deben coincidir exactamente** con las validaciones del backend.
+
+---
+
+## 🤝 Contribución y Guía para Agentes (IA)
+Si sos un desarrollador o agente de IA trabajando en este proyecto, asegurate de leer **ambos** archivos de reglas antes de proponer cambios:
+1. `AGENTS.md`: Contiene las reglas completas de arquitectura, UX, y comportamiento que debés seguir al pie de la letra.
+2. `context.md`: Contexto rápido y fuente de verdad técnica de alto nivel de TransferBlack.
