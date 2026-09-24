@@ -1,118 +1,178 @@
 # TransferBlack Conductor (Driver App) 🚗
 
-Aplicación móvil para conductores de **TransferBlack**, desarrollada con **React Native**, **Expo**, **TypeScript** y estilada con **NativeWind (Tailwind CSS)** bajo una arquitectura hexagonal simplificada.
+Aplicación móvil oficial para conductores de **TransferBlack**, construida sobre **React Native** con **Expo**, **TypeScript**, **NativeWind (Tailwind CSS v3)** y **React Native Reanimated**.
+
+El proyecto implementa una arquitectura desacoplada y orientada a capas, priorizando la resiliencia en red, validación estricta de datos con el backend y una experiencia de usuario (UX) fluida y premium.
+
+---
+
+## 📋 Tabla de Contenidos
+- [Requisitos del Entorno](#-requisitos-del-entorno)
+- [Instalación y Ejecución](#-instalación-y-ejecución)
+- [Flujos Principales Implementados](#-flujos-principales-implementados)
+- [Arquitectura del Proyecto](#-arquitectura-del-proyecto)
+- [Pila Tecnológica y Decisiones de Diseño](#-pila-tecnológica-y-decisiones-de-diseño)
+- [Sistema de Diseño y Tokens](#-sistema-de-diseño-y-tokens)
+- [Calidad de Código y Convenciones](#-calidad-de-código-y-convenciones)
+- [Guías de Contribución y Agentes de IA](#-guías-de-contribución-y-agentes-de-ia)
 
 ---
 
 ## 🛠 Requisitos del Entorno
 
-Para asegurar consistencia entre ambos desarrolladores del proyecto, se recomienda utilizar el siguiente entorno:
+Para asegurar consistencia entre el equipo y evitar desfasajes en el entorno nativo:
 
-- **Node.js**: `v20.x` o superior (LTS)
+- **Node.js**: `v20.x` o superior (LTS recomendado)
 - **npm**: `v10.x` o superior
-- **Git**: versión actualizada
-- **Expo CLI**: `npx expo`
-- **JDK (Java Development Kit)**: JDK 17 (para compilaciones nativas Android)
-- **Android Studio & SDK**: Android SDK Platform 34+ (si se ejecutan emuladores o builds locales)
-- **Expo Go**: Para pruebas rápidas en dispositivo físico
+- **Expo CLI**: Integrado en el SDK (`npx expo`)
+- **JDK (Java Development Kit)**: JDK 17 (requerido para builds y ejecución nativa en Android)
+- **Android Studio & SDK**: Android SDK Platform 34+ (para emuladores y desarrollo nativo)
+- **Expo Go / Development Client**: Para validación en dispositivos físicos
 
 ---
 
-## 🚀 Scripts y Ejecución
+## 🚀 Instalación y Ejecución
 
 1. **Instalar dependencias:**
    ```bash
    npm install
    ```
 
-2. **Iniciar el servidor de desarrollo (Expo Router con limpieza de caché):**
+2. **Variables de Entorno:**
+   Crear un archivo `.env` en la raíz tomando como base las variables de conexión con el backend:
+   ```env
+   EXPO_PUBLIC_API_URL=http://localhost:3000/api
+   ```
+
+3. **Iniciar el servidor de desarrollo (limpiando caché de Metro):**
    ```bash
    npx expo start -c
    ```
 
-3. **Ejecutar en plataformas específicas:**
-   - **Android**: presionar `a` en la terminal de Expo o ejecutar `npx expo run:android`
-   - **iOS**: presionar `i` en la terminal de Expo o ejecutar `npx expo run:ios`
-   - **Web**: presionar `w` en la terminal de Expo
+4. **Ejecutar en plataformas específicas:**
+   - **Android**: `npx expo start --android` (o tecla `a` en terminal)
+   - **iOS**: `npx expo start --ios` (o tecla `i` en terminal)
+   - **Web**: `npx expo start --web` (o tecla `w` en terminal)
+
+5. **Chequeos de Salud y Diagnóstico:**
+   ```bash
+   npx expo-doctor
+   ```
+
+---
+
+## 📱 Flujos Principales Implementados
+
+### 1. Autenticación y Gestión de Sesión
+- Manejo centralizado del estado de sesión mediante `useAuthStore` (Zustand).
+- **Seguridad primero**: Almacenamiento de tokens (Access y Refresh JWT) en `expo-secure-store` (nunca en AsyncStorage).
+- Interceptores de Axios para renovación transparente de tokens y ruteo automático ante sesiones vencidas.
+
+### 2. Postulación de Legajo (Wizard de Onboarding)
+- **Paso 1 - Perfil (`src/app/onboarding/profile.tsx`)**: Captura de datos personales y teléfono validado con `PhoneInput`, `DatePickerInput` y `Select`.
+- **Paso 2 - Vehículo (`src/app/onboarding/vehicle.tsx`)**: Registro de especificaciones del móvil (patente, marca, modelo, año, categoría).
+- **Paso 3 - Documentación (`src/app/onboarding/documents.tsx`)**: Subida y verificación de fotos de DNI, licencia, cédula verde/azul, título del vehículo, ITV y póliza de seguro mediante `DocumentScannerModal` (cámara y explorador de archivos).
+- **Persistencia de Progreso**: Si el usuario interrumpe el registro, el estado se guarda en `useOnboardingStore` para reanudar sin reescribir datos.
+
+### 3. Sala de Espera (Pending Approval)
+- Vista en `src/app/pending-approval/index.tsx` donde el conductor consulta el estado de su postulación.
+- Incluye opciones de contacto directo con soporte y actualización manual (*pull-to-refresh* o botón de reintento).
+- Skeletons dedicados para eliminar pantallas en blanco o spinners invasivos durante el chequeo de estado.
 
 ---
 
 ## 🏛 Arquitectura del Proyecto
 
-El proyecto sigue una **Arquitectura Hexagonal Simplificada** para separar responsabilidades y permitir un desarrollo desacoplado y mantenible:
+El proyecto sigue una **Arquitectura Hexagonal Simplificada** para desacoplar el motor de negocio de los detalles de infraestructura y presentación:
 
 ```text
 src/
-├── core/                   # Lógica central del negocio y operaciones de la app
-│   ├── actions/            # Casos de uso y acciones de negocio
-│   └── api/                # Cliente HTTP base (Axios / transferApi)
+├── app/                        # Ruteo basado en archivos (Expo Router)
+│   ├── (home)/                 # Pantallas principales del conductor activo
+│   ├── onboarding/             # Wizard de postulación (profile, vehicle, documents)
+│   ├── pending-approval/       # Pantalla de revisión de solicitud
+│   └── _layout.tsx             # Root layout con proveedores globales y ruteo seguro
 │
-├── infrastructure/         # Adaptadores técnicos y fuentes externas
-│   ├── interfaces/         # Tipos y DTOs provenientes de las APIs
-│   └── mappers/            # Transformadores de DTOs externos a modelos de la app
+├── core/                       # Reglas de negocio y orquestación
+│   ├── actions/                # Casos de uso desacoplados de la UI
+│   └── api/                    # Cliente HTTP base (Axios / transferApi)
 │
-└── presentation/           # Interfaz de usuario (UI)
-    ├── components/         # Componentes visuales reutilizables
-    ├── hooks/              # Custom hooks vinculados a la presentación
-    └── screens/            # Pantallas de la aplicación
+├── infrastructure/             # Adaptadores de comunicación externa
+│   ├── interfaces/             # Modelos y DTOs tipados exactamente con el backend
+│   └── mappers/                # Transformadores de datos DTO a dominio
+│
+└── presentation/               # Capa visual (React Native + NativeWind)
+    ├── components/ui/          # Componentes visuales atómicos (Select, Inputs, SkeletonBox)
+    ├── onboarding/             # Componentes, hooks y stores específicos del onboarding
+    └── providers/              # QueryClientProvider y configuraciones globales
 ```
 
-### Reglas Clave de Arquitectura:
-- **La UI (`presentation/`) NO debe importar directamente `transferApi`**: debe consumir las funciones expuestas en `core/actions/`.
-- **`infrastructure/`** se encarga de tipar y mapear las respuestas de la API antes de que lleguen a la lógica del negocio.
+### Reglas Arquitectónicas Innegociables:
+- **La UI no consume `transferApi` directamente**: Utiliza hooks de TanStack Query o casos de uso en `core/actions/`.
+- **Backend como Fuente de Verdad**: Los tipos en `infrastructure/interfaces/` deben respetar fielmente las propiedades de los modelos de Sequelize del backend (`transferblack/backend`).
 
 ---
 
-## 🎨 Design Tokens
+## ⚙️ Pila Tecnológica y Decisiones de Diseño
 
-### Colores
-Configurados como clases de utilidad en Tailwind:
-- `obsidian`: `#0A0A0C` (ej: `bg-obsidian`)
-- `gold`: `#D4AF37` (ej: `text-gold`, `bg-gold`)
-- `platinum`: `#E4E4E5` (ej: `text-platinum`)
-- `ash`: `#8E8E93` (ej: `text-ash`)
-- `charcoal`: `#2C2C2E` (ej: `border-charcoal`, `bg-charcoal`)
+| Tecnología | Rol en el Proyecto | Justificación |
+|---|---|---|
+| **Expo Router** | Navegación | Ruteo declarativo, tipado y optimizado para deep links. |
+| **Zustand** | Estado Global y UI | Liviano, sin boilerplate, con selectores para evitar re-renders. |
+| **TanStack Query** | Caché y Estado Asíncrono | Manejo automático de revalidación, reintentos y estados de carga. |
+| **React Hook Form + Zod** | Formularios | Validación reactiva al perder foco (`onTouched`) y tipado inferido seguro. |
+| **NativeWind v4** | Estilos | Implementación de Tailwind CSS compilada eficientemente a estilos de React Native. |
+| **Reanimated** | Animaciones | Ejecución fluida en el UI thread para transiciones y skeletons. |
+| **Expo Secure Store** | Almacenamiento seguro | Cifrado a nivel de hardware para tokens sensibles. |
 
-*Nota: No utilizar los valores hexadecimales directamente en pantallas o componentes.*
+### 💎 UX First: Skeletons > Spinners
+- **Prohibido el uso de `ActivityIndicator` como pantalla de carga completa**: Todo componente o pantalla con contenido predecible que consulte datos asíncronos debe implementar su Skeleton correspondiente usando `<SkeletonBox />`.
+- Esto garantiza **cero layout shift** y una experiencia percibida como instantánea.
+- Los spinners quedan restringidos únicamente a acciones puntuales de botones (ej. durante el submit de un formulario).
+
+---
+
+## 🎨 Sistema de Diseño y Tokens
+
+### Paleta de Colores
+Definida en `tailwind.config.js` y aplicada mediante clases de Tailwind:
+- `obsidian`: `#0A0A0C` — Fondo y superficies oscuras primarias (ej: `bg-obsidian`)
+- `gold`: `#D4AF37` — Color acento y llamados a la acción principales (ej: `text-gold`, `bg-gold`)
+- `platinum`: `#E4E4E5` — Tipografía de alto contraste (ej: `text-platinum`)
+- `ash`: `#8E8E93` — Textos secundarios y placeholders (ej: `text-ash`)
+- `charcoal`: `#2C2C2E` — Bordes, divisores y tarjetas elevadas (ej: `bg-charcoal`, `border-charcoal`)
+
+*Nota: No utilizar códigos hexadecimales sueltos en el código.*
 
 ### Tipografía (Montserrat)
-Fuente oficial única del proyecto con soporte para pesos:
-- **Regular** (`400`)
-- **Medium** (`500`)
-- **SemiBold** (`600`)
-- **Bold** (`700`)
-
-### Jerarquía Tipográfica (Clases Globales)
-- `h1`: `text-4xl md:text-5xl font-montserrat-bold` (36–48px, Bold)
-- `h2`: `text-2xl md:text-3xl font-montserrat-bold` (24–30px, Bold)
-- `h3`: `text-lg md:text-xl font-montserrat-semibold` (18–20px, SemiBold)
-- `body-large`: `text-base font-montserrat-medium` (16px, Medium)
-- `body-large-bold`: `text-base font-montserrat-bold` (16px, Bold)
-- `body-regular`: `text-sm font-montserrat` (14px, Regular)
-- `caption`: `text-xs font-montserrat` (12px, Regular)
-- `caption-medium`: `text-xs font-montserrat-medium` (12px, Medium)
+Tipografía oficial en todos los módulos con sus variantes:
+- `font-montserrat`: Regular (400)
+- `font-montserrat-medium`: Medium (500)
+- `font-montserrat-semibold`: SemiBold (600)
+- `font-montserrat-bold`: Bold (700)
 
 ---
 
-## ⚙️ Stack y Decisiones Técnicas
+## 🔍 Calidad de Código y Convenciones
 
-### Estado Global y Mutaciones
-- **Zustand**: Utilizado para el estado global de la app (ej: `useAuthStore`, `useOnboardingStore`). Evitar el prop-drilling.
-- **TanStack Query (React Query)**: Para el manejo de llamadas a la API, caché de solicitudes, y mutaciones de datos.
-- **Axios**: Cliente HTTP configurado con interceptores para manejar tokens e invalidación de sesión.
+Antes de subir cambios o generar una PR, se debe verificar que no existan errores de tipado ni de estilo:
 
-### Loading States (UX Premium)
-- **Skeletons > Spinners**: Está PROHIBIDO usar `ActivityIndicator` (spinners) como estado de carga principal para pantallas o listas.
-- Cada vista que dependa de una llamada asíncrona debe implementar un Skeleton usando `<SkeletonBox />` (basado en `react-native-reanimated`) que replique la estructura final de la UI para evitar parpadeos y *layout shifts*.
-- Los spinners (`ActivityIndicator`) están reservados únicamente para acciones cortas (como presionar el botón de "Guardar" o "Subir archivo").
+```bash
+# Comprobación de tipos estricta con TypeScript
+npx tsc --noEmit
 
-### Formularios y Validación
-- **React Hook Form**: Gestión del estado interno de los formularios.
-- **Zod**: Esquemas de validación estrictos. Todo payload enviado desde la app debe estar fuertemente tipado e inferido a partir de esquemas de Zod que **deben coincidir exactamente** con las validaciones del backend.
+# Análisis estático con ESLint
+npm run lint
+```
+
+- **TypeScript Estricto**: No usar `any`. Toda interfaz de API o componente debe estar tipada.
+- **Manejo de Errores**: Todo mensaje de error que llegue al conductor debe expresarse en español claro y comprensible, evitando tecnicismos.
+- **Accesibilidad**: Botones e iconos interactivos deben contar con `accessibilityLabel` y cumplir con un área táctil mínima de 44x44 pt.
 
 ---
 
-## 🤝 Contribución y Guía para Agentes (IA)
-Si sos un desarrollador o agente de IA trabajando en este proyecto, asegurate de leer **ambos** archivos de reglas antes de proponer cambios:
-1. `AGENTS.md`: Contiene las reglas completas de arquitectura, UX, y comportamiento que debés seguir al pie de la letra.
-2. `context.md`: Contexto rápido y fuente de verdad técnica de alto nivel de TransferBlack.
+## 🤝 Guías de Contribución y Agentes de IA
+
+Si colaborás en este repositorio o interactuás como agente de IA:
+1. Consultá [`context.md`](./context.md) para el estado actual de las funcionalidades, pantallas y contratos de datos.
+2. Respetá las directivas de [`AGENTS.md`](./AGENTS.md) sobre sincronización de interfaces, restricciones de dependencias y el estándar de UX.
