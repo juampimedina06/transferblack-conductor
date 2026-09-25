@@ -85,10 +85,10 @@ export const DocumentItem: React.FC<DocumentItemProps> = ({
     (previewUri ? previewUri.toLowerCase().endsWith('.pdf') : false);
   const isImage = !isPdf && !!previewUri;
 
-  const isVehicleMetadataMissing = isVehicleDoc && (!docNumber?.trim() || !issuedAt || !expiresAt);
+  const isMetadataMissing = !issuedAt || !expiresAt;
 
   // Si ya está subido e ingresó metadatos inicia minimizado, si no, expandido
-  const [isExpanded, setIsExpanded] = useState(!isUploaded || isVehicleMetadataMissing);
+  const [isExpanded, setIsExpanded] = useState(!isUploaded || isMetadataMissing);
 
   // Skip LayoutAnimation en el primer render para no interferir con la transición del Stack
   const hasRendered = useRef(false);
@@ -99,12 +99,12 @@ export const DocumentItem: React.FC<DocumentItemProps> = ({
       return;
     }
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    if (isUploaded && !isVehicleMetadataMissing) {
+    if (isUploaded && !isMetadataMissing) {
       setIsExpanded(false);
     } else {
       setIsExpanded(true);
     }
-  }, [isUploaded, isVehicleMetadataMissing]);
+  }, [isUploaded, isMetadataMissing]);
 
   // Sincronizar campos cuando se rehidrata el borrador guardado
   useEffect(() => {
@@ -346,8 +346,8 @@ export const DocumentItem: React.FC<DocumentItemProps> = ({
         <View
           className="p-3.5 mb-3 rounded-2xl border flex-row items-center justify-between"
           style={{
-            backgroundColor: isVehicleMetadataMissing ? 'rgba(69, 26, 3, 0.4)' : 'rgba(44, 44, 46, 0.85)',
-            borderColor: isVehicleMetadataMissing ? 'rgba(245, 158, 11, 0.6)' : 'rgba(52, 211, 153, 0.35)',
+            backgroundColor: isMetadataMissing ? 'rgba(69, 26, 3, 0.4)' : 'rgba(44, 44, 46, 0.85)',
+            borderColor: isMetadataMissing ? 'rgba(245, 158, 11, 0.6)' : 'rgba(52, 211, 153, 0.35)',
           }}
         >
           <TouchableOpacity
@@ -361,7 +361,7 @@ export const DocumentItem: React.FC<DocumentItemProps> = ({
                 activeOpacity={0.8}
                 onPress={() => setIsViewerOpen(true)}
                 className="w-12 h-12 rounded-xl bg-obsidian border mr-3 overflow-hidden items-center justify-center relative"
-                style={{ borderColor: isVehicleMetadataMissing ? 'rgba(245, 158, 11, 0.6)' : 'rgba(52, 211, 153, 0.5)' }}
+                style={{ borderColor: isMetadataMissing ? 'rgba(245, 158, 11, 0.6)' : 'rgba(52, 211, 153, 0.5)' }}
               >
                 <Image
                   source={{ uri: previewUri }}
@@ -396,9 +396,9 @@ export const DocumentItem: React.FC<DocumentItemProps> = ({
               <Text className="text-platinum font-montserrat-semibold text-sm" numberOfLines={1}>
                 {label}
               </Text>
-              {isVehicleMetadataMissing ? (
+              {isMetadataMissing ? (
                 <Text className="text-amber-400 font-montserrat-medium text-xs mt-0.5">
-                  ⚠️ Falta ingresar Nº de trámite o fechas
+                  ⚠️ Faltan fechas de vigencia
                 </Text>
               ) : docNumber || expiresAt ? (
                 <Text className="text-ash font-montserrat text-xs mt-0.5" numberOfLines={1}>
@@ -481,11 +481,9 @@ export const DocumentItem: React.FC<DocumentItemProps> = ({
           <Text className="text-platinum font-montserrat-semibold text-base leading-5">
             {label}
           </Text>
-          {isVehicleDoc && (
-            <Text className="text-gold font-montserrat text-xs mt-1">
-              * Requiere datos de vencimiento
-            </Text>
-          )}
+          <Text className="text-gold font-montserrat text-xs mt-1">
+            * Requiere fechas de emisión y vencimiento
+          </Text>
         </View>
 
         {/* Status Badge */}
@@ -580,7 +578,7 @@ export const DocumentItem: React.FC<DocumentItemProps> = ({
       <View className="flex-row gap-3 mb-4">
         <TouchableOpacity
           onPress={() => {
-            if (isVehicleDoc && (!issuedAt || !expiresAt)) {
+            if (!issuedAt || !expiresAt) {
               Alert.alert('Faltan datos', 'Por favor ingresá la fecha de emisión y vencimiento antes de cargar el documento.');
               return;
             }
@@ -598,7 +596,7 @@ export const DocumentItem: React.FC<DocumentItemProps> = ({
 
         <TouchableOpacity
           onPress={() => {
-            if (isVehicleDoc && (!issuedAt || !expiresAt)) {
+            if (!issuedAt || !expiresAt) {
               Alert.alert('Faltan datos', 'Por favor ingresá la fecha de emisión y vencimiento antes de cargar el documento.');
               return;
             }
@@ -612,13 +610,13 @@ export const DocumentItem: React.FC<DocumentItemProps> = ({
         </TouchableOpacity>
       </View>
 
-      {/* Metadata Inputs (Required for vehicle_title / itv, or optional for others) */}
+      {/* Metadata Inputs (Required for all) */}
       <View
         className="rounded-xl p-3 gap-2 border"
         style={{ backgroundColor: 'rgba(10, 10, 12, 0.8)', borderColor: 'rgba(44, 44, 46, 0.9)' }}
       >
         <Text className="text-ash font-montserrat text-xs uppercase tracking-wider mb-1">
-          {isVehicleDoc ? 'Metadatos del Documento (Obligatorio)' : 'Datos Adicionales'}
+          Fechas y Datos del Documento
         </Text>
         <TextInput
           placeholder="Número de trámite / documento"

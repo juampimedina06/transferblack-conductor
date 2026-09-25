@@ -56,21 +56,11 @@ export default function DocumentsScreen() {
         continue;
       }
 
-      // Metadata validation for vehicle documents
-      if (type === 'vehicle_title' || type === 'itv') {
-        const metadataResult = documentMetadataSchema.safeParse(state.metadata);
-        
-        const hasNumber = !!state.metadata?.documentNumber?.trim();
-        const hasDates = !!state.metadata?.issuedAt && !!state.metadata?.expiresAt;
-        const isDatesValid = metadataResult.success;
+      // Metadata validation for ALL documents
+      const hasDates = !!state.metadata?.issuedAt && !!state.metadata?.expiresAt;
 
-        if (!hasNumber || !hasDates || !isDatesValid) {
-          const missingDetails = [];
-          if (!hasNumber) missingDetails.push('Nº de Trámite');
-          if (!hasDates || !isDatesValid) missingDetails.push('Fechas de vigencia');
-          
-          missing.push(`${docName} (${missingDetails.join(' y ')})`);
-        }
+      if (!hasDates) {
+        missing.push(`${docName} (Fechas de vigencia)`);
       }
     }
     
@@ -157,7 +147,7 @@ export default function DocumentsScreen() {
             Gestor Documental
           </Text>
           <Text className="text-ash font-montserrat text-sm leading-5">
-            Cargá los 8 documentos requeridos en formato legible o PDF. El Título del Vehículo y la ITV exigen fechas de vigencia.
+            Cargá los 8 documentos requeridos en formato legible o PDF. Todos exigen fechas de vigencia (emisión y vencimiento).
           </Text>
         </View>
 

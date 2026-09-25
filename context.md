@@ -24,8 +24,26 @@ Este archivo sirve como referencia rápida y fuente de la verdad para el comport
 - **Gestión de Rechazos:** Si la API devuelve `approvalStatus: 'rejected'`, la pantalla cambia su aura a rojo, muestra el motivo exacto del rechazo devuelto por el equipo de compliance, y habilita un botón para volver al Onboarding a "Modificar Documentos Cargados".
 - **Skeletons (UX):** Implementa `PendingApprovalSkeleton` usando `<SkeletonBox />` para evitar pantallas blancas mientras se hace el fetch del perfil.
 
+### Cita Confirmada y Sincronización de Reunión (`src/app/confirmed-appointment/`)
+- **UI VIP Minimalista:** Presentación sobria y refinada de la cita con el equipo de compliance, mostrando fecha, hora y enlace a Google Meet.
+- **Polling Reactivo Automático:** Implementa sondeo periódico en segundo plano (cada 5s vía `useFocusEffect` sobre `GET /driver/meeting`) para detectar de forma instantánea la aprobación del administrador desde `admin-web`, transitando de pantalla sin requerir pull-to-refresh manual.
+- **Limpieza de Recursos:** Control riguroso de desuscripción de temporizadores e intervalos al salir de foco para evitar fugas de memoria.
+
+### Dashboard de Conducción y Mapa en Vivo (`src/app/(home)/`)
+- **Mapa Interactivo:** Componente `CustomMap` (`react-native-maps`) con tema nocturno personalizado (`darkMapStyle`), renderizado a pantalla completa.
+- **Geolocalización Continua:** Hook `useDriverLocation` (`expo-location`) con precisión alta (`Accuracy.High`), actualización cada 10 metros / 10 segundos y transmisión automática al endpoint `POST /drivers/me/location` cuando el conductor está disponible.
+- **Controles FAB:** Botones flotantes de acción rápida para centrar la cámara en la posición actual y activar/desactivar el modo de seguimiento (`isFollowingUser`).
+- **Control de Disponibilidad:** Switch de estado ("Disponible" / "Desconectado") que controla el ciclo de vida del socket y la geolocalización activa.
+- **Guardas de Navegación Deterministas:** El layout raíz de `(home)` consulta directamente `GET /driver/me` para comprobar `approvalStatus === 'approved'`, erradicando loops infinitos entre el panel y `/pending-approval`.
+
+### Comunicación en Tiempo Real (`src/core/socket/`)
+- **Cliente Socket.io:** Instancia centralizada (`socket.ts`) con reconexión automática y desconexión controlada.
+- **Autenticación por Token:** Inyección dinámica de credenciales (`socket.auth = { token }`) obtenidas de `authStorage` al ponerse en estado disponible, desconectando en reposo o al cerrar sesión.
+
 ## 2. Arquitectura y Stack
 - **Framework:** React Native + Expo + Expo Router (Navegación basada en archivos en `src/app/`).
+- **Mapas y Ubicación:** `react-native-maps` con Google Maps Provider + `expo-location`.
+- **WebSockets:** `socket.io-client` para eventos en tiempo real.
 - **Estilos:** NativeWind v4 (Tailwind CSS).
 - **Estado Global:** Zustand (`useAuthStore`, `useOnboardingStore`).
 - **Mutaciones/Data Fetching:** `@tanstack/react-query` y Axios (`transferApi`).

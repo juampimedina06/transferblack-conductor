@@ -20,12 +20,33 @@ export default function HomeLayout() {
         useAuthStore.getState().updateUser(response.data);
 
         const hasDriverRole = profile.roles?.includes('driver');
-        const isApproved = profile.approvalStatus === 'approved'; // Cuando el back lo soporte
+        let isApproved = profile.approvalStatus === 'approved';
+
+        if (hasDriverRole) {
+          try {
+            const driverResponse = await transferApi.get('/driver/me');
+            if (driverResponse.data?.data?.driverProfile?.approvalStatus === 'approved') {
+              isApproved = true;
+            }
+          } catch (e) {
+            // Ignore error, might not have driver profile yet
+          }
+        }
 
         if (isApproved) {
           // Si está aprobado, se queda en (home)
         } else if (hasDriverRole) {
           // Tiene el rol pero no está aprobado -> está pending
+          // Check if there is a meeting scheduled
+          try {
+            const meetingResponse = await transferApi.get('/driver/meeting');
+            if (meetingResponse.data && meetingResponse.data.id) {
+              router.replace('/confirmed-appointment' as any);
+              return;
+            }
+          } catch (e) {
+            // No meeting or error
+          }
           router.replace('/pending-approval' as any);
         } else {
           // No tiene el rol -> inicializar borrador del usuario e ir al paso correspondiente
