@@ -11,7 +11,9 @@
       "icon": "./assets/expo.icon",
       "infoPlist": {
         "NSCameraUsageDescription": "TransferBlack necesita acceso a tu cámara para que puedas fotografiar tus documentos oficiales y vehículo.",
-        "NSPhotoLibraryUsageDescription": "TransferBlack necesita acceso a tu galería para que puedas adjuntar comprobantes de documentación y fotos del vehículo."
+        "NSPhotoLibraryUsageDescription": "TransferBlack necesita acceso a tu galería para que puedas adjuntar comprobantes de documentación y fotos del vehículo.",
+        "NSLocationWhenInUseUsageDescription": "TransferBlack requiere tu ubicación para mostrarte en el mapa y encontrar viajes cercanos.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "TransferBlack requiere tu ubicación en segundo plano para rastrear el vehículo durante un viaje y mantener informados a los pasajeros."
       }
     },
     "android": {
@@ -21,7 +23,12 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION"
+      ]
     },
     "web": {
       "output": "static",
@@ -52,6 +59,15 @@
         {
           "photosPermission": "TransferBlack necesita acceso a tu galería para adjuntar fotos de tus documentos y de tu vehículo.",
           "cameraPermission": "TransferBlack necesita acceso a tu cámara para fotografiar tus documentos y tu vehículo."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "TransferBlack requiere tu ubicación en segundo plano para rastrear el vehículo durante un viaje y mantener informados a los pasajeros.",
+          "locationAlwaysPermission": "TransferBlack requiere tu ubicación en todo momento para asignarte viajes cercanos y realizar el seguimiento de los mismos.",
+          "locationWhenInUsePermission": "TransferBlack requiere tu ubicación para mostrarte en el mapa y encontrar viajes cercanos.",
+          "isAndroidBackgroundLocationEnabled": true
         }
       ]
     ],

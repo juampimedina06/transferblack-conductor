@@ -79,6 +79,16 @@ Para asegurar consistencia entre el equipo y evitar desfasajes en el entorno nat
 - Incluye opciones de contacto directo con soporte y actualización manual (*pull-to-refresh* o botón de reintento).
 - Skeletons dedicados para eliminar pantallas en blanco o spinners invasivos durante el chequeo de estado.
 
+### 4. Cita Confirmada y Validación de Entrevista
+- Vista en `src/app/confirmed-appointment/index.tsx` con diseño sobrio y minimalista VIP.
+- **Sincronización Automática:** Polling reactivo en segundo plano cada 5s sobre `GET /driver/meeting` vía `useFocusEffect` para detectar al instante la aprobación del administrador en el backoffice sin intervención manual.
+
+### 5. Dashboard del Conductor y Modo Operativo
+- Vista principal en `src/app/(home)/index.tsx` con mapa interactivo en modo oscuro full-screen (`CustomMap` vía `react-native-maps`).
+- **Geolocalización en Tiempo Real:** Seguimiento continuo con `expo-location` (`useDriverLocation`) emitiendo coordenadas periódicas a `POST /drivers/me/location`.
+- **Conectividad WebSocket:** Integración de `socket.io-client` autenticado por JWT que se activa o suspende según el switch de disponibilidad ("Disponible" / "Desconectado").
+- **Guardas de Navegación Deterministas:** Sincronización en `(home)/_layout.tsx` consultando directamente `GET /driver/me` para evitar loops de redirección.
+
 ---
 
 ## 🏛 Arquitectura del Proyecto
@@ -88,22 +98,29 @@ El proyecto sigue una **Arquitectura Hexagonal Simplificada** para desacoplar el
 ```text
 src/
 ├── app/                        # Ruteo basado en archivos (Expo Router)
-│   ├── (home)/                 # Pantallas principales del conductor activo
+│   ├── (home)/                 # Dashboard operativo del conductor con mapa
+│   ├── confirmed-appointment/  # Cita de entrevista confirmada y polling
 │   ├── onboarding/             # Wizard de postulación (profile, vehicle, documents)
 │   ├── pending-approval/       # Pantalla de revisión de solicitud
 │   └── _layout.tsx             # Root layout con proveedores globales y ruteo seguro
 │
 ├── core/                       # Reglas de negocio y orquestación
 │   ├── actions/                # Casos de uso desacoplados de la UI
-│   └── api/                    # Cliente HTTP base (Axios / transferApi)
+│   ├── api/                    # Cliente HTTP base (Axios / transferApi)
+│   ├── constants/              # Paleta de colores y constantes de tema
+│   └── socket/                 # Conexión centralizada Socket.io para tiempo real
 │
 ├── infrastructure/             # Adaptadores de comunicación externa
 │   ├── interfaces/             # Modelos y DTOs tipados exactamente con el backend
 │   └── mappers/                # Transformadores de datos DTO a dominio
 │
 └── presentation/               # Capa visual (React Native + NativeWind)
-    ├── components/ui/          # Componentes visuales atómicos (Select, Inputs, SkeletonBox)
-    ├── onboarding/             # Componentes, hooks y stores específicos del onboarding
+    ├── auth/                   # Estado de sesión y almacenamiento seguro
+    ├── components/
+    │   ├── maps/               # CustomMap con dark theme y controles FAB
+    │   └── ui/                 # Componentes atómicos (Select, Inputs, SkeletonBox, FAB)
+    ├── hooks/                  # useDriverLocation y hooks transversales
+    ├── onboarding/             # Componentes y stores específicos del onboarding
     └── providers/              # QueryClientProvider y configuraciones globales
 ```
 
@@ -118,6 +135,9 @@ src/
 | Tecnología | Rol en el Proyecto | Justificación |
 |---|---|---|
 | **Expo Router** | Navegación | Ruteo declarativo, tipado y optimizado para deep links. |
+| **react-native-maps** | Visualización Geográfica | Renderizado nativo de mapas de alto rendimiento con tema oscuro VIP. |
+| **expo-location** | Geolocalización | Captura de coordenadas y suscripción periódica en segundo plano. |
+| **socket.io-client** | Comunicación en Tiempo Real | Canal bidireccional de baja latencia para disponibilidad y despacho. |
 | **Zustand** | Estado Global y UI | Liviano, sin boilerplate, con selectores para evitar re-renders. |
 | **TanStack Query** | Caché y Estado Asíncrono | Manejo automático de revalidación, reintentos y estados de carga. |
 | **React Hook Form + Zod** | Formularios | Validación reactiva al perder foco (`onTouched`) y tipado inferido seguro. |
