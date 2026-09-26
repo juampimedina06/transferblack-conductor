@@ -9,13 +9,23 @@ import { socket } from '../../core/socket/socket';
 import { authStorage } from '../../presentation/auth/store/authStorage';
 import { useAuthStore } from '../../presentation/auth/store/useAuthStore';
 import { CustomMap } from '../../presentation/components/maps/CustomMap';
-import { useDriverLocation } from '../../presentation/hooks/useDriverLocation';
+import { useDriverLocation } from '../../presentation/maps/hooks/useDriverLocation';
+import { DashboardCarousel } from '../../presentation/components/dashboard/DashboardCarousel';
+import { EmergencyFAB } from '../../presentation/components/dashboard/EmergencyFAB';
+import { ConnectionBottomSheet } from '../../presentation/components/dashboard/ConnectionBottomSheet';
+import { SecurityModal } from '../../presentation/components/dashboard/SecurityModal';
+import { DriverProgressModal } from '../../presentation/components/dashboard/DriverProgressModal';
+import { useDashboardStats } from '../../presentation/hooks/useDashboardStats';
 
 export default function DriverDashboardScreen() {
   const logout = useAuthStore(state => state.logout);
   const [isAvailable, setIsAvailable] = useState(false);
+  const [isStatsExpanded, setIsStatsExpanded] = useState(false);
+  const [isSecurityModalVisible, setIsSecurityModalVisible] = useState(false);
+  const [isProgressModalVisible, setIsProgressModalVisible] = useState(false);
 
   const { location, errorMsg } = useDriverLocation(isAvailable);
+  const { stats } = useDashboardStats(isAvailable);
 
   useEffect(() => {
     return () => {
@@ -60,8 +70,7 @@ export default function DriverDashboardScreen() {
           </View>
         ) : (
           <CustomMap
-            initialLocation={location ? location.coords : defaultLocation}
-            currentLocation={location}
+            initialLocation={location ? location : defaultLocation}
             showUserLocation={true}
             style={{ flex: 1 }}
           />
@@ -73,50 +82,66 @@ export default function DriverDashboardScreen() {
         <View className="px-4 py-3 flex-row items-center justify-between" pointerEvents="box-none">
           <TouchableOpacity
             onPress={handleLogout}
-            className="w-10 h-10 rounded-full bg-obsidian/80 items-center justify-center border border-charcoal"
+            className="w-10 h-10 rounded-full bg-obsidian/80 items-center justify-center border border-charcoal shadow-sm shadow-black"
           >
             <Ionicons name="log-out-outline" size={20} color={THEME_COLORS.platinum} />
           </TouchableOpacity>
 
-          {/* Availability Toggle */}
-          <View 
-            className={`h-12 rounded-full flex-row items-center px-2 transition-all ${
-              isAvailable ? 'bg-[#0A0A0C] border border-[#D4AF37]' : 'bg-[#1A1A1C] border border-[#2C2C2E]'
-            }`}
+          {/* Central Toggle Pill */}
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => setIsStatsExpanded(!isStatsExpanded)}
+            className="flex-row items-center bg-obsidian/90 border border-charcoal px-4 py-2 rounded-full shadow-md shadow-black"
           >
-            <Text 
-              className={`mr-3 ml-2 font-montserrat-semibold text-xs ${
-                isAvailable ? 'text-[#D4AF37]' : 'text-ash/60'
-              }`}
-            >
-              {isAvailable ? 'Disponible' : 'Desconectado'}
+            <Ionicons name="wallet-outline" size={16} color={THEME_COLORS.gold} />
+            <Text className="text-platinum font-montserrat-bold text-sm ml-2 mr-1.5">
+              ${stats ? stats.earningsToday.toFixed(2) : '0.00'}
             </Text>
-            <Switch
-              value={isAvailable}
-              onValueChange={toggleAvailability}
-              trackColor={{ false: THEME_COLORS.charcoal, true: 'rgba(212, 175, 55, 0.3)' }}
-              thumbColor={isAvailable ? THEME_COLORS.gold : THEME_COLORS.ash}
-              ios_backgroundColor={THEME_COLORS.charcoal}
+            <Ionicons
+              name={isStatsExpanded ? 'chevron-up' : 'chevron-down'}
+              size={16}
+              color={THEME_COLORS.ash}
             />
-          </View>
+          </TouchableOpacity>
 
           <TouchableOpacity
             onPress={() => router.push('/profile' as any)}
-            className="w-10 h-10 rounded-full bg-obsidian/80 items-center justify-center border border-charcoal"
+            className="w-10 h-10 rounded-full bg-obsidian/80 items-center justify-center border border-charcoal shadow-sm shadow-black"
           >
             <Ionicons name="person-outline" size={20} color={THEME_COLORS.platinum} />
           </TouchableOpacity>
         </View>
 
-        {/* Quick Access Earnings */}
-        <View className="items-center mt-2">
-          <View className="bg-black/80 px-4 py-2 rounded-full border border-charcoal/50 flex-row items-center">
-            <Ionicons name="wallet-outline" size={16} color={THEME_COLORS.gold} style={{ marginRight: 6 }} />
-            <Text className="text-ash font-montserrat text-xs">Ganancia hoy: </Text>
-            <Text className="text-gold font-montserrat-bold text-sm">$0.00</Text>
-          </View>
-        </View>
+        {/* Dashboard Carousel */}
+        {isStatsExpanded && (
+          <DashboardCarousel 
+            stats={stats || undefined} 
+            onPressProgress={() => setIsProgressModalVisible(true)}
+          />
+        )}
       </SafeAreaView>
+
+      {/* Emergency Button */}
+      <EmergencyFAB onPress={() => setIsSecurityModalVisible(true)} />
+
+      {/* Bottom Sheet for Connection */}
+      <ConnectionBottomSheet 
+        isAvailable={isAvailable} 
+        onToggleAvailability={toggleAvailability} 
+      />
+
+      {/* Security Functions Modal */}
+      <SecurityModal 
+        visible={isSecurityModalVisible} 
+        onClose={() => setIsSecurityModalVisible(false)} 
+      />
+
+      {/* Driver Progress & Performance Modal */}
+      <DriverProgressModal 
+        visible={isProgressModalVisible} 
+        stats={stats || undefined} 
+        onClose={() => setIsProgressModalVisible(false)} 
+      />
     </View>
   );
 }
