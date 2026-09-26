@@ -131,3 +131,5 @@ export function PendingApprovalSkeleton() {
     </SafeAreaView>
   );
 }
+
+export default PendingApprovalSkeleton;

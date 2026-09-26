@@ -16,6 +16,7 @@ import { ConnectionBottomSheet } from '../../presentation/components/dashboard/C
 import { SecurityModal } from '../../presentation/components/dashboard/SecurityModal';
 import { DriverProgressModal } from '../../presentation/components/dashboard/DriverProgressModal';
 import { useDashboardStats } from '../../presentation/hooks/useDashboardStats';
+import { useTripSocket } from '../../presentation/trip/hooks/useTripSocket';
 
 export default function DriverDashboardScreen() {
   const logout = useAuthStore(state => state.logout);
@@ -26,6 +27,9 @@ export default function DriverDashboardScreen() {
 
   const { location, errorMsg } = useDriverLocation(isAvailable);
   const { stats } = useDashboardStats(isAvailable);
+
+  // Inicializa la escucha de eventos de socket (trip:offer)
+  useTripSocket();
 
   useEffect(() => {
     return () => {

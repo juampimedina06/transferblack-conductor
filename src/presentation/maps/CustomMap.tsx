@@ -1,10 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Platform, StyleSheet, View, ViewProps } from "react-native";
-import MapView, { PROVIDER_GOOGLE, Polyline } from "react-native-maps";
+import MapView, { PROVIDER_GOOGLE, Polyline, Marker } from "react-native-maps";
+import { Ionicons } from "@expo/vector-icons";
 import { THEME_COLORS } from "../../core/constants/theme";
 import { LatLng } from "../../core/location/interface/latLng.interface";
 import { FAB } from "../components/ui/FAB";
 import { useLocationStore } from "./store/useLocationStore";
+import { useDriverTripStore } from "../trip/store/useDriverTripStore";
 
 interface Props extends ViewProps {
   showUserLocation?: boolean;
@@ -93,6 +95,7 @@ export const CustomMap = ({
   const mapRef = useRef<MapView>(null);
   const [isFollowingUser, setIsFollowingUser] = useState(true);
   const [isPolyline, setIsPolyline] = useState(true);
+  const currentOffer = useDriverTripStore((state) => state.currentOffer);
 
   const {
     lastKnownLocation,
@@ -101,6 +104,74 @@ export const CustomMap = ({
     clearWatchLocation,
     getLocation,
   } = useLocationStore();
+
+  // Parse route geometry from backend or fallback to straight line
+  const offerRouteCoordinates = React.useMemo((): LatLng[] => {
+    if (!currentOffer) return [];
+    const geom = currentOffer.routeGeometry;
+    if (geom?.type === "MultiLineString" && Array.isArray(geom.coordinates)) {
+      return geom.coordinates
+        .flat()
+        .map(([lng, lat]: [number, number]) => ({ latitude: lat, longitude: lng }));
+    }
+    if (geom?.type === "LineString" && Array.isArray(geom.coordinates)) {
+      return geom.coordinates.map(([lng, lat]: [number, number]) => ({
+        latitude: lat,
+        longitude: lng,
+      }));
+    }
+    // Fallback: connect pickup to dropoff if both have coords
+    if (
+      currentOffer.pickup?.latitude &&
+      currentOffer.pickup?.longitude &&
+      currentOffer.dropoff?.latitude &&
+      currentOffer.dropoff?.longitude
+    ) {
+      return [
+        {
+          latitude: currentOffer.pickup.latitude,
+          longitude: currentOffer.pickup.longitude,
+        },
+        {
+          latitude: currentOffer.dropoff.latitude,
+          longitude: currentOffer.dropoff.longitude,
+        },
+      ];
+    }
+    return [];
+  }, [currentOffer]);
+
+  // Adjust camera to fit offer coordinates
+  useEffect(() => {
+    if (!currentOffer || !mapRef.current) return;
+    const coords: LatLng[] = [];
+
+    if (currentOffer.pickup?.latitude && currentOffer.pickup?.longitude) {
+      coords.push({
+        latitude: currentOffer.pickup.latitude,
+        longitude: currentOffer.pickup.longitude,
+      });
+    }
+
+    if (currentOffer.dropoff?.latitude && currentOffer.dropoff?.longitude) {
+      coords.push({
+        latitude: currentOffer.dropoff.latitude,
+        longitude: currentOffer.dropoff.longitude,
+      });
+    }
+
+    if (lastKnownLocation) {
+      coords.push(lastKnownLocation);
+    }
+
+    if (coords.length > 0) {
+      setIsFollowingUser(false);
+      mapRef.current.fitToCoordinates(coords, {
+        edgePadding: { top: 90, right: 50, bottom: 260, left: 50 },
+        animated: true,
+      });
+    }
+  }, [currentOffer, lastKnownLocation]);
 
   const moveCameraToLocation = (latLng: LatLng) => {
     if (!mapRef.current) return;
@@ -132,10 +203,10 @@ export const CustomMap = ({
   }, []);
 
   useEffect(() => {
-    if (lastKnownLocation && isFollowingUser) {
+    if (lastKnownLocation && isFollowingUser && !currentOffer) {
       moveCameraToLocation(lastKnownLocation);
     }
-  }, [lastKnownLocation, isFollowingUser]);
+  }, [lastKnownLocation, isFollowingUser, currentOffer]);
 
   return (
     <View {...rest}>
@@ -155,12 +226,65 @@ export const CustomMap = ({
           longitudeDelta: 0.0421,
         }}
       >
+        {/* Past Driver Trail */}
         {isPolyline && userLocationList.length > 1 && (
           <Polyline
             coordinates={userLocationList}
             strokeColor={THEME_COLORS.gold}
             strokeWidth={4}
           />
+        )}
+
+        {/* Offer Route Polyline */}
+        {offerRouteCoordinates.length > 1 && (
+          <Polyline
+            coordinates={offerRouteCoordinates}
+            strokeColor="#1E293B"
+            strokeWidth={7}
+          />
+        )}
+        {offerRouteCoordinates.length > 1 && (
+          <Polyline
+            coordinates={offerRouteCoordinates}
+            strokeColor={THEME_COLORS.gold}
+            strokeWidth={4}
+          />
+        )}
+
+        {/* Pickup Marker */}
+        {currentOffer?.pickup?.latitude && currentOffer?.pickup?.longitude && (
+          <Marker
+            coordinate={{
+              latitude: currentOffer.pickup.latitude,
+              longitude: currentOffer.pickup.longitude,
+            }}
+            title="Punto de encuentro"
+            description={currentOffer.pickup.address}
+            anchor={{ x: 0.5, y: 0.5 }}
+          >
+            <View className="w-9 h-9 rounded-full bg-blue-600 items-center justify-center border-2 border-white shadow-lg shadow-black">
+              <Ionicons name="person" size={18} color="white" />
+            </View>
+          </Marker>
+        )}
+
+        {/* Dropoff Marker */}
+        {currentOffer?.dropoff?.latitude && currentOffer?.dropoff?.longitude && (
+          <Marker
+            coordinate={{
+              latitude: currentOffer.dropoff.latitude,
+              longitude: currentOffer.dropoff.longitude,
+            }}
+            title="Destino"
+            description={currentOffer.dropoff.address}
+            anchor={{ x: 0.5, y: 0.5 }}
+          >
+            <View className="w-10 h-10 rounded-full border border-black/80 bg-black/10 items-center justify-center">
+              <View className="w-6 h-6 rounded-full bg-black items-center justify-center border border-white">
+                <View className="w-2.5 h-2.5 bg-white rounded-sm" />
+              </View>
+            </View>
+          </Marker>
         )}
       </MapView>
 
