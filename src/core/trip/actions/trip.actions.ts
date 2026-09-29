@@ -1,8 +1,8 @@
 import { transferApi } from '../../api/transferApi';
 import { ApiErrorResponse } from '../../auth/interface/auth.interface';
 
-import { AcceptOfferInput, AcceptOfferResponse } from '../interface/trip.interface';
-export type { AcceptOfferInput, AcceptOfferResponse };
+import { AcceptOfferInput, AcceptOfferResponse, Trip } from '../interface/trip.interface';
+export type { AcceptOfferInput, AcceptOfferResponse, Trip };
 
 export const acceptTripOffer = async (tripId: string, data: AcceptOfferInput): Promise<AcceptOfferResponse> => {
   try {
@@ -14,5 +14,75 @@ export const acceptTripOffer = async (tripId: string, data: AcceptOfferInput): P
     }
     const apiError = error.response?.data as ApiErrorResponse;
     throw new Error(apiError?.error?.message || 'Error al aceptar el viaje');
+  }
+};
+
+export const driverArriving = async (tripId: string, data: { latitude: number; longitude: number }) => {
+  try {
+    const response = await transferApi.post(`/rides/${tripId}/driver-arriving`, data);
+    return response.data;
+  } catch (error: any) {
+    const apiError = error.response?.data as ApiErrorResponse;
+    throw new Error(apiError?.error?.message || 'Error al notificar en camino');
+  }
+};
+
+export const driverArrived = async (tripId: string, data: { latitude: number; longitude: number }) => {
+  try {
+    const response = await transferApi.post(`/rides/${tripId}/driver-arrived`, data);
+    return response.data;
+  } catch (error: any) {
+    const apiError = error.response?.data as ApiErrorResponse;
+    throw new Error(apiError?.error?.message || 'Error al notificar llegada');
+  }
+};
+
+export const startTrip = async (
+  tripId: string, 
+  data: { latitude: number; longitude: number; boarding_pin?: string }
+) => {
+  try {
+    const payload: { latitude: number; longitude: number; boarding_pin?: string } = {
+      latitude: data.latitude,
+      longitude: data.longitude,
+    };
+    if (data.boarding_pin && data.boarding_pin.length === 4) {
+      payload.boarding_pin = data.boarding_pin;
+    }
+    const response = await transferApi.post(`/rides/${tripId}/start`, payload);
+    return response.data;
+  } catch (error: any) {
+    const apiError = error.response?.data as ApiErrorResponse;
+    throw new Error(apiError?.error?.message || 'Error al iniciar viaje. Verifique el PIN.');
+  }
+};
+
+export const driverCancelTrip = async (tripId: string, data: { reason_code: string; notes?: string; latitude: number; longitude: number }) => {
+  try {
+    const response = await transferApi.post(`/rides/${tripId}/driver-cancel`, data);
+    return response.data;
+  } catch (error: any) {
+    const apiError = error.response?.data as ApiErrorResponse;
+    throw new Error(apiError?.error?.message || 'Error al cancelar viaje');
+  }
+};
+
+export const completeTrip = async (tripId: string, data: { latitude: number; longitude: number }) => {
+  try {
+    const response = await transferApi.post(`/rides/${tripId}/complete`, data);
+    return response.data;
+  } catch (error: any) {
+    const apiError = error.response?.data as ApiErrorResponse;
+    throw new Error(apiError?.error?.message || 'Error al finalizar viaje');
+  }
+};
+
+export const getTripById = async (tripId: string): Promise<Trip> => {
+  try {
+    const response = await transferApi.get<{ data: Trip }>(`/rides/${tripId}`);
+    return response.data.data;
+  } catch (error: any) {
+    const apiError = error.response?.data as ApiErrorResponse;
+    throw new Error(apiError?.error?.message || 'Error al consultar estado del viaje');
   }
 };

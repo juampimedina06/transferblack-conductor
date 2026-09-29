@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Platform, StyleSheet, View, ViewProps } from "react-native";
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
 import MapView, { PROVIDER_GOOGLE, Polyline, Marker } from "react-native-maps";
 import { Ionicons } from "@expo/vector-icons";
 import { THEME_COLORS } from "../../core/constants/theme";
@@ -11,6 +12,7 @@ import { useDriverTripStore } from "../trip/store/useDriverTripStore";
 interface Props extends ViewProps {
   showUserLocation?: boolean;
   initialLocation: LatLng;
+  bottomOffset?: number;
 }
 
 // Dark theme map style
@@ -90,12 +92,33 @@ const darkMapStyle = [
 export const CustomMap = ({
   initialLocation,
   showUserLocation = true,
+  bottomOffset,
   ...rest
 }: Props) => {
   const mapRef = useRef<MapView>(null);
   const [isFollowingUser, setIsFollowingUser] = useState(true);
   const [isPolyline, setIsPolyline] = useState(true);
+
+  const targetBottom = (bottomOffset && bottomOffset > 0 ? bottomOffset : 90) + 16;
+  const animatedBottom = useSharedValue(targetBottom);
+
+  useEffect(() => {
+    animatedBottom.value = withSpring(targetBottom, {
+      damping: 18,
+      stiffness: 150,
+      mass: 0.8,
+    });
+  }, [targetBottom]);
+
+  const fabContainerStyle = useAnimatedStyle(() => ({
+    bottom: animatedBottom.value,
+  }));
   const currentOffer = useDriverTripStore((state) => state.currentOffer);
+  const activeTrip = useDriverTripStore((state) => state.activeTrip);
+
+  const activePickup = activeTrip?.pickup || currentOffer?.pickup;
+  const activeDropoff = activeTrip?.dropoff || currentOffer?.dropoff;
+  const activeRouteGeometry = activeTrip?.routeGeometry || currentOffer?.routeGeometry;
 
   const {
     lastKnownLocation,
@@ -107,8 +130,8 @@ export const CustomMap = ({
 
   // Parse route geometry from backend or fallback to straight line
   const offerRouteCoordinates = React.useMemo((): LatLng[] => {
-    if (!currentOffer) return [];
-    const geom = currentOffer.routeGeometry;
+    if (!activeRouteGeometry && !activePickup && !activeDropoff) return [];
+    const geom = activeRouteGeometry;
     if (geom?.type === "MultiLineString" && Array.isArray(geom.coordinates)) {
       return geom.coordinates
         .flat()
@@ -122,41 +145,41 @@ export const CustomMap = ({
     }
     // Fallback: connect pickup to dropoff if both have coords
     if (
-      currentOffer.pickup?.latitude &&
-      currentOffer.pickup?.longitude &&
-      currentOffer.dropoff?.latitude &&
-      currentOffer.dropoff?.longitude
+      activePickup?.latitude &&
+      activePickup?.longitude &&
+      activeDropoff?.latitude &&
+      activeDropoff?.longitude
     ) {
       return [
         {
-          latitude: currentOffer.pickup.latitude,
-          longitude: currentOffer.pickup.longitude,
+          latitude: activePickup.latitude,
+          longitude: activePickup.longitude,
         },
         {
-          latitude: currentOffer.dropoff.latitude,
-          longitude: currentOffer.dropoff.longitude,
+          latitude: activeDropoff.latitude,
+          longitude: activeDropoff.longitude,
         },
       ];
     }
     return [];
-  }, [currentOffer]);
+  }, [activeRouteGeometry, activePickup, activeDropoff]);
 
   // Adjust camera to fit offer coordinates
   useEffect(() => {
-    if (!currentOffer || !mapRef.current) return;
+    if ((!currentOffer && !activeTrip) || !mapRef.current) return;
     const coords: LatLng[] = [];
 
-    if (currentOffer.pickup?.latitude && currentOffer.pickup?.longitude) {
+    if (activePickup?.latitude && activePickup?.longitude) {
       coords.push({
-        latitude: currentOffer.pickup.latitude,
-        longitude: currentOffer.pickup.longitude,
+        latitude: activePickup.latitude,
+        longitude: activePickup.longitude,
       });
     }
 
-    if (currentOffer.dropoff?.latitude && currentOffer.dropoff?.longitude) {
+    if (activeDropoff?.latitude && activeDropoff?.longitude) {
       coords.push({
-        latitude: currentOffer.dropoff.latitude,
-        longitude: currentOffer.dropoff.longitude,
+        latitude: activeDropoff.latitude,
+        longitude: activeDropoff.longitude,
       });
     }
 
@@ -171,7 +194,7 @@ export const CustomMap = ({
         animated: true,
       });
     }
-  }, [currentOffer, lastKnownLocation]);
+  }, [currentOffer, activeTrip, activePickup, activeDropoff, lastKnownLocation]);
 
   const moveCameraToLocation = (latLng: LatLng) => {
     if (!mapRef.current) return;
@@ -209,11 +232,14 @@ export const CustomMap = ({
   }, [lastKnownLocation, isFollowingUser, currentOffer]);
 
   return (
-    <View {...rest}>
+    <View style={[styles.container, rest.style]} {...rest}>
       <MapView
         ref={mapRef}
         style={styles.map}
         provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
+        loadingEnabled={true}
+        loadingIndicatorColor={THEME_COLORS.gold}
+        loadingBackgroundColor={THEME_COLORS.obsidian}
         customMapStyle={darkMapStyle}
         showsPointsOfInterests={false}
         showsCompass={false}
@@ -252,14 +278,14 @@ export const CustomMap = ({
         )}
 
         {/* Pickup Marker */}
-        {currentOffer?.pickup?.latitude && currentOffer?.pickup?.longitude && (
+        {activePickup?.latitude && activePickup?.longitude && (
           <Marker
             coordinate={{
-              latitude: currentOffer.pickup.latitude,
-              longitude: currentOffer.pickup.longitude,
+              latitude: activePickup.latitude,
+              longitude: activePickup.longitude,
             }}
             title="Punto de encuentro"
-            description={currentOffer.pickup.address}
+            description={activePickup.address}
             anchor={{ x: 0.5, y: 0.5 }}
           >
             <View className="w-9 h-9 rounded-full bg-blue-600 items-center justify-center border-2 border-white shadow-lg shadow-black">
@@ -269,14 +295,14 @@ export const CustomMap = ({
         )}
 
         {/* Dropoff Marker */}
-        {currentOffer?.dropoff?.latitude && currentOffer?.dropoff?.longitude && (
+        {activeDropoff?.latitude && activeDropoff?.longitude && (
           <Marker
             coordinate={{
-              latitude: currentOffer.dropoff.latitude,
-              longitude: currentOffer.dropoff.longitude,
+              latitude: activeDropoff.latitude,
+              longitude: activeDropoff.longitude,
             }}
             title="Destino"
-            description={currentOffer.dropoff.address}
+            description={activeDropoff.address}
             anchor={{ x: 0.5, y: 0.5 }}
           >
             <View className="w-10 h-10 rounded-full border border-black/80 bg-black/10 items-center justify-center">
@@ -288,23 +314,30 @@ export const CustomMap = ({
         )}
       </MapView>
 
-      <FAB
-        iconName={isPolyline ? "eye-outline" : "eye-off-outline"}
-        onPress={() => setIsPolyline(!isPolyline)}
-        style={{ bottom: 220, right: 20 }}
-      />
+      {/* Map Control Toggles (positioned bottom-right, dynamically adapting above bottom sheet/card) */}
+      <Animated.View 
+        className="absolute right-4 gap-2.5 z-10" 
+        style={fabContainerStyle}
+        pointerEvents="box-none"
+      >
+        <FAB
+          iconName={isPolyline ? "eye-outline" : "eye-off-outline"}
+          onPress={() => setIsPolyline(!isPolyline)}
+          style={{ position: 'relative' }}
+        />
 
-      <FAB
-        iconName={isFollowingUser ? "walk-outline" : "accessibility-outline"}
-        onPress={() => setIsFollowingUser(!isFollowingUser)}
-        style={{ bottom: 158, right: 20 }}
-      />
+        <FAB
+          iconName={isFollowingUser ? "walk-outline" : "accessibility-outline"}
+          onPress={() => setIsFollowingUser(!isFollowingUser)}
+          style={{ position: 'relative' }}
+        />
 
-      <FAB
-        iconName="compass-outline"
-        onPress={moveToCurrentLocation}
-        style={{ bottom: 96, right: 20 }}
-      />
+        <FAB
+          iconName="compass-outline"
+          onPress={moveToCurrentLocation}
+          style={{ position: 'relative' }}
+        />
+      </Animated.View>
     </View>
   );
 };
@@ -312,8 +345,11 @@ export const CustomMap = ({
 export default CustomMap;
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    ...StyleSheet.absoluteFill,
+  },
   map: {
-    width: "100%",
-    height: "100%",
+    ...StyleSheet.absoluteFill,
   },
 });

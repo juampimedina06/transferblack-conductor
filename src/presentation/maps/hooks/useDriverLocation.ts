@@ -17,15 +17,22 @@ export const useDriverLocation = (isAvailable: boolean): { location: LatLng | nu
 
   useEffect(() => {
     const initLocation = async (): Promise<void> => {
-      const permission = await checkLocationPermission();
-      if (permission !== PermissionStatus.GRANTED) {
-        const requested = await requestLocationPermission();
-        if (requested !== PermissionStatus.GRANTED) {
-          setErrorMsg('Permiso de ubicación denegado.');
-          return;
+      try {
+        const permission = await checkLocationPermission();
+        if (permission !== PermissionStatus.GRANTED) {
+          const requested = await requestLocationPermission();
+          if (requested !== PermissionStatus.GRANTED) {
+            setErrorMsg('Permiso de ubicación denegado.');
+            return;
+          }
         }
+        const loc = await getLocation();
+        if (!loc) {
+          setErrorMsg('No se pudo obtener la ubicación actual.');
+        }
+      } catch (err: any) {
+        setErrorMsg(err?.message || 'Error al inicializar ubicación.');
       }
-      await getLocation();
     };
 
     initLocation();

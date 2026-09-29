@@ -9,7 +9,6 @@ import {
   Linking,
   LayoutAnimation,
   Platform,
-  UIManager,
   Modal,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -21,10 +20,6 @@ import { useOnboardingMutations } from '../hooks/useOnboardingMutations';
 import { THEME_COLORS } from '../../../core/constants/theme';
 import { DatePickerInput } from '../../components/ui/DatePickerInput';
 import { DocumentScannerModal } from '../../components/ui/DocumentScannerModal';
-
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 
 const documentLabels: Record<DocumentType, string> = {
   dni: 'DNI (Frente y Dorso)',

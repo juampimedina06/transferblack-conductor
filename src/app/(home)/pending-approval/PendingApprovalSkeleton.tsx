@@ -2,7 +2,7 @@ import React from 'react';
 import { View, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { SkeletonBox } from '../../presentation/components/ui/SkeletonBox';
+import { SkeletonBox } from '@/presentation/components/ui/SkeletonBox';
 
 export function PendingApprovalSkeleton() {
   return (

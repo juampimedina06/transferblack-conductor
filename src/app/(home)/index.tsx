@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME_COLORS } from '../../core/constants/theme';
 import { socket } from '../../core/socket/socket';
@@ -17,43 +17,96 @@ import { SecurityModal } from '../../presentation/components/dashboard/SecurityM
 import { DriverProgressModal } from '../../presentation/components/dashboard/DriverProgressModal';
 import { useDashboardStats } from '../../presentation/hooks/useDashboardStats';
 import { useTripSocket } from '../../presentation/trip/hooks/useTripSocket';
+import { useDriverTripStore } from '../../presentation/trip/store/useDriverTripStore';
+import { ActiveTripOverlay } from '../../presentation/components/trip/ActiveTripOverlay';
+import { ActiveTripTopHeader } from '../../presentation/components/trip/ActiveTripTopHeader';
+import { getTripById } from '../../core/trip/actions/trip.actions';
 
 export default function DriverDashboardScreen() {
   const logout = useAuthStore(state => state.logout);
+  const activeTrip = useDriverTripStore(state => state.activeTrip);
   const [isAvailable, setIsAvailable] = useState(false);
   const [isStatsExpanded, setIsStatsExpanded] = useState(false);
   const [isSecurityModalVisible, setIsSecurityModalVisible] = useState(false);
   const [isProgressModalVisible, setIsProgressModalVisible] = useState(false);
+  const [bottomHeight, setBottomHeight] = useState(100);
 
-  const { location, errorMsg } = useDriverLocation(isAvailable);
+  const { location, errorMsg } = useDriverLocation(isAvailable || !!activeTrip);
   const { stats } = useDashboardStats(isAvailable);
 
   // Inicializa la escucha de eventos de socket (trip:offer)
   useTripSocket();
 
+  // Manejo declarativo de la conexión del socket (activo si está disponible o en viaje)
   useEffect(() => {
-    return () => {
-      socket.disconnect();
-    };
-  }, []);
+    let isCancelled = false;
 
-  const toggleAvailability = async (value: boolean) => {
-    setIsAvailable(value);
-    if (value) {
-      const token = await authStorage.getAccessToken();
-      if (token) {
-        socket.auth = { token };
-        socket.connect();
+    const manageSocketConnection = async () => {
+      if (isAvailable || !!activeTrip) {
+        const token = await authStorage.getAccessToken();
+        if (token && !isCancelled) {
+          socket.auth = { token };
+          if (!socket.connected) {
+            socket.connect();
+          }
+        }
+      } else {
+        if (socket.connected) {
+          socket.disconnect();
+        }
       }
-    } else {
-      socket.disconnect();
-    }
+    };
+
+    manageSocketConnection();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [isAvailable, !!activeTrip]);
+
+  // Sincroniza el estado del viaje activo con el backend al abrir o montar la app
+  useEffect(() => {
+    if (!activeTrip?.id) return;
+
+    let isMounted = true;
+    const syncTrip = async () => {
+      try {
+        const freshTrip = await getTripById(activeTrip.id);
+        if (!isMounted) return;
+
+        if (freshTrip.status === 'cancelled' || freshTrip.status === 'completed') {
+          useDriverTripStore.getState().setActiveTrip(null);
+          Alert.alert(
+            'Viaje no disponible',
+            `El viaje fue ${freshTrip.status === 'cancelled' ? 'cancelado' : 'finalizado'}.`,
+            [{ text: 'Entendido' }]
+          );
+        } else if (freshTrip.status !== activeTrip.status) {
+          useDriverTripStore.getState().updateTripStatus(freshTrip.status);
+        }
+      } catch (err: any) {
+        // Si el viaje no se encuentra (404), limpiamos el estado local
+        if (err?.message?.includes('no encontrado') || err?.response?.status === 404) {
+          useDriverTripStore.getState().setActiveTrip(null);
+        }
+      }
+    };
+
+    syncTrip();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [activeTrip?.id]);
+
+  const toggleAvailability = (value: boolean) => {
+    setIsAvailable(value);
   };
 
   const handleLogout = async () => {
-    if (isAvailable) {
-      toggleAvailability(false);
-    }
+    setIsAvailable(false);
+    socket.disconnect();
+    useDriverTripStore.getState().setActiveTrip(null);
     await logout();
     router.replace('/auth/login' as any);
   };
@@ -66,18 +119,17 @@ export default function DriverDashboardScreen() {
       <StatusBar style="light" />
 
       {/* Map Content */}
-      <View className="flex-1">
-        {!location && !errorMsg ? (
-          <View className="flex-1 items-center justify-center bg-obsidian">
-            <ActivityIndicator size="large" color={THEME_COLORS.gold} />
-            <Text className="text-ash font-montserrat mt-4">Obteniendo ubicación...</Text>
+      <View className="flex-1" style={{ flex: 1 }}>
+        <CustomMap
+          initialLocation={location || defaultLocation}
+          showUserLocation={true}
+          bottomOffset={bottomHeight}
+          style={{ flex: 1 }}
+        />
+        {errorMsg && (
+          <View className="absolute top-20 self-center bg-red-600/90 px-4 py-2 rounded-full z-50 shadow-md shadow-black">
+            <Text className="text-white text-xs font-montserrat-semibold">{errorMsg}</Text>
           </View>
-        ) : (
-          <CustomMap
-            initialLocation={location ? location : defaultLocation}
-            showUserLocation={true}
-            style={{ flex: 1 }}
-          />
         )}
       </View>
 
@@ -92,21 +144,27 @@ export default function DriverDashboardScreen() {
           </TouchableOpacity>
 
           {/* Central Toggle Pill */}
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => setIsStatsExpanded(!isStatsExpanded)}
-            className="flex-row items-center bg-obsidian/90 border border-charcoal px-4 py-2 rounded-full shadow-md shadow-black"
-          >
-            <Ionicons name="wallet-outline" size={16} color={THEME_COLORS.gold} />
-            <Text className="text-platinum font-montserrat-bold text-sm ml-2 mr-1.5">
-              ${stats ? stats.earningsToday.toFixed(2) : '0.00'}
-            </Text>
-            <Ionicons
-              name={isStatsExpanded ? 'chevron-up' : 'chevron-down'}
-              size={16}
-              color={THEME_COLORS.ash}
-            />
-          </TouchableOpacity>
+          {!activeTrip && (
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setIsStatsExpanded(!isStatsExpanded)}
+              className="flex-row items-center bg-obsidian/90 border border-charcoal px-4 py-2 rounded-full shadow-md shadow-black"
+            >
+              <Ionicons name="wallet-outline" size={16} color={THEME_COLORS.gold} />
+              <Text className="text-platinum font-montserrat-bold text-sm ml-2 mr-1.5">
+                ${stats ? stats.earningsToday.toFixed(2) : '0.00'}
+              </Text>
+              <Ionicons
+                name={isStatsExpanded ? 'chevron-up' : 'chevron-down'}
+                size={16}
+                color={THEME_COLORS.ash}
+              />
+            </TouchableOpacity>
+          )}
+
+          {activeTrip && (
+            <ActiveTripTopHeader trip={activeTrip} />
+          )}
 
           <TouchableOpacity
             onPress={() => router.push('/profile' as any)}
@@ -117,7 +175,7 @@ export default function DriverDashboardScreen() {
         </View>
 
         {/* Dashboard Carousel */}
-        {isStatsExpanded && (
+        {isStatsExpanded && !activeTrip && (
           <DashboardCarousel 
             stats={stats || undefined} 
             onPressProgress={() => setIsProgressModalVisible(true)}
@@ -125,14 +183,24 @@ export default function DriverDashboardScreen() {
         )}
       </SafeAreaView>
 
-      {/* Emergency Button */}
-      <EmergencyFAB onPress={() => setIsSecurityModalVisible(true)} />
+      {activeTrip ? (
+        <ActiveTripOverlay trip={activeTrip} onHeightChange={setBottomHeight} />
+      ) : (
+        <>
+          {/* Emergency Button */}
+          <EmergencyFAB 
+            onPress={() => setIsSecurityModalVisible(true)} 
+            bottomOffset={bottomHeight}
+          />
 
-      {/* Bottom Sheet for Connection */}
-      <ConnectionBottomSheet 
-        isAvailable={isAvailable} 
-        onToggleAvailability={toggleAvailability} 
-      />
+          {/* Bottom Sheet for Connection */}
+          <ConnectionBottomSheet 
+            isAvailable={isAvailable} 
+            onToggleAvailability={toggleAvailability} 
+            onHeightChange={setBottomHeight}
+          />
+        </>
+      )}
 
       {/* Security Functions Modal */}
       <SecurityModal 
