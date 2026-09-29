@@ -1,20 +1,22 @@
-import React, { useEffect, useRef } from 'react';
-import { Stack, router } from 'expo-router';
-import { transferApi } from '../../core/api/transferApi';
-import { useAuthStore } from '../../presentation/auth/store/useAuthStore';
-import { useOnboardingStore } from '../../presentation/onboarding/store/useOnboardingStore';
+import React, { useEffect, useState } from 'react';
+import { Stack, router, usePathname, Redirect } from 'expo-router';
+import { transferApi } from '@/core/api/transferApi';
+import { useAuthStore } from '@/presentation/auth/store/useAuthStore';
+import { useOnboardingStore } from '@/presentation/onboarding/store/useOnboardingStore';
 
 export default function HomeLayout() {
   const user = useAuthStore((state) => state.user);
-  const userId = user?.id;
-  const hasCheckedRef = useRef(false);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const pathname = usePathname();
+  const [isVerifying, setIsVerifying] = useState(true);
 
   useEffect(() => {
-    if (!userId || hasCheckedRef.current) return;
+    if (!isAuthenticated || !user?.id) {
+      setIsVerifying(false);
+      return;
+    }
 
     const checkOnboardingStatus = async () => {
-      hasCheckedRef.current = true;
-
       try {
         const response = await transferApi.get('/users/me');
         const profile = response.data.data;
@@ -40,7 +42,10 @@ export default function HomeLayout() {
         }
 
         if (isApproved) {
-          // Si está aprobado, se queda en (home)
+          // Si está aprobado y estaba en pantallas de espera, derivar al dashboard
+          if (pathname.includes('confirmed-appointment') || pathname.includes('pending-approval')) {
+            router.replace('/(home)' as any);
+          }
           return;
         }
 
@@ -50,18 +55,23 @@ export default function HomeLayout() {
             const meetingResponse = await transferApi.get('/driver/meeting');
             const meetingData = meetingResponse.data?.data || meetingResponse.data;
             if (meetingData && (meetingData.id || meetingData._id)) {
-              router.replace('/confirmed-appointment' as any);
+              if (!pathname.includes('confirmed-appointment')) {
+                router.replace('/confirmed-appointment' as any);
+              }
               return;
             }
           } catch (e) {
             // Sin reunión agendada
           }
-          router.replace('/pending-approval' as any);
+
+          if (!pathname.includes('pending-approval')) {
+            router.replace('/pending-approval' as any);
+          }
           return;
         }
 
         // No tiene el rol -> inicializar borrador del usuario e ir al paso correspondiente
-        await useOnboardingStore.getState().initUserSession(userId);
+        await useOnboardingStore.getState().initUserSession(user.id);
         const onboardingState = useOnboardingStore.getState();
 
         if (onboardingState.currentStep === 3 || onboardingState.vehicleData !== null) {
@@ -72,16 +82,25 @@ export default function HomeLayout() {
           router.replace('/onboarding/profile' as any);
         }
       } catch (error) {
-        console.error("Error comprobando estado de onboarding", error);
+        console.error("Error comprobando estado de onboarding en HomeLayout", error);
+      } finally {
+        setIsVerifying(false);
       }
     };
 
     checkOnboardingStatus();
-  }, [userId]);
+  }, [user?.id, isAuthenticated, pathname]);
+
+  // Guard de seguridad: si no hay usuario ni sesión autenticada, redirigir al login (patrón products-app)
+  if (!isAuthenticated && !user) {
+    return <Redirect href="/auth/login" />;
+  }
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
+      <Stack.Screen name="confirmed-appointment/index" />
+      <Stack.Screen name="pending-approval/index" />
     </Stack>
   );
 }

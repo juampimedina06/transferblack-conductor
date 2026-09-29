@@ -14,11 +14,11 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { transferApi } from '../../core/api/transferApi';
-import { THEME_COLORS } from '../../core/constants/theme';
-import { useAuthStore } from '../../presentation/auth/store/useAuthStore';
-import { Button } from '../../presentation/components/ui/Button';
-import { Input } from '../../presentation/components/ui/Input';
+import { transferApi } from '@/core/api/transferApi';
+import { THEME_COLORS } from '@/core/constants/theme';
+import { useAuthStore } from '@/presentation/auth/store/useAuthStore';
+import { Button } from '@/presentation/components/ui/Button';
+import { Input } from '@/presentation/components/ui/Input';
 
 interface MeetingData {
   id: string;

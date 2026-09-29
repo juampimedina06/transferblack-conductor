@@ -4,14 +4,14 @@ import { StatusBar } from 'expo-status-bar';
 import { useCallback, useRef, useState } from 'react';
 import { Alert, AppState, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { transferApi } from '../../core/api/transferApi';
-import { THEME_COLORS } from '../../core/constants/theme';
-import { useAuthStore } from '../../presentation/auth/store/useAuthStore';
-import { Button } from '../../presentation/components/ui/Button';
-import { DatePickerInput } from '../../presentation/components/ui/DatePickerInput';
-import { DocumentScannerModal } from '../../presentation/components/ui/DocumentScannerModal';
-import { OnboardingService } from '../../presentation/onboarding/services/onboarding.service';
-import { DocumentType } from '../../presentation/onboarding/store/useOnboardingStore';
+import { transferApi } from '@/core/api/transferApi';
+import { THEME_COLORS } from '@/core/constants/theme';
+import { useAuthStore } from '@/presentation/auth/store/useAuthStore';
+import { Button } from '@/presentation/components/ui/Button';
+import { DatePickerInput } from '@/presentation/components/ui/DatePickerInput';
+import { DocumentScannerModal } from '@/presentation/components/ui/DocumentScannerModal';
+import { OnboardingService } from '@/presentation/onboarding/services/onboarding.service';
+import { DocumentType } from '@/presentation/onboarding/store/useOnboardingStore';
 import { PendingApprovalSkeleton } from './PendingApprovalSkeleton';
 
 const DOCUMENT_TYPE_LABELS: Record<string, string> = {
