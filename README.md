@@ -1,6 +1,6 @@
 # TransferBlack Conductor (Driver App) 🚗
 
-Aplicación móvil oficial para conductores de **TransferBlack**, construida sobre **React Native** con **Expo**, **TypeScript**, **NativeWind (Tailwind CSS v3)** y **React Native Reanimated**.
+Aplicación móvil oficial para conductores de **TransferBlack**, construida sobre **React Native** con **Expo**, **TypeScript**, **NativeWind (Tailwind CSS v4)** y **React Native Reanimated**.
 
 El proyecto implementa una arquitectura desacoplada y orientada a capas, priorizando la resiliencia en red, validación estricta de datos con el backend y una experiencia de usuario (UX) fluida y premium.
 
@@ -63,31 +63,50 @@ Para asegurar consistencia entre el equipo y evitar desfasajes en el entorno nat
 
 ## 📱 Flujos Principales Implementados
 
-### 1. Autenticación y Gestión de Sesión
+### 1. Autenticación y Resiliencia de Red
 - Manejo centralizado del estado de sesión mediante `useAuthStore` (Zustand).
 - **Seguridad primero**: Almacenamiento de tokens (Access y Refresh JWT) en `expo-secure-store` (nunca en AsyncStorage).
-- Interceptores de Axios para renovación transparente de tokens y ruteo automático ante sesiones vencidas.
+- **Rotación Silenciosa de Refresh Token**: Cliente Axios (`transferApi`) intercepta respuestas 401, solicita nuevo token en `POST /auth/refresh` y encola peticiones concurrentes (`failedQueue`) para reejecutarlas automáticamente sin interrumpir la navegación.
+- Cierre de sesión limpio y ruteo a `/auth/login` si la renovación del token es rechazada.
 
 ### 2. Postulación de Legajo (Wizard de Onboarding)
 - **Paso 1 - Perfil (`src/app/onboarding/profile.tsx`)**: Captura de datos personales y teléfono validado con `PhoneInput`, `DatePickerInput` y `Select`.
 - **Paso 2 - Vehículo (`src/app/onboarding/vehicle.tsx`)**: Registro de especificaciones del móvil (patente, marca, modelo, año, categoría).
 - **Paso 3 - Documentación (`src/app/onboarding/documents.tsx`)**: Subida y verificación de fotos de DNI, licencia, cédula verde/azul, título del vehículo, ITV y póliza de seguro mediante `DocumentScannerModal` (cámara y explorador de archivos).
+- **Metadatos Vehiculares Obligatorios**: Validación en cliente de fecha de emisión, vencimiento y número de trámite antes de la carga de títulos e ITV para evitar rechazos del backend.
 - **Persistencia de Progreso**: Si el usuario interrumpe el registro, el estado se guarda en `useOnboardingStore` para reanudar sin reescribir datos.
 
 ### 3. Sala de Espera (Pending Approval)
-- Vista en `src/app/pending-approval/index.tsx` donde el conductor consulta el estado de su postulación.
-- Incluye opciones de contacto directo con soporte y actualización manual (*pull-to-refresh* o botón de reintento).
-- Skeletons dedicados para eliminar pantallas en blanco o spinners invasivos durante el chequeo de estado.
+- Vista en `src/app/(home)/pending-approval/index.tsx` donde el conductor audita el estado de su postulación.
+- Distinción visual clara entre pasos aprobados, pendientes o rechazados con el motivo detallado provisto por compliance.
+- Skeletons dedicados (`PendingApprovalSkeleton`) usando `<SkeletonBox />` para evitar pantallas blancas o spinners invasivos durante el chequeo.
 
 ### 4. Cita Confirmada y Validación de Entrevista
-- Vista en `src/app/confirmed-appointment/index.tsx` con diseño sobrio y minimalista VIP.
+- Vista en `src/app/(home)/confirmed-appointment/index.tsx` con diseño sobrio y minimalista VIP.
 - **Sincronización Automática:** Polling reactivo en segundo plano cada 5s sobre `GET /driver/meeting` vía `useFocusEffect` para detectar al instante la aprobación del administrador en el backoffice sin intervención manual.
 
 ### 5. Dashboard del Conductor y Modo Operativo
 - Vista principal en `src/app/(home)/index.tsx` con mapa interactivo en modo oscuro full-screen (`CustomMap` vía `react-native-maps`).
+- **Orquestación en `(home)/_layout.tsx`**: Guardas de navegación deterministas que validan roles, perfil del chofer (`GET /driver/me`) y estado de reunión para prevenir loops de redirección.
 - **Geolocalización en Tiempo Real:** Seguimiento continuo con `expo-location` (`useDriverLocation`) emitiendo coordenadas periódicas a `POST /drivers/me/location`.
-- **Conectividad WebSocket:** Integración de `socket.io-client` autenticado por JWT que se activa o suspende según el switch de disponibilidad ("Disponible" / "Desconectado").
-- **Guardas de Navegación Deterministas:** Sincronización en `(home)/_layout.tsx` consultando directamente `GET /driver/me` para evitar loops de redirección.
+- **Conectividad WebSocket:** Integración de `socket.io-client` autenticado por JWT que se activa o suspende según el switch de disponibilidad ("Disponible" / "Desconectado") o viaje activo.
+- **Métricas y Seguridad Operativa:** Header superior con ganancias del día (`DashboardCarousel`), botón SOS de emergencias (`EmergencyFAB` y `SecurityModal`) y modal de progreso del chofer (`DriverProgressModal`).
+
+### 6. Despacho y Ciclo de Vida de Viajes en Tiempo Real
+- **Recepción y Aceptación de Ofertas**: Escucha de eventos `trip:offer` vía WebSocket gestionados por `useTripSocket` y `useDriverTripStore`. Aceptación directa mediante `POST /rides/:id/accept`.
+- **Salas de Socket Dedicadas**: Conexión a la sala `ride:join` al aceptar el viaje, captura de eventos `trip:status_changed` y desuscripción limpia (`ride:leave`) al completar o cancelar.
+- **Overlay de Viaje Activo (`ActiveTripOverlay`)**: Panel inferior interactivo colapsable y expandible con gestos (`PanResponder` + `LayoutAnimation`):
+  - **Navegación al Origen/Destino**: Enlace rápido a apps externas de navegación (Google Maps / Waze).
+  - **Confirmación de Llegada por Deslizamiento (`SwipeToArriveButton`)**: Botón deslizable con haptic feedback que previene pulsaciones accidentales al arribar (`POST /rides/:id/driver-arrived`).
+  - **Hoja de Espera (`WaitingBottomSheet`)**: Temporizador de cortesía de 5 minutos (`useCourtesyTimer`) con desglose de preferencias del cliente (clima, música, silencio, equipaje).
+  - **Soporte de Pasajeros Tercerizados**: Manejo de viajes corporativos con visualización separada de pasajero y coordinador (`trip.third_party`).
+  - **Verificación de Seguridad con PIN OTP (`PinOtpInput`)**: Validación de 4 dígitos previo a la partida (`POST /rides/:id/start`).
+  - **Cancelación Justificada (`driverCancelTrip`)**: Flujo de cancelación con coordenadas y catálogo formal de motivos.
+- **Visualización en Mapa (`CustomMap`)**:
+  - Marcador de punto de encuentro (Pickup) azul y marcador de destino (Dropoff) oscuro estilo VIP.
+  - Trazado de ruta GeoJSON (`Polyline`) con soporte para geometrías `LineString` y `MultiLineString`.
+  - Auto-encuadre de cámara (`fitToCoordinates`) englobando conductor, origen y destino.
+  - Controles FAB reposicionados dinámicamente mediante resortes de `react-native-reanimated` por encima del panel inferior.
 
 ---
 
@@ -98,35 +117,42 @@ El proyecto sigue una **Arquitectura Hexagonal Simplificada** para desacoplar el
 ```text
 src/
 ├── app/                        # Ruteo basado en archivos (Expo Router)
-│   ├── (home)/                 # Dashboard operativo del conductor con mapa
-│   ├── confirmed-appointment/  # Cita de entrevista confirmada y polling
+│   ├── (home)/                 # Dashboard operativo y vistas protegidas
+│   │   ├── confirmed-appointment/ # Cita de entrevista confirmada y polling
+│   │   ├── pending-approval/   # Pantalla de revisión de solicitud
+│   │   ├── index.tsx           # Dashboard principal con mapa y viajes
+│   │   └── _layout.tsx         # Layout con guardas de onboarding y aprobación
+│   ├── auth/                   # Autenticación (login, registro)
 │   ├── onboarding/             # Wizard de postulación (profile, vehicle, documents)
-│   ├── pending-approval/       # Pantalla de revisión de solicitud
 │   └── _layout.tsx             # Root layout con proveedores globales y ruteo seguro
 │
 ├── core/                       # Reglas de negocio y orquestación
-│   ├── actions/                # Casos de uso desacoplados de la UI
-│   ├── api/                    # Cliente HTTP base (Axios / transferApi)
-│   ├── constants/              # Paleta de colores y constantes de tema
-│   └── socket/                 # Conexión centralizada Socket.io para tiempo real
-│
-├── infrastructure/             # Adaptadores de comunicación externa
-│   ├── interfaces/             # Modelos y DTOs tipados exactamente con el backend
-│   └── mappers/                # Transformadores de datos DTO a dominio
+│   ├── api/                    # Cliente HTTP base (Axios / transferApi) con auto-refresh JWT
+│   ├── constants/              # Paleta de colores y constantes de tema (theme.ts)
+│   ├── location/               # Acciones e interfaces de geolocalización
+│   ├── socket/                 # Conexión centralizada Socket.io para tiempo real
+│   └── trip/                   # Casos de uso e interfaces del ciclo de vida del viaje
+│       ├── actions/            # trip.actions.ts (accept, arrive, start, cancel, complete)
+│       └── interface/          # trip.interface.ts (Trip, TripOfferPayload, DTOs)
 │
 └── presentation/               # Capa visual (React Native + NativeWind)
-    ├── auth/                   # Estado de sesión y almacenamiento seguro
+    ├── auth/                   # Estado de sesión y almacenamiento seguro (authStorage)
     ├── components/
-    │   ├── maps/               # CustomMap con dark theme y controles FAB
+    │   ├── dashboard/          # ConnectionBottomSheet, DashboardCarousel, EmergencyFAB
+    │   ├── maps/               # CustomMap con tema oscuro y controles FAB
+    │   ├── trip/               # ActiveTripOverlay, WaitingBottomSheet, SwipeToArriveButton, PinOtpInput
     │   └── ui/                 # Componentes atómicos (Select, Inputs, SkeletonBox, FAB)
-    ├── hooks/                  # useDriverLocation y hooks transversales
+    ├── hooks/                  # useDashboardStats y hooks transversales
+    ├── maps/                   # Hooks de ubicación (useDriverLocation) y store de mapa
     ├── onboarding/             # Componentes y stores específicos del onboarding
-    └── providers/              # QueryClientProvider y configuraciones globales
+    ├── providers/              # QueryClientProvider y configuraciones globales
+    └── trip/                   # useDriverTripStore, useTripSocket, useCourtesyTimer
 ```
 
 ### Reglas Arquitectónicas Innegociables:
-- **La UI no consume `transferApi` directamente**: Utiliza hooks de TanStack Query o casos de uso en `core/actions/`.
-- **Backend como Fuente de Verdad**: Los tipos en `infrastructure/interfaces/` deben respetar fielmente las propiedades de los modelos de Sequelize del backend (`transferblack/backend`).
+- **La UI no consume `transferApi` directamente**: Utiliza hooks de TanStack Query o casos de uso en `core/trip/actions/` o `core/actions/`.
+- **Backend como Fuente de Verdad**: Los tipos e interfaces de datos deben respetar fielmente las propiedades de los modelos de Sequelize del backend (`transferblack/backend`).
+- **Persistencia Segura**: Tokens en `expo-secure-store`. `AsyncStorage` se reserva exclusivamente para preferencias y estados del viaje (`driver-trip-storage`).
 
 ---
 
@@ -137,18 +163,18 @@ src/
 | **Expo Router** | Navegación | Ruteo declarativo, tipado y optimizado para deep links. |
 | **react-native-maps** | Visualización Geográfica | Renderizado nativo de mapas de alto rendimiento con tema oscuro VIP. |
 | **expo-location** | Geolocalización | Captura de coordenadas y suscripción periódica en segundo plano. |
-| **socket.io-client** | Comunicación en Tiempo Real | Canal bidireccional de baja latencia para disponibilidad y despacho. |
-| **Zustand** | Estado Global y UI | Liviano, sin boilerplate, con selectores para evitar re-renders. |
+| **socket.io-client** | Comunicación en Tiempo Real | Canal bidireccional de baja latencia para disponibilidad, ofertas y salas de viaje. |
+| **Zustand** | Estado Global y UI | Liviano, sin boilerplate, con persistencia selectiva y selectores de renderizado. |
 | **TanStack Query** | Caché y Estado Asíncrono | Manejo automático de revalidación, reintentos y estados de carga. |
 | **React Hook Form + Zod** | Formularios | Validación reactiva al perder foco (`onTouched`) y tipado inferido seguro. |
-| **NativeWind v4** | Estilos | Implementación de Tailwind CSS compilada eficientemente a estilos de React Native. |
-| **Reanimated** | Animaciones | Ejecución fluida en el UI thread para transiciones y skeletons. |
+| **NativeWind v4** | Estilos | Implementación de Tailwind CSS compilada eficientemente a estilos nativos. |
+| **Reanimated** | Animaciones | Ejecución fluida en el UI thread para transiciones, skeletons y reposicionamiento elástico de FABs. |
 | **Expo Secure Store** | Almacenamiento seguro | Cifrado a nivel de hardware para tokens sensibles. |
 
 ### 💎 UX First: Skeletons > Spinners
 - **Prohibido el uso de `ActivityIndicator` como pantalla de carga completa**: Todo componente o pantalla con contenido predecible que consulte datos asíncronos debe implementar su Skeleton correspondiente usando `<SkeletonBox />`.
 - Esto garantiza **cero layout shift** y una experiencia percibida como instantánea.
-- Los spinners quedan restringidos únicamente a acciones puntuales de botones (ej. durante el submit de un formulario).
+- Los spinners quedan restringidos únicamente a acciones puntuales de botones (ej. durante el submit de un formulario o llamada async individual).
 
 ---
 
