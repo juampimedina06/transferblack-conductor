@@ -41,7 +41,7 @@ Para asegurar consistencia entre el equipo y evitar desfasajes en el entorno nat
 2. **Variables de Entorno:**
    Crear un archivo `.env` en la raíz tomando como base las variables de conexión con el backend:
    ```env
-   EXPO_PUBLIC_API_URL=http://localhost:3000/api
+   EXPO_PUBLIC_API_URL=http:
    ```
 
 3. **Iniciar el servidor de desarrollo (limpiando caché de Metro):**
