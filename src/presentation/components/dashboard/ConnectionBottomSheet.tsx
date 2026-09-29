@@ -321,10 +321,10 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
             <View className="flex-row items-center bg-white/[0.04] px-2.5 py-1 rounded-lg border border-white/[0.08]">
               <Ionicons name="star" size={12} color="#F59E0B" />
               <Text className="text-white font-montserrat-bold text-xs ml-1">
-                {currentOffer.passenger?.rating ? currentOffer.passenger.rating.toFixed(2) : '4.95'}
+                {currentOffer.passenger?.rating != null ? Number(currentOffer.passenger.rating).toFixed(1) : '5.0'}
               </Text>
               <Text className="text-zinc-400 font-montserrat text-[11px] ml-1">
-                ({currentOffer.passenger?.completedTrips ?? 12})
+                ({currentOffer.passenger?.completedTrips ?? 0})
               </Text>
             </View>
           </View>

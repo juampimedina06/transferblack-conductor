@@ -6,4 +6,5 @@ const SOCKET_URL = API_BASE_URL.replace('/api/v1', '');
 export const socket: Socket = io(SOCKET_URL, {
   autoConnect: false,
   reconnection: true,
+  transports: ['websocket', 'polling'],
 });

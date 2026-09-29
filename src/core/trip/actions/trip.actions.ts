@@ -69,11 +69,38 @@ export const driverCancelTrip = async (tripId: string, data: { reason_code: stri
 
 export const completeTrip = async (tripId: string, data: { latitude: number; longitude: number }) => {
   try {
-    const response = await transferApi.post(`/rides/${tripId}/complete`, data);
+    const idempotencyKey = `${tripId}-complete-${Date.now()}`;
+    const response = await transferApi.post(`/rides/${tripId}/complete`, data, {
+      headers: {
+        'Idempotency-Key': idempotencyKey
+      }
+    });
     return response.data;
   } catch (error: any) {
     const apiError = error.response?.data as ApiErrorResponse;
     throw new Error(apiError?.error?.message || 'Error al finalizar viaje');
+  }
+};
+
+export const ratePassenger = async (
+  tripId: string, 
+  data: { rating: number; comment?: string; tags?: string[] }
+) => {
+  try {
+    const payload: { rating: number; comment?: string; tags?: string[] } = {
+      rating: data.rating,
+    };
+    if (data.comment?.trim()) {
+      payload.comment = data.comment.trim();
+    }
+    if (data.tags && data.tags.length > 0) {
+      payload.tags = data.tags;
+    }
+    const response = await transferApi.post(`/rides/${tripId}/rate-passenger`, payload);
+    return response.data;
+  } catch (error: any) {
+    const apiError = error.response?.data as ApiErrorResponse;
+    throw new Error(apiError?.error?.message || 'Error al calificar al pasajero');
   }
 };
 

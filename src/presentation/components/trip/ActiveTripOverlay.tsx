@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Trip } from '../../../core/trip/interface/trip.interface';
 import { THEME_COLORS } from '../../../core/constants/theme';
 import { SwipeToArriveButton } from './SwipeToArriveButton';
+import { SwipeToFinishButton } from './SwipeToFinishButton';
 import { WaitingBottomSheet } from './WaitingBottomSheet';
 import { driverArrived, startTrip, driverCancelTrip } from '../../../core/trip/actions/trip.actions';
 import { useDriverTripStore } from '../../trip/store/useDriverTripStore';
@@ -474,36 +475,33 @@ export const ActiveTripOverlay = ({ trip, onHeightChange }: ActiveTripOverlayPro
           </>
         )}
 
-        <TouchableOpacity
-          onPress={async () => {
-            if (!location) return;
-            try {
-              setIsLoading(true);
-              const { completeTrip } = await import('../../../core/trip/actions/trip.actions');
-              await completeTrip(trip.id, {
-                latitude: location.latitude,
-                longitude: location.longitude,
-              });
-              useDriverTripStore.getState().setActiveTrip(null); // Finish
-            } catch (error: any) {
-              Alert.alert('Error', error.message || 'No se pudo finalizar el viaje.');
-            } finally {
-              setIsLoading(false);
-            }
-          }}
-          disabled={isLoading}
-          className="w-full py-4 rounded-full items-center justify-center bg-gold"
-          accessibilityRole="button"
-          accessibilityLabel="Finalizar viaje"
-        >
-          {isLoading ? (
-            <ActivityIndicator color={THEME_COLORS.obsidian} />
-          ) : (
-            <Text className="font-montserrat-bold text-base tracking-widest text-obsidian">
-              FINALIZAR VIAJE
-            </Text>
-          )}
-        </TouchableOpacity>
+        <View className="items-center">
+          <SwipeToFinishButton 
+            onFinish={async () => {
+              if (!location) return;
+              try {
+                setIsLoading(true);
+                const { completeTrip } = await import('../../../core/trip/actions/trip.actions');
+                const completedTrip = await completeTrip(trip.id, {
+                  latitude: location.latitude,
+                  longitude: location.longitude,
+                });
+                
+                // Emulate Haptic success
+                const Haptics = await import('expo-haptics');
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+                useDriverTripStore.getState().updateTripStatus('completed');
+                useDriverTripStore.getState().setActiveTrip(completedTrip.data || completedTrip);
+              } catch (error: any) {
+                Alert.alert('Error', error.message || 'No se pudo finalizar el viaje.');
+              } finally {
+                setIsLoading(false);
+              }
+            }}
+            isLoading={isLoading} 
+          />
+        </View>
       </SafeAreaView>
     );
   }
