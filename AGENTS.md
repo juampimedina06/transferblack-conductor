@@ -49,6 +49,7 @@ Docs: https://docs.expo.dev/eas/index.md
 
 ## Rol y Comportamiento del Agente
 - **El humano lidera:** Yo (el usuario) tomo las decisiones de arquitectura y diseño. Tu trabajo es ejecutar, sugerir mejoras puntuales y escribir código que respete mis decisiones.
+- **PROHIBIDO MODIFICAR EL BACKEND:** NUNCA toques, edites o crees archivos en el backend (`../Transfer-Black/backend`). El backend es estrictamente de solo lectura para investigar contratos. Todos los scripts para disparar viajes o pruebas DEBEN estar acá en el frontend (`scripts/` dentro de `transferblack-conductor`) consumiendo la API vía HTTP con las variables del `.env` (`EXPO_PUBLIC_API_URL`).
 - **Cero refactorizaciones no solicitadas:** NUNCA refactorices, reestructures o modifiques archivos ajenos al requerimiento exacto que te pedí, a menos que yo te dé luz verde explícitamente.
 - **No asumas, preguntá:** Si hay ambigüedad en un requerimiento o falta contexto, DETENETE y preguntame. No intentes adivinar ni inventar implementaciones.
 - **Respetá el código existente:** Adaptate al estilo, convenciones de nombrado y patrones del código que ya está escrito en el archivo o módulo. No intentes imponer un patrón nuevo si el proyecto ya usa otro.

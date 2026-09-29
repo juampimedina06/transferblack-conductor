@@ -13,13 +13,28 @@ export const useTripSocket = () => {
 
   // Escucha de ofertas entrantes (trip:offer)
   useEffect(() => {
+    const handleConnect = () => {
+      console.log('⚡ [Socket] Conectado exitosamente con id:', socket.id);
+    };
+    const handleConnectError = (err: any) => {
+      console.warn('⚠️ [Socket] Error de conexión:', err?.message || err);
+    };
     const handleNewOffer = (payload: TripOfferPayload) => {
+      console.log('🔔 [Socket] OFERTA RECIBIDA:', payload?.tripId, payload);
       setCurrentOffer(payload);
     };
 
+    socket.on('connect', handleConnect);
+    socket.on('connect_error', handleConnectError);
     socket.on('trip:offer', handleNewOffer);
 
+    if (socket.connected) {
+      console.log('⚡ [Socket] Ya estaba conectado con id:', socket.id);
+    }
+
     return () => {
+      socket.off('connect', handleConnect);
+      socket.off('connect_error', handleConnectError);
       socket.off('trip:offer', handleNewOffer);
     };
   }, []);
@@ -48,7 +63,7 @@ export const useTripSocket = () => {
         setActiveTrip(null);
       } else if (payload.status === 'completed') {
         socket.emit('ride:leave', { rideId });
-        setActiveTrip(null);
+        updateTripStatus('completed');
       } else if (payload.status) {
         updateTripStatus(payload.status as any);
       }

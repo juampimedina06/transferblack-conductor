@@ -21,6 +21,7 @@ import { useDriverTripStore } from '../../presentation/trip/store/useDriverTripS
 import { ActiveTripOverlay } from '../../presentation/components/trip/ActiveTripOverlay';
 import { ActiveTripTopHeader } from '../../presentation/components/trip/ActiveTripTopHeader';
 import { getTripById } from '../../core/trip/actions/trip.actions';
+import { TripReceiptModal } from '../../presentation/components/trip/TripReceiptModal';
 
 export default function DriverDashboardScreen() {
   const logout = useAuthStore(state => state.logout);
@@ -74,11 +75,11 @@ export default function DriverDashboardScreen() {
         const freshTrip = await getTripById(activeTrip.id);
         if (!isMounted) return;
 
-        if (freshTrip.status === 'cancelled' || freshTrip.status === 'completed') {
+        if (freshTrip.status === 'cancelled') {
           useDriverTripStore.getState().setActiveTrip(null);
           Alert.alert(
             'Viaje no disponible',
-            `El viaje fue ${freshTrip.status === 'cancelled' ? 'cancelado' : 'finalizado'}.`,
+            `El viaje fue cancelado.`,
             [{ text: 'Entendido' }]
           );
         } else if (freshTrip.status !== activeTrip.status) {
@@ -183,9 +184,9 @@ export default function DriverDashboardScreen() {
         )}
       </SafeAreaView>
 
-      {activeTrip ? (
+      {activeTrip && activeTrip.status !== 'completed' ? (
         <ActiveTripOverlay trip={activeTrip} onHeightChange={setBottomHeight} />
-      ) : (
+      ) : !activeTrip || activeTrip.status === 'completed' ? (
         <>
           {/* Emergency Button */}
           <EmergencyFAB 
@@ -200,7 +201,7 @@ export default function DriverDashboardScreen() {
             onHeightChange={setBottomHeight}
           />
         </>
-      )}
+      ) : null}
 
       {/* Security Functions Modal */}
       <SecurityModal 
@@ -214,6 +215,14 @@ export default function DriverDashboardScreen() {
         stats={stats || undefined} 
         onClose={() => setIsProgressModalVisible(false)} 
       />
+
+      {/* Trip Receipt Modal */}
+      {activeTrip && (
+        <TripReceiptModal 
+          trip={activeTrip} 
+          visible={activeTrip.status === 'completed'} 
+        />
+      )}
     </View>
   );
 }
