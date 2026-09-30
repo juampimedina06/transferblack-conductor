@@ -10,6 +10,10 @@ export const acceptTripOffer = async (tripId: string, data: AcceptOfferInput): P
     return response.data;
   } catch (error: any) {
     if (error.response?.status === 409) {
+      const apiErrorCode = error.response?.data?.error?.code;
+      if (apiErrorCode === 'DRIVER_CASH_RESTRICTED') {
+        throw new Error('Restricción de deuda: No podés aceptar viajes en efectivo.');
+      }
       throw new Error('Otro conductor fue asignado a este viaje');
     }
     const apiError = error.response?.data as ApiErrorResponse;

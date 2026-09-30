@@ -14,6 +14,9 @@ interface DriverTripState {
   setActiveTrip: (trip: Trip | null) => void;
   updateTripStatus: (status: Trip['status']) => void;
 
+  isAvailable: boolean;
+  setIsAvailable: (val: boolean) => void;
+
   arrivedAt: number | null;
   setArrivedAt: (timestamp: number | null) => void;
 }
@@ -35,6 +38,9 @@ export const useDriverTripStore = create<DriverTripState>()(
         arrivedAt: status === 'driver_arrived' ? (state.arrivedAt || Date.now()) : null,
       })),
 
+      isAvailable: false,
+      setIsAvailable: (val) => set({ isAvailable: val }),
+
       arrivedAt: null,
       setArrivedAt: (timestamp) => set({ arrivedAt: timestamp }),
     }),
@@ -44,6 +50,7 @@ export const useDriverTripStore = create<DriverTripState>()(
       partialize: (state) => ({
         activeTrip: state.activeTrip,
         arrivedAt: state.arrivedAt,
+        isAvailable: state.isAvailable,
       }),
     }
   )

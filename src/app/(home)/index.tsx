@@ -22,11 +22,13 @@ import { ActiveTripOverlay } from '../../presentation/components/trip/ActiveTrip
 import { ActiveTripTopHeader } from '../../presentation/components/trip/ActiveTripTopHeader';
 import { getTripById } from '../../core/trip/actions/trip.actions';
 import { TripReceiptModal } from '../../presentation/components/trip/TripReceiptModal';
+import { useWalletStore } from '../../presentation/wallet/store/useWalletStore';
 
 export default function DriverDashboardScreen() {
   const logout = useAuthStore(state => state.logout);
   const activeTrip = useDriverTripStore(state => state.activeTrip);
-  const [isAvailable, setIsAvailable] = useState(false);
+  const isAvailable = useDriverTripStore(state => state.isAvailable);
+  const setIsAvailable = useDriverTripStore(state => state.setIsAvailable);
   const [isStatsExpanded, setIsStatsExpanded] = useState(false);
   const [isSecurityModalVisible, setIsSecurityModalVisible] = useState(false);
   const [isProgressModalVisible, setIsProgressModalVisible] = useState(false);
@@ -34,6 +36,11 @@ export default function DriverDashboardScreen() {
 
   const { location, errorMsg } = useDriverLocation(isAvailable || !!activeTrip);
   const { stats } = useDashboardStats(isAvailable);
+  const { summary, fetchSummary } = useWalletStore();
+
+  useEffect(() => {
+    fetchSummary();
+  }, [fetchSummary]);
 
   // Inicializa la escucha de eventos de socket (trip:offer)
   useTripSocket();
@@ -136,6 +143,23 @@ export default function DriverDashboardScreen() {
 
       {/* Top Navigation Overlay */}
       <SafeAreaView className="absolute top-0 w-full" edges={['top']} pointerEvents="box-none">
+        
+        {/* Warning Banner */}
+        {summary?.is_cash_restricted && (
+          <TouchableOpacity 
+            activeOpacity={0.9}
+            onPress={() => router.push('/wallet' as any)}
+            className="w-full px-4 mb-2 z-50"
+          >
+            <View className="bg-red-600/95 rounded-xl p-3 shadow-md shadow-black flex-row items-center border border-red-800">
+              <Ionicons name="warning" size={24} color="#FFF" />
+              <Text className="text-white font-montserrat-medium text-xs ml-3 flex-1 leading-tight">
+                Modo Restringido: Viajes en efectivo pausados por deuda. Toca aquí para ir a la Bóveda.
+              </Text>
+            </View>
+          </TouchableOpacity>
+        )}
+
         <View className="px-4 py-3 flex-row items-center justify-between" pointerEvents="box-none">
           <TouchableOpacity
             onPress={handleLogout}
@@ -145,23 +169,50 @@ export default function DriverDashboardScreen() {
           </TouchableOpacity>
 
           {/* Central Toggle Pill */}
-          {!activeTrip && (
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => setIsStatsExpanded(!isStatsExpanded)}
-              className="flex-row items-center bg-obsidian/90 border border-charcoal px-4 py-2 rounded-full shadow-md shadow-black"
-            >
-              <Ionicons name="wallet-outline" size={16} color={THEME_COLORS.gold} />
-              <Text className="text-platinum font-montserrat-bold text-sm ml-2 mr-1.5">
-                ${stats ? stats.earningsToday.toFixed(2) : '0.00'}
-              </Text>
-              <Ionicons
-                name={isStatsExpanded ? 'chevron-up' : 'chevron-down'}
-                size={16}
-                color={THEME_COLORS.ash}
-              />
-            </TouchableOpacity>
-          )}
+          {!activeTrip && (() => {
+            const displayBalance = stats?.balance ?? 0;
+            const isNegative = displayBalance < 0;
+            const formattedAmount = isNegative
+              ? `-$${Math.abs(displayBalance).toFixed(2)}`
+              : `$${(displayBalance > 0 ? displayBalance : (stats?.earningsToday ?? 0)).toFixed(2)}`;
+
+            return (
+              <View className="flex-row items-center space-x-2">
+                <TouchableOpacity
+                  onPress={() => router.push('/wallet' as any)}
+                  className="w-10 h-10 rounded-full bg-obsidian/90 items-center justify-center border border-charcoal shadow-sm shadow-black"
+                >
+                  <Ionicons name="card-outline" size={20} color={THEME_COLORS.gold} />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => setIsStatsExpanded(!isStatsExpanded)}
+                  className={`flex-row items-center px-4 py-2 rounded-full shadow-md shadow-black border ${
+                    isNegative 
+                      ? 'bg-red-950/80 border-red-500/60' 
+                      : 'bg-obsidian/90 border-charcoal'
+                  }`}
+                >
+                  <Ionicons 
+                    name={isNegative ? 'warning-outline' : 'cash-outline'} 
+                    size={16} 
+                    color={isNegative ? '#F87171' : THEME_COLORS.gold} 
+                  />
+                  <Text className={`font-montserrat-bold text-sm ml-2 mr-1.5 ${
+                    isNegative ? 'text-red-400' : 'text-platinum'
+                  }`}>
+                    {formattedAmount}
+                  </Text>
+                  <Ionicons
+                    name={isStatsExpanded ? 'chevron-up' : 'chevron-down'}
+                    size={16}
+                    color={isNegative ? '#FCA5A5' : THEME_COLORS.ash}
+                  />
+                </TouchableOpacity>
+              </View>
+            );
+          })()}
 
           {activeTrip && (
             <ActiveTripTopHeader trip={activeTrip} />

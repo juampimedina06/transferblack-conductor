@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, ActivityIndicator, Alert, SafeAreaView } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, ActivityIndicator, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Trip } from '../../../core/trip/interface/trip.interface';
 import { THEME_COLORS } from '../../../core/constants/theme';
 import { useDriverTripStore } from '../../trip/store/useDriverTripStore';
+import { useWalletStore } from '../../wallet/store/useWalletStore';
 import { ratePassenger } from '../../../core/trip/actions/trip.actions';
 import { router } from 'expo-router';
 
@@ -15,27 +17,32 @@ interface TripReceiptModalProps {
 export const TripReceiptModal = ({ trip, visible }: TripReceiptModalProps) => {
   const [rating, setRating] = useState<number>(5);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const passengerName = trip.passenger?.fullName || trip.third_party?.name || trip.chat?.third_party?.name || 'Pasajero';
+  const passengerName = trip?.passenger?.fullName || trip?.third_party?.name || trip?.chat?.third_party?.name || 'Pasajero';
 
-  // Calculate fees
-  const finalFare = Number(trip.final_fare || trip.estimated_fare || 0);
-  const commissionPercent = 0.20; // Default 20% platform fee since we don't have it in the Trip interface yet
+  // Calculate fees safely
+  const finalFare = Number(trip?.final_fare || trip?.estimated_fare || 0);
+  const commissionPercent = 0.20; // Default 20% platform fee
   const commission = finalFare * commissionPercent;
-  const netEarnings = finalFare - commission;
+  const netEarnings = Math.max(0, finalFare - commission);
 
   const handleConfirm = async () => {
     try {
       setIsSubmitting(true);
       // Calificar al pasajero
-      try {
-        await ratePassenger(trip.id, { rating, comment: 'Puntual y respetuoso' });
-      } catch (err: any) {
-        console.warn('Error calificando al pasajero:', err.message);
-        // Si ya fue calificado (409) o falla, permitimos continuar
+      if (trip?.id) {
+        try {
+          await ratePassenger(trip.id, { rating, comment: 'Puntual y respetuoso' });
+        } catch (err: any) {
+          console.warn('Error calificando al pasajero:', err.message);
+          // Si ya fue calificado (409) o falla, permitimos continuar
+        }
       }
 
+      // Refrescar Bóveda y ganancias del día
+      useWalletStore.getState().fetchSummary().catch(() => {});
+
       useDriverTripStore.getState().setActiveTrip(null);
-      router.replace('/(home)' as any);
+      router.replace('/' as any);
     } catch (error: any) {
       Alert.alert('Error', error.message || 'No se pudo finalizar la calificación.');
     } finally {
@@ -64,7 +71,7 @@ export const TripReceiptModal = ({ trip, visible }: TripReceiptModalProps) => {
               GANANCIA NETA
             </Text>
             <Text className="text-[#D4AF37] font-montserrat-bold text-5xl mb-6">
-              ${netEarnings.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              ${netEarnings.toFixed(2)}
             </Text>
 
             {/* Line items */}
@@ -72,19 +79,19 @@ export const TripReceiptModal = ({ trip, visible }: TripReceiptModalProps) => {
               <View className="flex-row justify-between items-center mb-3">
                 <Text className="text-zinc-400 font-montserrat-medium text-sm">Tarifa recalculada</Text>
                 <Text className="text-white font-montserrat-semibold text-sm">
-                  ${finalFare.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  ${finalFare.toFixed(2)}
                 </Text>
               </View>
               <View className="flex-row justify-between items-center mb-3">
                 <Text className="text-zinc-400 font-montserrat-medium text-sm">Comisión plataforma</Text>
                 <Text className="text-red-500 font-montserrat-semibold text-sm">
-                  - ${commission.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  - ${commission.toFixed(2)}
                 </Text>
               </View>
               <View className="flex-row justify-between items-center">
                 <Text className="text-zinc-400 font-montserrat-medium text-sm">Tiempo de espera</Text>
                 <Text className="text-white font-montserrat-semibold text-sm">
-                  $0,00
+                  $0.00
                 </Text>
               </View>
             </View>

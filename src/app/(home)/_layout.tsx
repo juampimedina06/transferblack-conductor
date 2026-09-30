@@ -101,6 +101,7 @@ export default function HomeLayout() {
       <Stack.Screen name="index" />
       <Stack.Screen name="confirmed-appointment/index" />
       <Stack.Screen name="pending-approval/index" />
+      <Stack.Screen name="wallet/index" />
     </Stack>
   );
 }

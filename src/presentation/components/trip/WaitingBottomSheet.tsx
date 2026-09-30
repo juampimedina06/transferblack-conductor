@@ -191,7 +191,7 @@ export const WaitingBottomSheet = ({ trip, onStartTrip, onCancel, onHeightChange
                     </Text>
                     <View className="flex-row items-center mt-0.5">
                       <Text className="text-white font-montserrat-semibold text-xs">
-                        {trip.passenger?.rating ? trip.passenger.rating.toFixed(2) : '4.98'}
+                        {trip.passenger?.rating ? Number(trip.passenger.rating).toFixed(2) : '4.98'}
                       </Text>
                       <Text className="text-[#EAB308] ml-1 mr-1.5 text-xs">★</Text>
                       <Text className="text-zinc-500 mr-1.5 text-xs">·</Text>

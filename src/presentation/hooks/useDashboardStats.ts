@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { getWalletSummary } from '../../core/wallet/actions/wallet.actions';
 import type { DashboardStats } from '../components/dashboard/DashboardCarousel';
 import { useAuthStore } from '../auth/store/useAuthStore';
+import { useDriverTripStore } from '../trip/store/useDriverTripStore';
 
 export const useDashboardStats = (isAvailable: boolean) => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -14,10 +15,11 @@ export const useDashboardStats = (isAvailable: boolean) => {
       const data = await getWalletSummary();
       setStats({
         earningsToday: parseFloat(data.earningsToday) || 0,
-        completedTripsToday: data.completedTripsToday || 0,
-        acceptanceRate: Math.round(data.acceptanceRate) || 0,
-        cancellationRate: Math.round(data.cancellationRate) || 0,
-        rating: data.rating || 5.0,
+        completedTripsToday: Number(data.completedTripsToday) || 0,
+        acceptanceRate: Math.round(Number(data.acceptanceRate)) || 0,
+        cancellationRate: Math.round(Number(data.cancellationRate)) || 0,
+        rating: parseFloat(data.rating as any) || 5.0,
+        balance: parseFloat(data.balance) || 0,
       });
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
@@ -38,6 +40,13 @@ export const useDashboardStats = (isAvailable: boolean) => {
       fetchStats();
     }
   }, [isAvailable, isAuthenticated]);
+
+  const activeTrip = useDriverTripStore(state => state.activeTrip);
+  useEffect(() => {
+    if (!activeTrip && isAuthenticated) {
+      fetchStats();
+    }
+  }, [activeTrip, isAuthenticated]);
 
   return { stats, isLoading, refetch: fetchStats };
 };
