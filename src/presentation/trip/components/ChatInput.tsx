@@ -4,11 +4,8 @@ import {
   TextInput,
   TouchableOpacity,
   Text,
-  Platform,
-  KeyboardAvoidingView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Trip } from '@/core/trip/interface/trip.interface';
 
 type BlockedReason = 'in_progress' | 'closed' | null;
 

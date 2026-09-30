@@ -1,14 +1,14 @@
-import axios from "axios";
+import axios, { create } from "axios";
+import { authStorage } from '../../presentation/auth/store/authStorage';
+import { useAuthStore } from '../../presentation/auth/store/useAuthStore';
 
-export const transferApi = axios.create({
+export const transferApi = create({
   baseURL: process.env.EXPO_PUBLIC_API_URL,
   timeout: 15000,
   headers: {
     "Content-Type": "application/json",
   },
 });
-
-import { authStorage } from '../../presentation/auth/store/authStorage';
 
 // Interceptor para inyectar token de autenticación
 transferApi.interceptors.request.use(
@@ -24,13 +24,11 @@ transferApi.interceptors.request.use(
   }
 );
 
-import { useAuthStore } from '../../presentation/auth/store/useAuthStore';
-
 let isRefreshing = false;
-let failedQueue: Array<{
+let failedQueue: {
   resolve: (value?: unknown) => void;
   reject: (reason?: unknown) => void;
-}> = [];
+}[] = [];
 
 const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue.forEach((prom) => {

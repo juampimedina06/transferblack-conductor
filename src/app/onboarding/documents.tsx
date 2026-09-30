@@ -56,11 +56,18 @@ export default function DocumentsScreen() {
         continue;
       }
 
-      // Metadata validation for ALL documents
+      // Metadata validation for ALL documents: both dates are required, and the
+      // schema additionally rejects malformed dates or an expiry before issuance.
       const hasDates = !!state.metadata?.issuedAt && !!state.metadata?.expiresAt;
 
       if (!hasDates) {
         missing.push(`${docName} (Fechas de vigencia)`);
+        continue;
+      }
+
+      const parsedMetadata = documentMetadataSchema.safeParse(state.metadata);
+      if (!parsedMetadata.success) {
+        missing.push(`${docName} (Revisá las fechas de emisión y vencimiento)`);
       }
     }
     

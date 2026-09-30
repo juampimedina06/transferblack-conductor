@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME_COLORS } from '../../core/constants/theme';
 import { socket } from '../../core/socket/socket';
@@ -34,7 +34,9 @@ export default function DriverDashboardScreen() {
   const [isProgressModalVisible, setIsProgressModalVisible] = useState(false);
   const [bottomHeight, setBottomHeight] = useState(100);
 
-  const { location, errorMsg } = useDriverLocation(isAvailable || !!activeTrip);
+  const hasActiveTrip = !!activeTrip;
+
+  const { location, errorMsg } = useDriverLocation(isAvailable || hasActiveTrip);
   const { stats } = useDashboardStats(isAvailable);
   const { summary, fetchSummary } = useWalletStore();
 
@@ -50,7 +52,7 @@ export default function DriverDashboardScreen() {
     let isCancelled = false;
 
     const manageSocketConnection = async () => {
-      if (isAvailable || !!activeTrip) {
+      if (isAvailable || hasActiveTrip) {
         const token = await authStorage.getAccessToken();
         if (token && !isCancelled) {
           socket.auth = { token };
@@ -70,7 +72,7 @@ export default function DriverDashboardScreen() {
     return () => {
       isCancelled = true;
     };
-  }, [isAvailable, !!activeTrip]);
+  }, [isAvailable, hasActiveTrip]);
 
   // Sincroniza el estado del viaje activo con el backend al abrir o montar la app
   useEffect(() => {
@@ -105,7 +107,7 @@ export default function DriverDashboardScreen() {
     return () => {
       isMounted = false;
     };
-  }, [activeTrip?.id]);
+  }, [activeTrip?.id, activeTrip?.status]);
 
   const toggleAvailability = (value: boolean) => {
     setIsAvailable(value);

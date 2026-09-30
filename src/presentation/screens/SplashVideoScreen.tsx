@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -9,13 +9,22 @@ export const SplashVideoScreen = () => {
   const [isNavigating, setIsNavigating] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const finishSplash = () => {
+  const finishSplash = useCallback(() => {
     if (isNavigating) return;
     setIsNavigating(true);
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     // Usamos replace para que no se pueda volver atrás al video con el botón back
     router.replace('/auth/login' as any);
-  };
+  }, [isNavigating, router]);
+
+  // The safety timeout is armed once on mount, so it must not depend on
+  // finishSplash: that function closes over isNavigating and would re-arm the
+  // timeout on every state change. The ref keeps the latest version.
+  const finishSplashRef = useRef(finishSplash);
+
+  useEffect(() => {
+    finishSplashRef.current = finishSplash;
+  }, [finishSplash]);
 
   useEffect(() => {
     // Ocultar el splash nativo apenas montamos la animación SVG
@@ -23,7 +32,7 @@ export const SplashVideoScreen = () => {
 
     // Timeout de seguridad en caso de que falle el callback de la animación
     timeoutRef.current = setTimeout(() => {
-      finishSplash();
+      finishSplashRef.current();
     }, 6000);
 
     return () => {

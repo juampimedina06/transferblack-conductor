@@ -122,12 +122,15 @@ Todos se ejecutan con `node scripts/<nombre>.mjs` desde la raíz del proyecto.
 
 | Script | Comando | Qué hace |
 |---|---|---|
-| `dispatch_to_jp.mjs` | `node scripts/dispatch_to_jp.mjs` | **El más útil para desarrollo.** Pone a los conductores demo en offline, cotiza un viaje cuyo origen es tu ubicación GPS actual (`-31.4431, -64.1143`), lo confirma con pago en efectivo + PIN y lo despacha. El viaje debería llegar a tu app. |
+| `dispatch_dean_funes_empalme.mjs` | `node scripts/dispatch_dean_funes_empalme.mjs` | **Radar natural (no toca el estado de ningún chofer).** Parte de Deán Funes / Horizonte (`-31.4508, -64.1205`) y termina en Barrio Empalme (`-31.4405, -64.1262`). Antes de cotizar saca una foto del radar con el heatmap de admin y aborta si no hay choferes `online` en 5 km. Después despacha y **espera** a que alguien acepte, imprimiendo nombre, email y teléfono de quien lo tomó. Flags: `--origin-lat/lng`, `--dest-lat/lng`, `--passenger-email/password`, `--watch-seconds`, `--no-watch`, `--force`. |
+| `dispatch_to_jp.mjs` | `node scripts/dispatch_to_jp.mjs` | Pone a los conductores demo en offline, cotiza un viaje cuyo origen es tu ubicación GPS actual (`-31.4431, -64.1143`), lo confirma con pago en efectivo + PIN y lo despacha. El viaje debería llegar a tu app. |
 | `dispatch_ride.mjs` | `node scripts/dispatch_ride.mjs` | Igual que el anterior pero usa como pasajero a "Bruno Díaz" y parte desde Barrio Deán Funes Horizonte. |
 | `dispatch_voucher.mjs` | `node scripts/dispatch_voucher.mjs` | Despacha un viaje corporativo con pago por voucher (`DEMO-OPS-2026`) como pasajero "Carla". El viaje acredita como ganancia digital en la bóveda del chofer. |
 | `request-test-trip.mjs` | `node scripts/request-test-trip.mjs` | Lee la URL de la API desde `.env`, cotiza y confirma un viaje como "Ana" (no dispara el despacho, solo crea el viaje en estado `searching`). |
 
 > ⚠️ Para que el viaje te llegue en la app, tenés que estar **conectado** (switch "Disponible" en verde) antes de correr el script.
+
+> 🐛 **Bug conocido en `dispatch_to_jp.mjs` y `dispatch_voucher.mjs`**: siempre muestran "Resultado del despacho" como si fuera un fallo. El endpoint `POST /rides/:id/dispatch` responde **202 Accepted**, no 200, y esos scripts chequean `!== 200`. El dispatch sí funciona. `dispatch_dean_funes_empalme.mjs` ya acepta 200 y 202. **No tocar salvo que se pida explícitamente.**
 
 ### ❌ Cancelar / limpiar viajes
 
@@ -176,3 +179,89 @@ Todos se ejecutan con `node scripts/<nombre>.mjs` desde la raíz del proyecto.
 | `ana@demo.transferblack.com` | `Demo1234` | Pasajera demo |
 | `admin@transferblack.com` | `Admin123456!` | Admin |
 | `martin/lucia/diego/sofia@demo.transferblack.com` | `Demo1234` | Conductores demo (ocupan slots del despacho) |
+
+## 7. Tooling y Calidad de Código
+
+### Estado actual de los chequeos
+
+| Comando | Estado | Notas |
+|---|---|---|
+| `npx tsc --noEmit` | ✅ sale con 0 | Typecheck limpio. |
+| `npx vitest` | ✅ funciona | Vitest 5.0.2, no depende de `unrs-resolver`. |
+| `npm run lint` | ✅ sale con 0 | **0 errores y 0 warnings en `src/`.** |'''
+
+### Requisito de sistema: Visual C++ Redistributable (Windows)
+
+`npm run lint` **no arranca** si falta el Visual C++ Redistributable. El mensaje que tira (`Cannot find native binding. npm has a bug related to optional dependencies... npm i`) **es engañoso**: no es un bug de npm y borrar `node_modules` no lo arregla.
+
+Causa real, cadena de dependencias:
+
+```text
+eslint-config-expo → typescript-eslint → eslint-import-resolver-typescript
+  → unrs-resolver → @unrs/resolver-binding-win32-x64-msvc
+```
+
+El binding nativo enlaza contra `VCRUNTIME140_1.dll`. Windows trae `VCRUNTIME140.dll` de fábrica pero **`_1` solo la instala el Redistributable**. Sin ella, `LoadLibrary` falla con error 126.
+
+```bash
+winget install --id Microsoft.VCRedist.2015+.x64
+node -e "require('@unrs/resolver-binding-win32-x64-msvc'); console.log('OK')"   # debe imprimir OK
+```
+
+> `tsc` y `vitest` no pasan por `unrs-resolver`: si el typecheck pasa y el lint no, es esto.
+
+### Deuda de lint: cerrada (0 errores, 0 warnings)
+
+La deuda que había antes **ya no está**. These eran los hallazgos y cómo se resolvieron:
+
+| Ubicación | Regla | Resolución |
+|---|---|---|
+| `ChatScreen.tsx` | `react-hooks/rules-of-hooks` | 🔴 **Era un bug real, no estilo.** El `if (!activeTrip \|\| !user) return null` estaba **antes** de `useState` y de 9 hooks más, así que al llegar el viaje async cambiaba la cantidad de hooks registrados y React corrompía su estado interno. Split en wrapper + `ChatView` con hooks incondicionales. |
+| `useChatSocket.ts` | `react-hooks/refs` | Los refs se leían en render, así que la UI no re-renderizaba al cambiar la conexión. Ahora es `useState`. |
+| `pending-approval/index.tsx` | `react-hooks/refs` | `isUploadingRef.current` se escribía en render. Ahora se sincroniza con un `useEffect`. |
+| `ChatMessageList.tsx` | `react-hooks/static-components` | `ListFooter` se creaba en render vía `useCallback` y se remontaba en cada render. Ahora es un componente top-level. |
+| `useDashboardStats.ts`, `DocumentItem.tsx`, `PinOtpInput.tsx`, `useCourtesyTimer.ts`, `CustomMap.tsx`, `_layout.tsx`, `use-color-scheme.web.ts` | `react-hooks/set-state-in-effect` | `setState` síncrono dentro de un `useEffect`. Ver abajo el patrón. |
+| 12 imports muertos + 3 `catch` sin usar | `no-unused-vars` | Borrados; los `catch` pasaron a optional catch binding. |
+| 7 usos de `Array<T>` | `array-type` | Migrados a `T[]`. |
+| `yearNumber` sin usar en `confirmed-appointment` | `no-unused-vars` | La fecha se armaba a mano y salía "lunes, 5 enero", ambigua si el turno no es de este año. Ahora se formatea en un solo `toLocaleDateString('es-AR', { weekday, day, month, year })` que incluye el año. Ojo: se sacó la clase `capitalize` de NativeWind porque ponía "De" en mayúscula ("5 De Enero De 2026"); ahora se capitaliza solo el primer carácter. |
+| 5 falsos positivos de Axios | `import/no-named-as-default-member` | Resueltos con named imports (`create`, `isAxiosError`), sin tocar `eslint.config.js`. |
+| 20 casos de `exhaustive-deps` | `react-hooks/exhaustive-deps` | Caso por caso, nunca con `--fix` ciego. Ver abajo. |
+
+**Patrón para "resetear estado cuando cambia una prop"** (`DocumentItem`, `PinOtpInput`, `useCourtesyTimer`): comparar contra el valor previo guardado en `useState` y ajustar **durante el render**, no en un efecto. React re-renderiza antes de pintar, así que nunca se ve el valor viejo. Ojo: el valor previo va en `useState`, **no en `useRef`**, porque `react-hooks/refs` prohíbe leer y escribir refs durante el render.
+
+**Cuándo NO va en deps sino en un ref**: si el callback viene como arrow inline del padre y meterlo en deps reiniciaría un efecto con efectos visibles. Pasó en `useOfferTimer` (reiniciaba la animación de la cuenta regresiva) y en `SplashVideoScreen` (re-armaba el timeout de seguridad). Patrón: ref que se actualiza en un `useEffect` aparte, y el efecto principal no depende del callback.
+
+**`useDashboardStats` se reescribió con `useQuery`** de `@tanstack/react-query`, que ya estaba instalado y montado vía `QueryProvider`. Eso eliminó el efecto, el estado de loading manual y el bug de triple fetch (tres effects superpuestos disparaban hasta 3 requests en el mount). No es una dependencia nueva.
+
+### Alcance del lint
+
+Ojo, `npm run lint` y `npx eslint .` **no lintean lo mismo**:
+
+| Comando | Alcance | Resultado |
+|---|---|---|
+| `npm run lint` (`expo lint`) | solo `src/` | **0 errores, 0 warnings** |
+| `npx eslint .` | `src/` **+ `scripts/`** | 1 error, 1 warning |
+
+`eslint.config.js` **sí** cubre `scripts/`; lo que lo salta es el target por defecto de `expo lint`. Si tocás un script de `scripts/`, corre `npx eslint scripts/<archivo>` explícitamente o el cambio pasa inadvertido.
+
+Hallazgos que solo aparecen con `npx eslint .` (preexistentes, en `scripts/`, **fuera del alcance de la limpieza de `src/`**):
+
+- `scripts/get_driver_coords.mjs:1` → `import/no-unresolved`: no encuentra el módulo `pg` (no está en `package.json`; el script quedó sin dependencia declarada). Ojo: sin `pg` el script tampoco funciona en runtime.
+- `scripts/credit_driver_voucher.mjs:49` → `no-unused-vars`: `'offerPromise' is assigned a value but never used`.
+
+Los `.mjs` de `scripts/` tampoco entran al programa de TypeScript (`allowJs` off), así que `tsc --noEmit` no los cubre. Para verificarlos: `node --check <archivo>` y ejecutarlos de verdad contra la API.
+
+`scripts/dispatch_dean_funes_empalme.mjs` pasa limpio en ambos.
+
+## 8. Contratos del API de Despacho (referencia para scripts)
+
+Contratos verificados leyendo el backend (`transferblack/backend`, solo lectura) y probando contra la API real:
+
+- **`POST /rides/:tripId/dispatch` responde `202 Accepted`**, no 200. Body plano `{ tripId, offersCreated }`, **sin** wrapper `{ data }`. Para viajes en efectivo excluye choferes con `is_cash_restricted = true`.
+- **El radar busca los 5 choferes `online` más cercanos dentro de 5000 m del PICKUP.** Si no hay ninguno: `409 NO_DRIVERS_AVAILABLE`.
+- **No existe endpoint REST para listar quién recibió una oferta.** `app.trip_driver_offers` solo se expone por websocket (`trip.driver_offers_created`, sala del chofer) y por outbox. Lo único accesible es el conteo de `offersCreated`.
+- **Para ver quién tomó el viaje**: `GET /admin/rides?search=<public_code>&limit=5` (el `search` matchea `publicCode`), filtrar por `id === tripId` y leer `driver: { id, email, firstName, lastName, phone }`. Envelope plano `{ total, page, limit, totalPages, data }`, sin wrapper.
+- **`GET /admin/telemetry/heatmap`** devuelve `{ cells, meta }` plano y **descarta posiciones con más de 120 s** (`DEFAULT_STALE_SECONDS`). El query de dispatch, en cambio, **no** filtra por freshness. Es una foto indicativa del radar, no un conteo exacto. `cellSize` por defecto `0.005` grados (~550 m).
+- **`GET /rides/:tripId`** (pasajero) expone `boarding_pin` y `driver_id`. El pin se oculta al chofer: `boarding_pin: trip.driverId === callerUserId ? null : trip.boardingPin`.
+- **`POST /rides/:tripId/confirm` exige `requireVerifiedEmail`** y un `Idempotency-Key`. El body del quote es `strict`: `address_text`, `place_id`, `latitude`, `longitude` y nada más.
+- **Los choferes demo quedan `online` en la DB aunque no tengan socket conectado** y ocupan los 5 slots del radar. `set_drivers_offline.mjs` los fuerza a `offline` conectando y desconectando el socket.

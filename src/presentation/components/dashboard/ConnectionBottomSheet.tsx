@@ -1,6 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
@@ -85,7 +84,7 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
     } else {
       pulseAnim.value = 0;
     }
-  }, [isAvailable, currentOffer]);
+  }, [isAvailable, currentOffer, pulseAnim]);
 
   const radarWave1Style = useAnimatedStyle(() => ({
     transform: [{ scale: interpolate(pulseAnim.value, [0, 1], [1, 2.2]) }],
@@ -182,7 +181,7 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
           longitude: lastKnownLocation.longitude,
         });
         arrivingTripData = arrivingRes?.data;
-      } catch (e) {
+      } catch {
         // Fallback transition if transition request had error
       }
 
@@ -448,6 +447,21 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
             {/* Glass Specular Meniscus Reflection across the top lip */}
             <View className="absolute top-0 left-4 right-4 h-[1px] bg-white/40 z-30 pointer-events-none" />
             <View className="absolute bottom-0 left-6 right-6 h-[1px] bg-[#D4AF37]/20 z-30 pointer-events-none" />
+          </TouchableOpacity>
+
+          {/* Secondary action: hide the offer. Local only — the dispatch module exposes
+              no reject endpoint, so the offer stays pending on the backend until it expires. */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={handleReject}
+            disabled={isAccepting}
+            accessibilityRole="button"
+            accessibilityLabel="Descartar la oferta de viaje"
+            className="w-full h-12 mt-2.5 rounded-2xl items-center justify-center border border-white/10 bg-white/[0.04]"
+          >
+            <Text className="text-zinc-400 font-montserrat-semibold text-xs uppercase tracking-widest">
+              Descartar
+            </Text>
           </TouchableOpacity>
         </View>
       </View>

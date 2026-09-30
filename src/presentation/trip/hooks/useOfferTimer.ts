@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import {
   Easing,
   useSharedValue,
@@ -13,6 +13,14 @@ export const useOfferTimer = (
 ) => {
   const progress = useSharedValue(1);
 
+  // The countdown must not depend on onExpire: ConnectionBottomSheet passes a
+  // plain arrow, so listing it would restart the animation on every render.
+  const onExpireRef = useRef(onExpire);
+
+  useEffect(() => {
+    onExpireRef.current = onExpire;
+  }, [onExpire]);
+
   useEffect(() => {
     if (isActive && ttlSeconds > 0) {
       progress.value = 1;
@@ -24,14 +32,18 @@ export const useOfferTimer = (
         },
         (finished) => {
           if (finished) {
-            runOnJS(onExpire)();
+            runOnJS(triggerExpire)();
           }
         }
       );
     } else {
       progress.value = 1;
     }
-  }, [isActive, ttlSeconds]);
+
+    function triggerExpire() {
+      onExpireRef.current();
+    }
+  }, [isActive, ttlSeconds, progress]);
 
   return { progress };
 };

@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, StyleSheet, Image } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -56,7 +56,17 @@ export const SplashAnimation = ({ onAnimationEnd }: SplashAnimationProps) => {
     }, 4000);
 
     return () => clearTimeout(timeout);
-  }, [fontsLoaded, onAnimationEnd]);
+  }, [
+    fontsLoaded,
+    onAnimationEnd,
+    lineScaleX,
+    logoOpacity,
+    logoScale,
+    subtitleOpacity,
+    subtitleTranslateY,
+    titleOpacity,
+    titleTranslateY,
+  ]);
 
   const logoStyle = useAnimatedStyle(() => ({
     opacity: logoOpacity.value,

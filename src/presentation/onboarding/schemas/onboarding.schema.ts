@@ -8,7 +8,7 @@ export const profileSchema = z.object({
     .trim()
     .regex(/^\+[1-9]\d{7,14}$/, 'El teléfono debe incluir código internacional (ej: +5491112345678)'),
   birth_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato YYYY-MM-DD'),
-  gender: z.enum(['MASCULINO', 'FEMENINOO', 'OTRO'], {
+  gender: z.enum(['MASCULINO', 'FEMENINO', 'OTRO'], {
     message: 'El género es obligatorio',
   }),
   document_type: z.enum(['DNI', 'CUIL'], {

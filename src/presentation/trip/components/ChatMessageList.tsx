@@ -3,7 +3,6 @@ import {
   FlatList,
   View,
   ActivityIndicator,
-  Text,
   ListRenderItemInfo,
 } from 'react-native';
 import { ChatMessage } from '@/core/chat/interface/chat.interface';
@@ -19,6 +18,20 @@ interface ChatMessageListProps {
   onLoadMore: () => void;
   onRetry: (msg: ChatMessage) => void;
 }
+
+interface ChatListFooterProps {
+  isFetchingNextPage: boolean;
+}
+
+const ChatListFooter: React.FC<ChatListFooterProps> = ({ isFetchingNextPage }) => {
+  if (!isFetchingNextPage) return <View className="h-3" />;
+
+  return (
+    <View className="py-4 items-center">
+      <ActivityIndicator size="small" color="#D4AF37" />
+    </View>
+  );
+};
 
 export const ChatMessageList: React.FC<ChatMessageListProps> = ({
   messages,
@@ -42,15 +55,6 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
 
   const keyExtractor = useCallback((item: ChatMessage) => item.clientMessageId || item.id, []);
 
-  const ListFooter = useCallback(() => {
-    if (!isFetchingNextPage) return <View className="h-3" />;
-    return (
-      <View className="py-4 items-center">
-        <ActivityIndicator size="small" color="#D4AF37" />
-      </View>
-    );
-  }, [isFetchingNextPage]);
-
   if (isLoading) {
     return (
       <View className="flex-1 items-center justify-center">
@@ -68,7 +72,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
       // Newest messages at the bottom without manual scrollToEnd
       contentContainerStyle={{ flexGrow: 1, paddingTop: 12 }}
       ListEmptyComponent={<ChatEmptyState />}
-      ListFooterComponent={<ListFooter />}
+      ListFooterComponent={<ChatListFooter isFetchingNextPage={isFetchingNextPage} />}
       onEndReached={() => {
         if (hasNextPage && !isFetchingNextPage) {
           onLoadMore();

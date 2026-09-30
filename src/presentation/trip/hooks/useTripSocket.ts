@@ -37,7 +37,7 @@ export const useTripSocket = () => {
       socket.off('connect_error', handleConnectError);
       socket.off('trip:offer', handleNewOffer);
     };
-  }, []);
+  }, [setCurrentOffer]);
 
   // Manejo de la sala del viaje activo (ride:join / trip:status_changed / ride:leave)
   useEffect(() => {
@@ -83,5 +83,5 @@ export const useTripSocket = () => {
         socket.emit('ride:leave', { rideId });
       }
     };
-  }, [activeTrip?.id]);
+  }, [activeTrip?.id, setActiveTrip, updateTripStatus]);
 };

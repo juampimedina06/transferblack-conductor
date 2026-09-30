@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useQueryClient, InfiniteData } from '@tanstack/react-query';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { ChatService } from '@/core/chat/services/chat.service';
 import { GetMessagesResponse, ChatMessage } from '@/core/chat/interface/chat.interface';
 import { mergeMessages } from '@/core/chat/mapper/chat.mapper';
@@ -32,9 +32,10 @@ export const useChatMessages = (tripId: string) => {
   });
 
   /** All messages flat, newest first */
-  const allMessages: ChatMessage[] = query.data
-    ? query.data.pages.flatMap((p) => p.data)
-    : [];
+  const allMessages = useMemo<ChatMessage[]>(
+    () => (query.data ? query.data.pages.flatMap((p) => p.data) : []),
+    [query.data]
+  );
 
   /**
    * Called after socket reconnect or foreground:

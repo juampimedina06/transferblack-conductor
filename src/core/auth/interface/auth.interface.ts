@@ -1,6 +1,6 @@
 export type UserRole = 'passenger' | 'driver' | 'admin';
 export type ProfileStatus = 'active' | 'blocked' | 'deleted';
-export type Gender = 'MASCULINO' | 'FEMENINOO' | 'OTRO';
+export type Gender = 'MASCULINO' | 'FEMENINO' | 'OTRO';
 export type DocumentType = 'DNI' | 'CUIL';
 
 export interface UserProfile {

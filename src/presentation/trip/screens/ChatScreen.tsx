@@ -1,11 +1,9 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
-  View,
   StatusBar,
   Alert,
-  Text,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -15,12 +13,13 @@ import { useChatMessages } from '@/hooks/chat/useChatMessages';
 import { useSendMessage } from '@/hooks/chat/useSendMessage';
 import { useReadMessages } from '@/hooks/chat/useReadMessages';
 import { useChatSocket } from '@/hooks/chat/useChatSocket';
-import { mapSocketMessageToDomain, applyReadReceipt } from '@/core/chat/mapper/chat.mapper';
+import { mapSocketMessageToDomain } from '@/core/chat/mapper/chat.mapper';
 import {
   SocketMessageCreatedPayload,
   SocketMessageReadPayload,
   ChatMessage,
 } from '@/core/chat/interface/chat.interface';
+import type { Trip } from '@/core/trip/interface/trip.interface';
 import { ChatHeader } from '../components/ChatHeader';
 import { ChatMessageList } from '../components/ChatMessageList';
 import { ChatInput } from '../components/ChatInput';
@@ -30,22 +29,16 @@ type BlockedReason = 'in_progress' | 'closed' | null;
 
 const BLOCKED_STATUSES = new Set(['in_progress', 'completed', 'cancelled'] as const);
 
-export const ChatScreen: React.FC = () => {
-  const user = useAuthStore((s) => s.user);
-  const activeTrip = useDriverTripStore((s) => s.activeTrip);
+interface ChatViewProps {
+  trip: Trip;
+  driverUserId: string;
+}
 
-  // Guard: should not be here without an active trip
-  useEffect(() => {
-    if (!activeTrip) {
-      router.replace('/(home)' as any);
-    }
-  }, [activeTrip]);
-
-  if (!activeTrip || !user) return null;
-
-  const tripId = activeTrip.id;
-  const driverUserId = user.id;
-  const tripStatus = activeTrip.status;
+// Every chat hook lives in this component. It only mounts once a trip and a user
+// both exist, so each hook below is called unconditionally on every render.
+const ChatView: React.FC<ChatViewProps> = ({ trip, driverUserId }) => {
+  const tripId = trip.id;
+  const tripStatus = trip.status;
   const isTripInProgress = tripStatus === 'in_progress';
 
   // Derived blocked reason
@@ -68,7 +61,6 @@ export const ChatScreen: React.FC = () => {
     catchUp,
     upsertMessage,
     applyReadReceiptToCache,
-    resetCache,
   } = useChatMessages(tripId);
 
   // ── Read messages ───────────────────────────────────────────────────────────
@@ -148,7 +140,7 @@ export const ChatScreen: React.FC = () => {
     <SafeAreaView className="flex-1 bg-[#0A0A0C]" edges={['top', 'bottom']}>
       <StatusBar barStyle="light-content" backgroundColor="#0A0A0C" />
 
-      <ChatHeader trip={activeTrip} />
+      <ChatHeader trip={trip} />
 
       <KeyboardAvoidingView
         className="flex-1"
@@ -177,4 +169,20 @@ export const ChatScreen: React.FC = () => {
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
+};
+
+export const ChatScreen: React.FC = () => {
+  const user = useAuthStore((s) => s.user);
+  const activeTrip = useDriverTripStore((s) => s.activeTrip);
+
+  // Guard: should not be here without an active trip
+  useEffect(() => {
+    if (!activeTrip) {
+      router.replace('/(home)' as any);
+    }
+  }, [activeTrip]);
+
+  if (!activeTrip || !user) return null;
+
+  return <ChatView trip={activeTrip} driverUserId={user.id} />;
 };

@@ -9,6 +9,7 @@ El proyecto implementa una arquitectura desacoplada y orientada a capas, prioriz
 ## 📋 Tabla de Contenidos
 - [Requisitos del Entorno](#-requisitos-del-entorno)
 - [Instalación y Ejecución](#-instalación-y-ejecución)
+- [Troubleshooting: lint no arranca en Windows](#-troubleshooting-lint-no-arranca-en-windows)
 - [Flujos Principales Implementados](#-flujos-principales-implementados)
 - [Arquitectura del Proyecto](#-arquitectura-del-proyecto)
 - [Pila Tecnológica y Decisiones de Diseño](#-pila-tecnológica-y-decisiones-de-diseño)
@@ -24,6 +25,7 @@ Para asegurar consistencia entre el equipo y evitar desfasajes en el entorno nat
 
 - **Node.js**: `v20.x` o superior (LTS recomendado)
 - **npm**: `v10.x` o superior
+- **Visual C++ Redistributable (x64)**: **Requerido en Windows.** Sin él, `npm run lint` no arranca. Ver [Troubleshooting](#-troubleshooting-lint-no-arranca-en-windows).
 - **Expo CLI**: Integrado en el SDK (`npx expo`)
 - **JDK (Java Development Kit)**: JDK 17 (requerido para builds y ejecución nativa en Android)
 - **Android Studio & SDK**: Android SDK Platform 34+ (para emuladores y desarrollo nativo)
@@ -58,6 +60,43 @@ Para asegurar consistencia entre el equipo y evitar desfasajes en el entorno nat
    ```bash
    npx expo-doctor
    ```
+
+### 🩺 Troubleshooting: `lint` no arranca en Windows
+
+Si `npm run lint` falla antes de analizar un solo archivo con:
+
+```
+Error: Cannot find native binding. npm has a bug related to optional dependencies
+(https://github.com/npm/cli/issues/4828). Please try `npm i` again after removing
+both package-lock.json and node_modules directory.
+```
+
+**No sigas ese consejo: es un mensaje engañoso.** No es un bug de npm y borrar `node_modules` no lo arregla.
+
+La causa real es que falta el **Visual C++ Redistributable**. La cadena de dependencias es:
+
+```text
+eslint-config-expo → typescript-eslint → eslint-import-resolver-typescript
+  → unrs-resolver → @unrs/resolver-binding-win32-x64-msvc
+```
+
+Ese binding es un binario nativo que enlaza contra `VCRUNTIME140_1.dll`. Windows trae `VCRUNTIME140.dll` de fábrica, pero **`_1` solo la instala el Redistributable**. Sin ella, `LoadLibrary` falla con el error 126 y el loader de `unrs-resolver` lo reporta con el mensaje genérico de arriba.
+
+**Solución:**
+
+```bash
+winget install --id Microsoft.VCRedist.2015+.x64
+```
+
+O descargalo desde <https://aka.ms/vc14/vc_redist.x64.exe> (permalink oficial de Microsoft). Requiere permisos de administrador.
+
+**Para diagnosticar si ya está instalado:**
+
+```bash
+node -e "require('@unrs/resolver-binding-win32-x64-msvc'); console.log('OK')"
+```
+
+> `npx tsc --noEmit` y `npx vitest` **no** dependen de `unrs-resolver` y funcionan aunque falte el Redistributable. Si el typecheck pasa pero el lint no, el problema es este.
 
 ---
 
@@ -236,6 +275,10 @@ npm run lint
 - **TypeScript Estricto**: No usar `any`. Toda interfaz de API o componente debe estar tipada.
 - **Manejo de Errores**: Todo mensaje de error que llegue al conductor debe expresarse en español claro y comprensible, evitando tecnicismos.
 - **Accesibilidad**: Botones e iconos interactivos deben contar con `accessibilityLabel` y cumplir con un área táctil mínima de 44x44 pt.
+
+> ✅ **Baseline del lint**: `npm run lint` termina con **0 errores y 0 warnings** en `src/`, y sale con código 0. El typecheck también está limpio (`tsc --noEmit` sale con 0) y `npx vitest` corre 28 tests en 4 archivos. El detalle de lo que se corrigió está en [`context.md`](./context.md) → *Tooling y Calidad de Código*.
+>
+> Ojo: `npm run lint` solo mira `src/`. Los scripts de `scripts/` no entran, así que si los tocás corré `npx eslint scripts/<archivo>` aparte. Ahí queda 1 error preexistente: `get_driver_coords.mjs` importa `pg`, que no está declarado en `package.json`.
 
 ---
 

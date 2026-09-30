@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   Linking,
   LayoutAnimation,
-  Platform,
   Modal,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -47,14 +46,20 @@ export const DocumentItem: React.FC<DocumentItemProps> = ({
   const setDocumentState = useOnboardingStore((state) => state.setDocumentState);
   const { uploadDocument, deleteDocument } = useOnboardingMutations();
 
-  const [docNumber, setDocNumber] = useState(documentState.metadata?.documentNumber || '');
-  const [issuedAt, setIssuedAt] = useState(documentState.metadata?.issuedAt || '');
-  const [expiresAt, setExpiresAt] = useState(documentState.metadata?.expiresAt || '');
+  const storeMetadata = {
+    documentNumber: documentState.metadata?.documentNumber || '',
+    issuedAt: documentState.metadata?.issuedAt || '',
+    expiresAt: documentState.metadata?.expiresAt || '',
+  };
+
+  const [docNumber, setDocNumber] = useState(storeMetadata.documentNumber);
+  const [issuedAt, setIssuedAt] = useState(storeMetadata.issuedAt);
+  const [expiresAt, setExpiresAt] = useState(storeMetadata.expiresAt);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const [lastStoreMetadata, setLastStoreMetadata] = useState(storeMetadata);
 
   const label = documentLabels[type];
-  const isVehicleDoc = type === 'vehicle_title' || type === 'itv';
   const isUploaded = documentState.uploadStatus === 'uploaded';
   const isUploading = documentState.uploadStatus === 'uploading';
 
@@ -83,10 +88,20 @@ export const DocumentItem: React.FC<DocumentItemProps> = ({
   const isMetadataMissing = !issuedAt || !expiresAt;
 
   // Si ya está subido e ingresó metadatos inicia minimizado, si no, expandido
-  const [isExpanded, setIsExpanded] = useState(!isUploaded || isMetadataMissing);
+  const shouldExpand = !isUploaded || isMetadataMissing;
+  const [isExpanded, setIsExpanded] = useState(shouldExpand);
+  const [lastShouldExpand, setLastShouldExpand] = useState(shouldExpand);
 
   // Skip LayoutAnimation en el primer render para no interferir con la transición del Stack
   const hasRendered = useRef(false);
+
+  // Colapsar o expandir al cambiar el estado del documento se ajusta durante el
+  // render. Antes de hacerlo en el efecto, isExpanded quedaba desactualizado
+  // cuando el documento ya llegaba subido desde el store.
+  if (shouldExpand !== lastShouldExpand) {
+    setLastShouldExpand(shouldExpand);
+    setIsExpanded(shouldExpand);
+  }
 
   useEffect(() => {
     if (!hasRendered.current) {
@@ -94,19 +109,21 @@ export const DocumentItem: React.FC<DocumentItemProps> = ({
       return;
     }
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    if (isUploaded && !isMetadataMissing) {
-      setIsExpanded(false);
-    } else {
-      setIsExpanded(true);
-    }
-  }, [isUploaded, isMetadataMissing]);
+  }, [shouldExpand]);
 
-  // Sincronizar campos cuando se rehidrata el borrador guardado
-  useEffect(() => {
-    setDocNumber(documentState.metadata?.documentNumber || '');
-    setIssuedAt(documentState.metadata?.issuedAt || '');
-    setExpiresAt(documentState.metadata?.expiresAt || '');
-  }, [documentState.metadata]);
+  // Sincronizar campos cuando se rehidrata el borrador guardado. Se ajusta
+  // durante el render y no en un efecto: React vuelve a renderizar antes de
+  // pintar, así el usuario nunca llega a ver los campos del borrador anterior.
+  if (
+    lastStoreMetadata.documentNumber !== storeMetadata.documentNumber ||
+    lastStoreMetadata.issuedAt !== storeMetadata.issuedAt ||
+    lastStoreMetadata.expiresAt !== storeMetadata.expiresAt
+  ) {
+    setLastStoreMetadata(storeMetadata);
+    setDocNumber(storeMetadata.documentNumber);
+    setIssuedAt(storeMetadata.issuedAt);
+    setExpiresAt(storeMetadata.expiresAt);
+  }
 
   const toggleExpand = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);

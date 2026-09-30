@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, AppState, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { transferApi } from '@/core/api/transferApi';
@@ -77,7 +77,7 @@ interface DriverMeData {
     color: string;
     vehicleType: string;
   } | null;
-  driverDocuments?: Array<{
+  driverDocuments?: {
     id: string;
     documentType: string;
     filePath: string;
@@ -86,8 +86,8 @@ interface DriverMeData {
     issuedAt: string | null;
     expiresAt: string | null;
     documentNumber?: string | null;
-  }>;
-  vehicleDocuments?: Array<{
+  }[];
+  vehicleDocuments?: {
     id: string;
     documentType: string;
     filePath: string;
@@ -96,7 +96,7 @@ interface DriverMeData {
     issuedAt: string | null;
     expiresAt: string | null;
     documentNumber?: string | null;
-  }>;
+  }[];
 }
 
 export default function PendingApprovalScreen() {
@@ -109,7 +109,9 @@ export default function PendingApprovalScreen() {
   const [fixingDoc, setFixingDoc] = useState<{ id: string, type: DocumentType } | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const isUploadingRef = useRef(false);
-  isUploadingRef.current = isUploading;
+  useEffect(() => {
+    isUploadingRef.current = isUploading;
+  }, [isUploading]);
 
   const [retryDates, setRetryDates] = useState<Record<string, { issuedAt: string, expiresAt: string }>>({});
   const [retriedDocIds, setRetriedDocIds] = useState<Set<string>>(new Set());
@@ -117,7 +119,7 @@ export default function PendingApprovalScreen() {
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
 
-  const checkStatus = async (_silent = false) => {
+  const checkStatus = useCallback(async (_silent = false) => {
     try {
       const response = await transferApi.get<{ data: DriverMeData }>('/driver/me');
       const data = response.data.data;
@@ -137,7 +139,7 @@ export default function PendingApprovalScreen() {
             router.replace('/confirmed-appointment' as any);
             return;
           }
-        } catch (e) {
+        } catch {
           // No meeting scheduled yet
         }
       }
@@ -157,7 +159,7 @@ export default function PendingApprovalScreen() {
     } finally {
       setIsLoadingInitial(false);
     }
-  };
+  }, [logout]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -192,7 +194,7 @@ export default function PendingApprovalScreen() {
       return () => {
         clearInterval(interval);
       };
-    }, [])
+    }, [checkStatus])
   );
 
   if (isLoadingInitial && !driverData) {

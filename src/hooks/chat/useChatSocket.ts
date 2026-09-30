@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { io, Socket } from 'socket.io-client';
 import { authStorage } from '@/presentation/auth/store/authStorage';
@@ -27,12 +27,11 @@ export const useChatSocket = ({
   onReconnect,
 }: UseChatSocketProps): UseChatSocketReturn => {
   const socketRef = useRef<Socket | null>(null);
-  const isConnectedRef = useRef(false);
-  const connectionErrorRef = useRef<string | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
 
-  // We expose a stable snapshot via a forceUpdate pattern; callers that need
-  // live state should subscribe via a state atom in the parent. The hook itself
-  // stays pure (no setState) so it doesn't trigger extra renders on the chat list.
+  // Callbacks are kept in refs so a new inline function from the caller does not
+  // tear down and re-create the socket on every render.
   const onMessageCreatedRef = useRef(onMessageCreated);
   const onMessageReadRef = useRef(onMessageRead);
   const onReconnectRef = useRef(onReconnect);
@@ -92,18 +91,18 @@ export const useChatSocket = ({
       socketRef.current = socket;
 
       socket.on('connect', () => {
-        isConnectedRef.current = true;
-        connectionErrorRef.current = null;
+        setIsConnected(true);
+        setConnectionError(null);
         joinRoom();
       });
 
       socket.on('disconnect', () => {
-        isConnectedRef.current = false;
+        setIsConnected(false);
       });
 
       socket.on('connect_error', (err: Error) => {
-        isConnectedRef.current = false;
-        connectionErrorRef.current = err.message ?? 'Error de conexión';
+        setIsConnected(false);
+        setConnectionError(err.message ?? 'Error de conexión');
       });
 
       socket.on('chat.message.created', (payload: SocketMessageCreatedPayload) => {
@@ -145,7 +144,7 @@ export const useChatSocket = ({
   }, [tripId, joinRoom]);
 
   return {
-    isConnected: isConnectedRef.current,
-    connectionError: connectionErrorRef.current,
+    isConnected,
+    connectionError,
   };
 };

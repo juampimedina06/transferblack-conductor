@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { isAxiosError } from 'axios';
 import { transferApi } from '../../api/transferApi';
 import {
   ApiErrorResponse,
@@ -11,7 +11,7 @@ const handleApiError = (error: unknown, fallbackMessage: string): never => {
   if (error instanceof AuthError) {
     throw error;
   }
-  if (axios.isAxiosError<ApiErrorResponse>(error) && error.response?.data?.error) {
+  if (isAxiosError<ApiErrorResponse>(error) && error.response?.data?.error) {
     const apiError = error.response.data.error;
     throw new AuthError(
       apiError.message || fallbackMessage,

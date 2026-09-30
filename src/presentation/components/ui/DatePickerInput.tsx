@@ -6,7 +6,7 @@ import {
   Platform,
   Modal,
 } from 'react-native';
-import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import DateTimePicker, { DateTimePickerChangeEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { THEME_COLORS } from '../../../core/constants/theme';
 import { Button } from './Button';
@@ -61,9 +61,10 @@ export const DatePickerInput: React.FC<DatePickerInputProps> = ({
     setShowPicker(true);
   };
 
-  const handleAndroidChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
+  // Android fires onValueChange only when the user picks a date; onDismiss covers the cancel case.
+  const handleAndroidPick = (_event: DateTimePickerChangeEvent, selectedDate?: Date) => {
     setShowPicker(false);
-    if (event.type === 'set' && selectedDate) {
+    if (selectedDate) {
       const year = selectedDate.getFullYear();
       const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
       const day = String(selectedDate.getDate()).padStart(2, '0');
@@ -120,15 +121,7 @@ export const DatePickerInput: React.FC<DatePickerInputProps> = ({
           display="default"
           minimumDate={minDate}
           maximumDate={maxDate}
-          onValueChange={(event, date) => {
-            if (date) {
-              const year = date.getFullYear();
-              const month = String(date.getMonth() + 1).padStart(2, '0');
-              const day = String(date.getDate()).padStart(2, '0');
-              onChangeDate(`${year}-${month}-${day}`);
-            }
-            setShowPicker(false);
-          }}
+          onValueChange={handleAndroidPick}
           onDismiss={() => setShowPicker(false)}
         />
       )}
@@ -167,7 +160,9 @@ export const DatePickerInput: React.FC<DatePickerInputProps> = ({
                 themeVariant="dark"
                 minimumDate={minDate}
                 maximumDate={maxDate}
-                onChange={(_event, date) => date && setTempDate(date)}
+                onValueChange={(_event: DateTimePickerChangeEvent, date?: Date) => {
+                  if (date) setTempDate(date);
+                }}
               />
 
               <View className="mt-6">
