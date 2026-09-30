@@ -74,12 +74,25 @@ Este archivo sirve como referencia rápida y fuente de la verdad para el comport
 - **Cliente Socket.io:** Instancia centralizada (`socket.ts`) con reconexión automática y desconexión controlada.
 - **Autenticación por Token:** Inyección dinámica de credenciales (`socket.auth = { token }`) obtenidas de `authStorage` al ponerse en estado disponible o tener viaje activo, desconectando en reposo o al cerrar sesión.
 
+### Bóveda Financiera y Retiros (`src/app/(home)/wallet/`, `src/core/wallet/`, `src/presentation/wallet/`)
+- **Resumen Financiero (`useWalletStore`, `GET /driver/wallet`):**
+  - Muestra saldo contable neto (`balance`), saldo disponible para retiro (`available_for_payout`) y deuda acumulada por comisiones de viajes en efectivo (`cash_commission_debt`).
+  - Detección de bloqueo operativo por deuda (`is_cash_restricted`) contra el umbral de la plataforma (`cash_restriction_threshold`).
+- **Retiros a CBU (`PayoutModal.tsx`, `POST /driver/wallet/payout`):**
+  - Envío del monto formateado estrictamente como string con dos decimales (`{ amount: Number(val).toFixed(2) }`) según el schema Zod del backend.
+  - Previsualización del CBU/Alias bancario del chofer y confirmaciones con háptica.
+- **Libro Mayor de Transacciones (`GET /driver/wallet/transactions`):**
+  - Lista filtrable mediante selector de chips: Todos, Ingresos (`trip_earning`), Comisiones (`cash_trip_commission`), Retiros CBU (`payout`).
+- **Integración en Dashboard:**
+  - Header pill con saldo en tiempo real y alerta de deuda.
+  - Tarjeta 1 de `DashboardCarousel` con balance y acceso directo a la pantalla de la bóveda.
+
 ## 2. Arquitectura y Stack
 - **Framework:** React Native + Expo + Expo Router (Navegación basada en archivos en `src/app/`).
 - **Mapas y Ubicación:** `react-native-maps` con Google Maps Provider + `expo-location`.
 - **WebSockets:** `socket.io-client` para eventos en tiempo real (disponibilidad, ofertas, estados de viaje).
 - **Estilos:** NativeWind v4 (Tailwind CSS).
-- **Estado Global:** Zustand (`useAuthStore`, `useOnboardingStore`, `useDriverTripStore`, `useLocationStore`).
+- **Estado Global:** Zustand (`useAuthStore`, `useOnboardingStore`, `useDriverTripStore`, `useLocationStore`, `useWalletStore`).
 - **Mutaciones/Data Fetching:** `@tanstack/react-query` y Axios (`transferApi` con interceptores y auto-refresh).
 - **Formularios:** React Hook Form + Zod para validación.
 

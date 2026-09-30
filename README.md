@@ -100,13 +100,28 @@ Para asegurar consistencia entre el equipo y evitar desfasajes en el entorno nat
   - **Confirmación de Llegada por Deslizamiento (`SwipeToArriveButton`)**: Botón deslizable con haptic feedback que previene pulsaciones accidentales al arribar (`POST /rides/:id/driver-arrived`).
   - **Hoja de Espera (`WaitingBottomSheet`)**: Temporizador de cortesía de 5 minutos (`useCourtesyTimer`) con desglose de preferencias del cliente (clima, música, silencio, equipaje).
   - **Soporte de Pasajeros Tercerizados**: Manejo de viajes corporativos con visualización separada de pasajero y coordinador (`trip.third_party`).
-  - **Verificación de Seguridad con PIN OTP (`PinOtpInput`)**: Validación de 4 dígitos previo a la partida (`POST /rides/:id/start`).
   - **Cancelación Justificada (`driverCancelTrip`)**: Flujo de cancelación con coordenadas y catálogo formal de motivos.
 - **Visualización en Mapa (`CustomMap`)**:
   - Marcador de punto de encuentro (Pickup) azul y marcador de destino (Dropoff) oscuro estilo VIP.
   - Trazado de ruta GeoJSON (`Polyline`) con soporte para geometrías `LineString` y `MultiLineString`.
   - Auto-encuadre de cámara (`fitToCoordinates`) englobando conductor, origen y destino.
   - Controles FAB reposicionados dinámicamente mediante resortes de `react-native-reanimated` por encima del panel inferior.
+
+### 7. Bóveda Financiera (Wallet), Retiros y Movimientos Contables
+- **Módulo de Bóveda en `src/app/(home)/wallet/index.tsx`**: Centro financiero VIP del conductor con visualización en tiempo real de su estado contable (`GET /driver/wallet`).
+- **Control de Saldo Neto y Deuda de Comisiones**:
+  - Visualización desglosada entre **Saldo Contable**, **Monto Disponible para Retiro** (`available_for_payout`) y **Deuda de Comisiones en Efectivo** (`cash_commission_debt`).
+  - **Detección de Restricción Operativa (`is_cash_restricted`)**: Alertas visuales de alta visibilidad cuando la deuda de comisiones por viajes en efectivo supera el umbral permitido (`cash_restriction_threshold`).
+- **Solicitud de Retiro a CBU (`PayoutModal.tsx`)**:
+  - Modal interactivo con previsualización del CBU/Alias bancario auditado en el perfil.
+  - Control de montos con atajo de "Retirar todo", validaciones de formato decimal estricto y envío seguro a `POST /driver/wallet/payout`.
+- **Libro Mayor de Transacciones y Filtros Reactivos**:
+  - Consulta de movimientos (`GET /driver/wallet/transactions`) con categorización mediante chips de filtrado:
+    - **Todos**: Auditoría cronológica completa del balance.
+    - **Ingresos**: Créditos por viajes digitales completados y compensaciones.
+    - **Comisiones**: Retenciones y cargos por servicio correspondientes a viajes en efectivo.
+    - **Retiros CBU**: Extracciones bancarias solicitadas y su estado de liquidación.
+- **Acceso Rápido desde Dashboard**: Píldora de balance en la cabecera superior y tarjeta 1 del carrusel operativo con navegación instantánea a la bóveda y semáforo de estado deudor.
 
 ---
 
@@ -120,6 +135,8 @@ src/
 │   ├── (home)/                 # Dashboard operativo y vistas protegidas
 │   │   ├── confirmed-appointment/ # Cita de entrevista confirmada y polling
 │   │   ├── pending-approval/   # Pantalla de revisión de solicitud
+│   │   ├── wallet/             # Bóveda Financiera, retiros y libro mayor
+│   │   │   └── index.tsx
 │   │   ├── index.tsx           # Dashboard principal con mapa y viajes
 │   │   └── _layout.tsx         # Layout con guardas de onboarding y aprobación
 │   ├── auth/                   # Autenticación (login, registro)
@@ -131,9 +148,12 @@ src/
 │   ├── constants/              # Paleta de colores y constantes de tema (theme.ts)
 │   ├── location/               # Acciones e interfaces de geolocalización
 │   ├── socket/                 # Conexión centralizada Socket.io para tiempo real
-│   └── trip/                   # Casos de uso e interfaces del ciclo de vida del viaje
-│       ├── actions/            # trip.actions.ts (accept, arrive, start, cancel, complete)
-│       └── interface/          # trip.interface.ts (Trip, TripOfferPayload, DTOs)
+│   ├── trip/                   # Casos de uso e interfaces del ciclo de vida del viaje
+│   │   ├── actions/            # trip.actions.ts (accept, arrive, start, cancel, complete)
+│   │   └── interface/          # trip.interface.ts (Trip, TripOfferPayload, DTOs)
+│   └── wallet/                 # Dominio contable y financiero
+│       ├── actions/            # wallet.actions.ts (getWalletSummary, getWalletTransactions, requestPayout)
+│       └── interface/          # wallet.interface.ts (DriverWalletSummary, WalletTransaction, etc.)
 │
 └── presentation/               # Capa visual (React Native + NativeWind)
     ├── auth/                   # Estado de sesión y almacenamiento seguro (authStorage)
@@ -141,12 +161,14 @@ src/
     │   ├── dashboard/          # ConnectionBottomSheet, DashboardCarousel, EmergencyFAB
     │   ├── maps/               # CustomMap con tema oscuro y controles FAB
     │   ├── trip/               # ActiveTripOverlay, WaitingBottomSheet, SwipeToArriveButton, PinOtpInput
-    │   └── ui/                 # Componentes atómicos (Select, Inputs, SkeletonBox, FAB)
+    │   ├── ui/                 # Componentes atómicos (Select, Inputs, SkeletonBox, FAB)
+    │   └── wallet/             # Componentes financieros (PayoutModal)
     ├── hooks/                  # useDashboardStats y hooks transversales
     ├── maps/                   # Hooks de ubicación (useDriverLocation) y store de mapa
     ├── onboarding/             # Componentes y stores específicos del onboarding
     ├── providers/              # QueryClientProvider y configuraciones globales
-    └── trip/                   # useDriverTripStore, useTripSocket, useCourtesyTimer
+    ├── trip/                   # useDriverTripStore, useTripSocket, useCourtesyTimer
+    └── wallet/                 # useWalletStore (estado global de saldo y transacciones)
 ```
 
 ### Reglas Arquitectónicas Innegociables:
