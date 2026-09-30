@@ -113,3 +113,66 @@ Este archivo sirve como referencia rápida y fuente de la verdad para el comport
 - Nunca dejar botones muertos o errores crudos del servidor.
 - Todo mensaje de error debe estar en español y ser amigable.
 - Usar confirmaciones (Alert) antes de acciones destructivas (ej. eliminar documentos o cancelar viajes).
+
+## 6. Scripts de Desarrollo (`scripts/`)
+
+Todos se ejecutan con `node scripts/<nombre>.mjs` desde la raíz del proyecto.
+
+### 🚀 Disparar viajes
+
+| Script | Comando | Qué hace |
+|---|---|---|
+| `dispatch_to_jp.mjs` | `node scripts/dispatch_to_jp.mjs` | **El más útil para desarrollo.** Pone a los conductores demo en offline, cotiza un viaje cuyo origen es tu ubicación GPS actual (`-31.4431, -64.1143`), lo confirma con pago en efectivo + PIN y lo despacha. El viaje debería llegar a tu app. |
+| `dispatch_ride.mjs` | `node scripts/dispatch_ride.mjs` | Igual que el anterior pero usa como pasajero a "Bruno Díaz" y parte desde Barrio Deán Funes Horizonte. |
+| `dispatch_voucher.mjs` | `node scripts/dispatch_voucher.mjs` | Despacha un viaje corporativo con pago por voucher (`DEMO-OPS-2026`) como pasajero "Carla". El viaje acredita como ganancia digital en la bóveda del chofer. |
+| `request-test-trip.mjs` | `node scripts/request-test-trip.mjs` | Lee la URL de la API desde `.env`, cotiza y confirma un viaje como "Ana" (no dispara el despacho, solo crea el viaje en estado `searching`). |
+
+> ⚠️ Para que el viaje te llegue en la app, tenés que estar **conectado** (switch "Disponible" en verde) antes de correr el script.
+
+### ❌ Cancelar / limpiar viajes
+
+| Script | Comando | Qué hace |
+|---|---|---|
+| `cancel_trip.mjs` | `node scripts/cancel_trip.mjs` | Cancela un viaje específico hardcodeado (editá el `tripId` dentro del script). Usa el pasajero Bruno para autenticarse. |
+| `check_and_cancel_driver_active_trips.mjs` | `node scripts/check_and_cancel_driver_active_trips.mjs` | Login como admin, lista todos los viajes activos del sistema, cancela los del conductor hardcodeado y limpia todos los que queden en estado `searching`. Útil para limpiar el entorno antes de una sesión de pruebas. |
+
+### 🔍 Consultar estado
+
+| Script | Comando | Qué hace |
+|---|---|---|
+| `check_driver_trips.mjs` | `node scripts/check_driver_trips.mjs` | Lista todos los viajes del sistema (admin) y filtra los del conductor. Imprime también todos los viajes activos (no `completed`/`cancelled`). |
+| `check_driver.mjs` | `node scripts/check_driver.mjs` | Consulta el heatmap de telemetría del admin (posiciones GPS de conductores). |
+| `get_driver_coords.mjs` | `node scripts/get_driver_coords.mjs` | Consulta directamente la DB (Supabase) las coordenadas GPS guardadas del conductor y su estado de disponibilidad. Requiere acceso a la DB. |
+| `check_user_vehicle.mjs` | `node scripts/check_user_vehicle.mjs` | Consulta en la DB el perfil de conductor y vehículos asociados a `jpmedinagomez1@gmail.com`. Requiere acceso a la DB. |
+| `test_driver_me.mjs` | `node scripts/test_driver_me.mjs` | Genera un JWT firmado localmente (con el secret del backend) y llama a `GET /driver/me`. Solo funciona en local. |
+| `test_login.mjs` | `node scripts/test_login.mjs` | Login de Bruno (`bruno@demo.transferblack.com`) e imprime la respuesta completa. Útil para verificar que la API esté levantada. |
+| `test_user_me.mjs` | `node scripts/test_user_me.mjs` | Prueba varias contraseñas comunes para `jpmedinagomez1@gmail.com` y si alguna pega, llama a `GET /driver/me`. |
+
+### 💰 Bóveda financiera
+
+| Script | Comando | Qué hace |
+|---|---|---|
+| `test_wallet_payout.mjs` | `node scripts/test_wallet_payout.mjs` | Login como `conductor.test@transferblack.com`, consulta la bóveda y si hay saldo positivo intenta solicitar un retiro. |
+| `inject_test_balance.mjs` | `node scripts/inject_test_balance.mjs` | Inyecta `$25.000 ARS` directamente en la DB al conductor de prueba (doble entrada contable). Requiere acceso a la DB del backend. |
+| `resolve_payout.mjs` | `node scripts/resolve_payout.mjs` | Aprueba un retiro específico (hardcodeado) como admin, marcándolo como `paid` con referencia de transferencia. |
+| `credit_driver_voucher.mjs` | `node scripts/credit_driver_voucher.mjs` | Simula el flujo completo de un viaje corporativo con voucher: conecta el socket del conductor, despacha, acepta, completa y verifica que el saldo quede acreditado en la bóveda. |
+
+### 🔧 Utilidades
+
+| Script | Comando | Qué hace |
+|---|---|---|
+| `set_drivers_offline.mjs` | `node scripts/set_drivers_offline.mjs` | Pone en offline a todos los conductores demo excepto `jpmedinagomez1@gmail.com`. Lo mismo que hace internamente `dispatch_to_jp.mjs` al principio. |
+| `update-backend-script.mjs` | `node scripts/update-backend-script.mjs` | Genera y escribe el script `dispatch-test-offer.ts` en el directorio del backend. No toca la API, solo actualiza el archivo fuente del script de prueba del backend. |
+| `reset-project.js` | `node scripts/reset-project.js` | Resetea el proyecto a estado inicial moviendo `src/` y `scripts/` a `/example/`. **NO CORRER** salvo que quieras borrar todo. |
+
+### Cuentas demo útiles
+
+| Email | Password | Rol |
+|---|---|---|
+| `jpmedinagomez1@gmail.com` | *(ver `.env` o probá con el script `test_user_me.mjs`)* | Conductor principal (vos) |
+| `conductor.test@transferblack.com` | `Test1234` | Conductor de prueba |
+| `bruno@demo.transferblack.com` | `Demo1234` | Pasajero demo |
+| `carla@demo.transferblack.com` | `Demo1234` | Pasajera corporativa |
+| `ana@demo.transferblack.com` | `Demo1234` | Pasajera demo |
+| `admin@transferblack.com` | `Admin123456!` | Admin |
+| `martin/lucia/diego/sofia@demo.transferblack.com` | `Demo1234` | Conductores demo (ocupan slots del despacho) |

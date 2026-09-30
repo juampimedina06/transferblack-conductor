@@ -102,6 +102,7 @@ export default function HomeLayout() {
       <Stack.Screen name="confirmed-appointment/index" />
       <Stack.Screen name="pending-approval/index" />
       <Stack.Screen name="wallet/index" />
+      <Stack.Screen name="chat/index" options={{ headerShown: false }} />
     </Stack>
   );
 }

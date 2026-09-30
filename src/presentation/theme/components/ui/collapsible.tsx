@@ -4,7 +4,7 @@ import { Pressable, StyleSheet } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { useTheme } from '@/presentation/theme/hooks/use-theme';
 import { ThemedText } from '@/presentation/theme/components/themed-text';
 import { ThemedView } from '@/presentation/theme/components/themed-view';
 

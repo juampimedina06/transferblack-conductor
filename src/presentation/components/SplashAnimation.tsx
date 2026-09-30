@@ -102,7 +102,7 @@ export const SplashAnimation = ({ onAnimationEnd }: SplashAnimationProps) => {
       {/* Divisor Elegante */}
       <Animated.View 
         className="h-[1px] w-2/3 bg-gold opacity-60 mb-6"
-        style={[lineStyle, styles.glow]}
+        style={lineStyle}
       />
 
       {/* Subtítulo Premium */}

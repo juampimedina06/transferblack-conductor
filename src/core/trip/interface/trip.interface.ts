@@ -79,7 +79,8 @@ export interface Trip {
   };
   chat?: {
     coordinator_user_id: string;
-    coordinator_role: string;
+    coordinator_name: string;
+    coordinator_role: 'passenger' | 'requester';
     passenger_user_id: string;
     is_third_party_trip: boolean;
     third_party?: {
