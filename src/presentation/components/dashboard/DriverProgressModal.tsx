@@ -22,13 +22,15 @@ export const DriverProgressModal = ({
   stats,
   onClose,
 }: DriverProgressModalProps) => {
-  const currentStats = stats || {
-    earningsToday: 0,
-    completedTripsToday: 0,
-    acceptanceRate: 100,
-    cancellationRate: 0,
-    rating: 5.0,
+  const currentStats = {
+    earningsToday: Number(stats?.earningsToday) || 0,
+    completedTripsToday: Number(stats?.completedTripsToday) || 0,
+    acceptanceRate: Number(stats?.acceptanceRate) || 100,
+    cancellationRate: Number(stats?.cancellationRate) || 0,
+    rating: Number(stats?.rating) || 5.0,
+    balance: Number(stats?.balance) || 0,
   };
+  const isNegative = currentStats.balance < 0;
 
   return (
     <Modal
@@ -65,7 +67,7 @@ export const DriverProgressModal = ({
                   <View className="flex-row items-center mb-1">
                     <Ionicons name="star" size={28} color={THEME_COLORS.gold} />
                     <Text className="text-platinum font-montserrat-bold text-3xl ml-2">
-                      {currentStats.rating.toFixed(1)}
+                      {Number(currentStats.rating || 5.0).toFixed(1)}
                     </Text>
                   </View>
                   <Text className="text-gold font-montserrat-semibold text-xs tracking-wider uppercase mb-1">
@@ -139,15 +141,35 @@ export const DriverProgressModal = ({
                     <Text className="text-ash/70 font-montserrat text-[11px] mt-1">Completados</Text>
                   </View>
 
-                  <View className="flex-1 bg-[#141416] p-4 rounded-2xl border border-[#2C2C2E] ml-2">
+                  <View className={`flex-1 p-4 rounded-2xl border ml-2 ${
+                    isNegative 
+                      ? 'bg-red-950/40 border-red-900/60' 
+                      : 'bg-[#141416] border-[#2C2C2E]'
+                  }`}>
                     <View className="flex-row items-center mb-1">
-                      <Ionicons name="wallet-outline" size={18} color={THEME_COLORS.gold} />
-                      <Text className="text-ash font-montserrat text-xs ml-1.5">Ganancias Hoy</Text>
+                      <Ionicons 
+                        name={isNegative ? "warning-outline" : "wallet-outline"} 
+                        size={18} 
+                        color={isNegative ? "#F87171" : THEME_COLORS.gold} 
+                      />
+                      <Text className={`font-montserrat text-xs ml-1.5 ${
+                        isNegative ? 'text-red-300' : 'text-ash'
+                      }`}>
+                        {isNegative ? 'Saldo Actual' : 'Ganancias Hoy'}
+                      </Text>
                     </View>
-                    <Text className="text-platinum font-montserrat-bold text-2xl">
-                      ${currentStats.earningsToday.toFixed(0)}
+                    <Text className={`font-montserrat-bold text-2xl ${
+                      isNegative ? 'text-red-400' : 'text-platinum'
+                    }`}>
+                      {isNegative 
+                        ? `-$${Math.abs(currentStats.balance).toFixed(2)}` 
+                        : `$${(currentStats.balance > 0 ? currentStats.balance : currentStats.earningsToday).toFixed(2)}`}
                     </Text>
-                    <Text className="text-ash/70 font-montserrat text-[11px] mt-1">Total turno</Text>
+                    <Text className={`font-montserrat text-[11px] mt-1 ${
+                      isNegative ? 'text-red-300/80' : 'text-ash/70'
+                    }`}>
+                      {isNegative ? 'Deuda comisiones' : 'Total turno'}
+                    </Text>
                   </View>
                 </View>
 

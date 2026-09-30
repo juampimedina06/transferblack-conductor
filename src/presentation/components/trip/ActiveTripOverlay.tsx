@@ -12,12 +12,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { Trip } from '../../../core/trip/interface/trip.interface';
 import { THEME_COLORS } from '../../../core/constants/theme';
 import { SwipeToArriveButton } from './SwipeToArriveButton';
 import { SwipeToFinishButton } from './SwipeToFinishButton';
 import { WaitingBottomSheet } from './WaitingBottomSheet';
-import { driverArrived, startTrip, driverCancelTrip } from '../../../core/trip/actions/trip.actions';
+import { driverArrived, startTrip, driverCancelTrip, completeTrip } from '../../../core/trip/actions/trip.actions';
 import { useDriverTripStore } from '../../trip/store/useDriverTripStore';
 import { useDriverLocation } from '../../maps/hooks/useDriverLocation';
 
@@ -246,7 +247,7 @@ export const ActiveTripOverlay = ({ trip, onHeightChange }: ActiveTripOverlayPro
                     <View className="flex-row items-center mr-2">
                       <Ionicons name="star" size={11} color="#F59E0B" />
                       <Text className="text-white font-montserrat-semibold text-xs ml-0.5">
-                        {trip.passenger?.rating ? trip.passenger.rating.toFixed(2) : '4.95'}
+                        {trip.passenger?.rating ? Number(trip.passenger.rating).toFixed(2) : '4.95'}
                       </Text>
                       {trip.passenger?.completedTrips !== undefined && (
                         <Text className="text-zinc-400 font-montserrat text-[10px] ml-1">
@@ -481,18 +482,16 @@ export const ActiveTripOverlay = ({ trip, onHeightChange }: ActiveTripOverlayPro
               if (!location) return;
               try {
                 setIsLoading(true);
-                const { completeTrip } = await import('../../../core/trip/actions/trip.actions');
                 const completedTrip = await completeTrip(trip.id, {
                   latitude: location.latitude,
                   longitude: location.longitude,
                 });
                 
                 // Emulate Haptic success
-                const Haptics = await import('expo-haptics');
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
                 useDriverTripStore.getState().updateTripStatus('completed');
-                useDriverTripStore.getState().setActiveTrip(completedTrip.data || completedTrip);
+                useDriverTripStore.getState().setActiveTrip(completedTrip?.data || completedTrip);
               } catch (error: any) {
                 Alert.alert('Error', error.message || 'No se pudo finalizar el viaje.');
               } finally {
