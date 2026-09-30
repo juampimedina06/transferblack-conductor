@@ -1,22 +1,41 @@
 import { transferApi } from '../../api/transferApi';
 import { ApiErrorResponse } from '../../auth/interface/auth.interface';
 
-import { AcceptOfferInput, AcceptOfferResponse, Trip } from '../interface/trip.interface';
+import { AcceptOfferInput, AcceptOfferResponse, Trip, TripRequestError } from '../interface/trip.interface';
 export type { AcceptOfferInput, AcceptOfferResponse, Trip };
+export { TripRequestError };
+
+/**
+ * `POST /rides/:tripId/accept` responde 409 para ocho causas distintas. Antes
+ * todas caían en un unico mensaje que decia que se habia perdido el viaje, y
+ * el conductor persiguiendo un competidor inexistente. Cada codigo se traduce
+ * a un mensaje que dice que paso y que hacer.
+ */
+const ACCEPT_CONFLICT_MESSAGES: Record<string, string> = {
+  TRIP_NOT_DISPATCHABLE: 'Este viaje ya no está disponible: fue asignado, se canceló o dejó de buscar conductor.',
+  OFFER_NOT_FOUND: 'La oferta de este viaje venció o ya no está activa. Quedate atento a la próxima.',
+  DRIVER_NOT_APPROVED: 'Tu cuenta de conductor todavía no está aprobada.',
+  DRIVER_NOT_AVAILABLE: 'No estás disponible en este momento. Conectate para volver a recibir ofertas.',
+  DRIVER_CASH_RESTRICTED: 'Restricción de deuda: no podés aceptar viajes en efectivo.',
+  VEHICLE_NOT_OWNED: 'El vehículo seleccionado no te pertenece.',
+  VEHICLE_NOT_APPROVED: 'Tu vehículo todavía no está aprobado.',
+  DRIVER_HAS_ACTIVE_TRIP: 'Ya tenés un viaje en curso. Terminalo antes de aceptar otro.',
+};
+
+const ACCEPT_CONFLICT_FALLBACK = 'No se pudo aceptar el viaje porque cambió de estado. Probá con otra oferta.';
 
 export const acceptTripOffer = async (tripId: string, data: AcceptOfferInput): Promise<AcceptOfferResponse> => {
   try {
     const response = await transferApi.post<AcceptOfferResponse>(`/rides/${tripId}/accept`, data);
     return response.data;
   } catch (error: any) {
+    const apiError = error.response?.data as ApiErrorResponse | undefined;
     if (error.response?.status === 409) {
-      const apiErrorCode = error.response?.data?.error?.code;
-      if (apiErrorCode === 'DRIVER_CASH_RESTRICTED') {
-        throw new Error('Restricción de deuda: No podés aceptar viajes en efectivo.');
-      }
-      throw new Error('Otro conductor fue asignado a este viaje');
+      const code = apiError?.error?.code;
+      throw new Error(
+        (code ? ACCEPT_CONFLICT_MESSAGES[code] : undefined) ?? apiError?.error?.message ?? ACCEPT_CONFLICT_FALLBACK
+      );
     }
-    const apiError = error.response?.data as ApiErrorResponse;
     throw new Error(apiError?.error?.message || 'Error al aceptar el viaje');
   }
 };
@@ -113,7 +132,11 @@ export const getTripById = async (tripId: string): Promise<Trip> => {
     const response = await transferApi.get<{ data: Trip }>(`/rides/${tripId}`);
     return response.data.data;
   } catch (error: any) {
-    const apiError = error.response?.data as ApiErrorResponse;
-    throw new Error(apiError?.error?.message || 'Error al consultar estado del viaje');
+    const apiError = error.response?.data as ApiErrorResponse | undefined;
+    throw new TripRequestError(
+      apiError?.error?.message || 'Error al consultar estado del viaje',
+      error.response?.status,
+      apiError?.error?.code
+    );
   }
 };

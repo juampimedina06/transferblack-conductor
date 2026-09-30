@@ -138,6 +138,7 @@ Todos se ejecutan con `node scripts/<nombre>.mjs` desde la raíz del proyecto.
 |---|---|---|
 | `cancel_trip.mjs` | `node scripts/cancel_trip.mjs` | Cancela un viaje específico hardcodeado (editá el `tripId` dentro del script). Usa el pasajero Bruno para autenticarse. |
 | `check_and_cancel_driver_active_trips.mjs` | `node scripts/check_and_cancel_driver_active_trips.mjs` | Login como admin, lista todos los viajes activos del sistema, cancela los del conductor hardcodeado y limpia todos los que queden en estado `searching`. Útil para limpiar el entorno antes de una sesión de pruebas. |
+| `complete_stuck_trip.mjs` | `node scripts/complete_stuck_trip.mjs` | **Rescata un viaje trabado en `in_progress`.** Login como el conductor dueño (`conductor.test@transferblack.com`) y dispara el `POST /rides/:id/complete` real. Hace preflight, verifica que el conductor autenticado sea el dueño del viaje, pide confirmación (o `--yes`), avisa si el pago es `voucher` y relee el viaje al final. Flags: `--trip-id`, `--public-code`, `--lat`, `--lng`, `--yes`. Ojo: completar **liquida el pago**, y en voucher lo consume. |
 
 ### 🔍 Consultar estado
 
@@ -265,3 +266,29 @@ Contratos verificados leyendo el backend (`transferblack/backend`, solo lectura)
 - **`GET /rides/:tripId`** (pasajero) expone `boarding_pin` y `driver_id`. El pin se oculta al chofer: `boarding_pin: trip.driverId === callerUserId ? null : trip.boardingPin`.
 - **`POST /rides/:tripId/confirm` exige `requireVerifiedEmail`** y un `Idempotency-Key`. El body del quote es `strict`: `address_text`, `place_id`, `latitude`, `longitude` y nada más.
 - **Los choferes demo quedan `online` en la DB aunque no tengan socket conectado** y ocupan los 5 slots del radar. `set_drivers_offline.mjs` los fuerza a `offline` conectando y desconectando el socket.
+- **`POST /rides/:tripId/complete`** exige `authorizeRoles('driver')` y body `driverTransitionSchema` (`strict`): solo `{ latitude, longitude }` y `boarding_pin` opcional. Responde `200 { data: trip }`. **El `Idempotency-Key` se ignora en esta ruta**: la app manda `${tripId}-complete-${Date.now()}`, que no es un UUID válido, y no revienta porque el handler nunca llama a `requireIdempotencyKey` (esa validación solo corre en `confirm`). Para scripts, mandar un `crypto.randomUUID()` igual.
+- **`GET /rides/:tripId` con el token del conductor** devuelve el viaje con `public_code`, `status`, `payment_method`, `driver_id`, `started_at`, `finished_at`, `final_fare`. Devuelve **403** si el viaje es de otro conductor. Es el preflight más simple para scripts: mismo contrato que la app.
+- **`GET /admin/rides` devuelve camelCase** (`publicCode`, `createdAt`, `estimatedFare`) y **no trae** `payment_type`, `started_at` ni `finished_at`. No lo uses para verificar liquidaciones; solo para saber a quién le cayó un viaje.
+- **`GET /driver/me`** responde `{ data: { driverProfile: { id, availabilityStatus, ... }, vehicle, driverDocuments, vehicleDocuments } }`. El id del conductor es `data.driverProfile.id`, no `data.id`.
+- **Un viaje en `in_progress` no lo puede cancelar el chofer**: `canDriverCancelTrip` excluye ese estado y `POST /rides/:id/cancel` es solo de pasajero/admin. La única salida es `complete`.
+
+## 9. Diagnóstico: viajes huérfanos en `in_progress` (abierto, requiere backend)
+
+**Síntoma**: el conductor queda con un viaje asignado que la app no muestra. El radar le sigue mandando ofertas y **todas** fallan con `409 DRIVER_HAS_ACTIVE_TRIP`. Caso real: viaje `TB-A2D4AB820E` (`0c28cf97-d8dd-4dcc-8181-5af1fde95e56`), conductor `e78d1d97-7495-4cb4-b591-2e054c2c7fe5`, `in_progress` desde `2026-09-30T03:03:15.532Z`, pago `voucher`.
+
+**Causa raíz (backend)**: en el momento del `connect`, `socket-server.ts` fuerza `availabilityStatus = ONLINE` y pisa el `in_trip` que había escrito la aceptación. El estado miente: en producción ese conductor con viaje vivo reportaba `online`. **El frontend no puede detectarlo** porque el único campo que delata el desync es ese.
+
+**Causa raíz (frontend, ya corregida)**: el logout borraba `activeTrip` del store persistido sin mirar su estado. Como `activeTrip` es el único id del viaje que la app conoce, tirarlo dejaba el viaje vivo en el servidor sin forma de recuperarlo. Ahora el logout pide confirmación y **conserva** el viaje vivo; los terminales sí se limpian.
+
+**Segunda causa raíz (frontend, ya corregida)**: el sync del dashboard comparaba `err?.response?.status === 404` sobre un `Error` creado a mano que nunca arrastraba la respuesta de axios, así que ese chequeo era código muerto y un `activeTrip` fantasma no se limpiaba nunca. Se agregó `TripRequestError` (lleva `status` y `code`) y ahora limpia en 404 **y 403** — el 403 importa porque `assertCanReadTrip` lo devuelve cuando el viaje es de otro conductor.
+
+**Mejora de UX ya aplicada**: `acceptTripOffer` traduce uno por uno los 8 códigos 409 en vez de mostrar el mensaje genérico. El caso relevante: `DRIVER_HAS_ACTIVE_TRIP` → *"Ya tenés un viaje en curso. Terminalo antes de aceptar otro."* Los códigos desconocidos caen al mensaje del backend.
+
+### Lo que falta (backend, `transferblack/backend`)
+
+1. **Endpoint de viaje activo**: `GET /api/v1/driver/me/active-trip` con `authorizeRoles('driver')`, que devuelva el viaje en curso o `null`. El método **ya existe** (`TripRepository.findActiveTripIdByDriver`) pero solo lo usa `location.service.ts` por dentro. Con esto la app se autosincroniza al arrancar y la clase de bug desaparece de raíz.
+2. **No pisar `in_trip`**: `setAvailabilityStatusIfNot(userId, IN_TRIP, ONLINE)` en el `connect` del socket.
+
+### Rescate manual mientras tanto
+
+`scripts/complete_stuck_trip.mjs`. Preflight verificado contra la API real: devuelve `TB-A2D4AB820E` / `in_progress` / `driver_id` correcto / `voucher` / `started_at` correcto, y corta antes del POST sin TTY. **El POST no se ejecutó todavía.** Riesgo conocido: `complete` dispara `settlePaymentOnCompletion` + `markVoucherAsUsedInTransaction` en la misma transacción; si eso falla, el viaje sigue en `in_progress` y hay que corregirlo en el backend.

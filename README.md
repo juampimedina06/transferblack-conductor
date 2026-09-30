@@ -15,6 +15,7 @@ El proyecto implementa una arquitectura desacoplada y orientada a capas, prioriz
 - [Pila Tecnológica y Decisiones de Diseño](#-pila-tecnológica-y-decisiones-de-diseño)
 - [Sistema de Diseño y Tokens](#-sistema-de-diseño-y-tokens)
 - [Calidad de Código y Convenciones](#-calidad-de-código-y-convenciones)
+- [Pendiente en el Backend](#-pendiente-en-el-backend)
 - [Guías de Contribución y Agentes de IA](#-guías-de-contribución-y-agentes-de-ia)
 
 ---
@@ -279,6 +280,35 @@ npm run lint
 > ✅ **Baseline del lint**: `npm run lint` termina con **0 errores y 0 warnings** en `src/`, y sale con código 0. El typecheck también está limpio (`tsc --noEmit` sale con 0) y `npx vitest` corre 28 tests en 4 archivos. El detalle de lo que se corrigió está en [`context.md`](./context.md) → *Tooling y Calidad de Código*.
 >
 > Ojo: `npm run lint` solo mira `src/`. Los scripts de `scripts/` no entran, así que si los tocás corré `npx eslint scripts/<archivo>` aparte. Ahí queda 1 error preexistente: `get_driver_coords.mjs` importa `pg`, que no está declarado en `package.json`.
+
+---
+
+## ⚠️ Pendiente en el Backend
+
+Contexto completo y detalle de contratos en [`context.md`](./context.md) → *Diagnóstico: viajes huérfanos en `in_progress`*.
+
+El frontend ya no genera este problema, pero **no puede resolverlo solo**: si a un conductor se le pierde el viaje activo en la base, la app no tiene forma de recuperarlo porque no existe ningún endpoint que diga "este es tu viaje en curso". Hay que tocar el backend (`transferblack/backend`, solo lectura desde este repo).
+
+### 1. Exponer el viaje activo del conductor
+- **Qué falta**: un `GET /api/v1/driver/me/active-trip` con `authorizeRoles('driver')` que devuelva el viaje en curso o `null`.
+- **Por qué**: el método **ya existe** (`TripRepository.findActiveTripIdByDriver`), pero hoy solo lo consume `location.service.ts` por dentro. Sin esto, un conductor que cerró sesión con un viaje vivo no tiene forma de volver a tomarlo: el radar le sigue mandando ofertas y todas fallan con `409 DRIVER_HAS_ACTIVE_TRIP`.
+- **Cómo lo consume la app**: al sincronizar en el dashboard, si devuelve viaje se reconstruye el `activeTrip` del store; si devuelve `null` se limpia. Con eso el bug desaparece de raíz, sin scripts de rescate.
+
+### 2. No pisar `in_trip` al conectar el socket
+- **Qué falla**: `socket-server.ts` fuerza `ONLINE` en cada `connect`, sobreescribiendo el `in_trip` que escribió la aceptación del viaje.
+- **Consecuencia medida en producción**: un conductor con un viaje asignado reporta `availabilityStatus: "online"`. El radar lo sigue considerando disponible, le manda ofertas y esas ofertas chocan contra `DRIVER_HAS_ACTIVE_TRIP`.
+- **Fix**: `setAvailabilityStatusIfNot(userId, IN_TRIP, ONLINE)`. Es la mitad que más daño hace, porque mientras el estado mienta el frontend tampoco puede detectar el desync por sí mismo.
+
+### Mientras tanto: script de rescate
+`scripts/complete_stuck_trip.mjs` (**no se ejecutó automáticamente**) loguea al conductor dueño del viaje y dispara el mismo `POST /rides/:id/complete` que usaría la app, previa confirmación interactiva.
+
+```bash
+node scripts/complete_stuck_trip.mjs
+node scripts/complete_stuck_trip.mjs --trip-id <uuid> --public-code <code>
+node scripts/complete_stuck_trip.mjs --yes
+```
+
+Hace preflight del estado real del viaje, verifica que el conductor autenticado sea el dueño, avisa si el pago es `voucher` (que se consume al completar) y vuelve a leer el viaje al final para verificar. Ojo: `in_progress` **no** se puede cancelar desde el chofer (`canDriverCancelTrip` lo excluye), así que completar es la única salida.
 
 ---
 

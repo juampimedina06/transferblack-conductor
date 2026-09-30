@@ -115,3 +115,21 @@ export interface DriverCancelInput {
 export interface TripResponse {
   data: Trip;
 }
+
+/**
+ * Error de API que conserva el status y el codigo del backend. Las actions
+ * lanzan `Error` pelado, y el status se perdia: los `catch` que comparaban
+ * `err.response.status` nunca se cumplian porque el `Error` recien creado no
+ * arrastra la respuesta de axios.
+ */
+export class TripRequestError extends Error {
+  status?: number;
+  code?: string;
+
+  constructor(message: string, status?: number, code?: string) {
+    super(message);
+    this.name = 'TripRequestError';
+    this.status = status;
+    this.code = code;
+  }
+}
