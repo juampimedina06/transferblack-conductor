@@ -17,10 +17,10 @@ import { SecurityModal } from '../../presentation/components/dashboard/SecurityM
 import { DriverProgressModal } from '../../presentation/components/dashboard/DriverProgressModal';
 import { useDashboardStats } from '../../presentation/hooks/useDashboardStats';
 import { useTripSocket } from '../../presentation/trip/hooks/useTripSocket';
+import { useActiveTripSync } from '../../presentation/trip/hooks/useActiveTripSync';
 import { useDriverTripStore } from '../../presentation/trip/store/useDriverTripStore';
 import { ActiveTripOverlay } from '../../presentation/components/trip/ActiveTripOverlay';
 import { ActiveTripTopHeader } from '../../presentation/components/trip/ActiveTripTopHeader';
-import { getTripById } from '../../core/trip/actions/trip.actions';
 import { TripReceiptModal } from '../../presentation/components/trip/TripReceiptModal';
 import { useWalletStore } from '../../presentation/wallet/store/useWalletStore';
 
@@ -74,44 +74,8 @@ export default function DriverDashboardScreen() {
     };
   }, [isAvailable, hasActiveTrip]);
 
-  // Sincroniza el estado del viaje activo con el backend al abrir o montar la app
-  useEffect(() => {
-    if (!activeTrip?.id) return;
-
-    let isMounted = true;
-    const syncTrip = async () => {
-      try {
-        const freshTrip = await getTripById(activeTrip.id);
-        if (!isMounted) return;
-
-        if (freshTrip.status === 'cancelled') {
-          useDriverTripStore.getState().setActiveTrip(null);
-          Alert.alert(
-            'Viaje no disponible',
-            `El viaje fue cancelado.`,
-            [{ text: 'Entendido' }]
-          );
-        } else if (freshTrip.status !== activeTrip.status) {
-          useDriverTripStore.getState().updateTripStatus(freshTrip.status);
-        }
-      } catch (err: any) {
-        // 404 = el viaje ya no existe. 403 = existe pero es de otro conductor.
-        // En los dos casos el estado local es un fantasma y hay que tirarlo:
-        // si queda, el conductor ve un viaje que no puede tocar y no puede
-        // aceptar otros. Antes esta rama era codigo muerto: comparaba
-        // `err.response.status` sobre un Error que ya habia perdido la respuesta.
-        if (err?.status === 404 || err?.status === 403) {
-          useDriverTripStore.getState().setActiveTrip(null);
-        }
-      }
-    };
-
-    syncTrip();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [activeTrip?.id, activeTrip?.status]);
+  // Sincroniza el estado del viaje activo con GET /driver/me/active-trip al abrir o montar la app
+  useActiveTripSync();
 
   const toggleAvailability = (value: boolean) => {
     setIsAvailable(value);

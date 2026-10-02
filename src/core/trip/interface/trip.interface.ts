@@ -133,3 +133,35 @@ export class TripRequestError extends Error {
     this.code = code;
   }
 }
+
+export interface ActiveTripPassengerSummary {
+  id: string | null;
+  firstName: string;
+  phone: string;
+}
+
+export interface ActiveTripLocationSummary {
+  address: string;
+  latitude: number;
+  longitude: number;
+}
+
+export interface ActiveTripSummary {
+  id: string;
+  code: string;
+  status: 'assigned' | 'driver_arriving' | 'driver_arrived' | 'in_progress';
+  origin: ActiveTripLocationSummary;
+  destination: ActiveTripLocationSummary;
+  passenger: ActiveTripPassengerSummary;
+  fare: number;
+  startedAt: string | null;
+  paymentMethod: string;
+  isVoucher: boolean;
+}
+
+export interface ActiveTripResponse {
+  status: string;
+  data: {
+    trip: ActiveTripSummary | null;
+  };
+}

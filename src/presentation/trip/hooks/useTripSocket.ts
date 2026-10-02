@@ -4,9 +4,10 @@ import * as Haptics from 'expo-haptics';
 import { socket } from '../../../core/socket/socket';
 import { useDriverTripStore } from '../store/useDriverTripStore';
 import { TripOfferPayload } from '../../../core/trip/interface/trip.interface';
+import { syncActiveTripState } from './useActiveTripSync';
 
 export const useTripSocket = () => {
-  const setCurrentOffer = useDriverTripStore((state) => state.setCurrentOffer);
+  const enqueueOffer = useDriverTripStore((state) => state.enqueueOffer);
   const activeTrip = useDriverTripStore((state) => state.activeTrip);
   const setActiveTrip = useDriverTripStore((state) => state.setActiveTrip);
   const updateTripStatus = useDriverTripStore((state) => state.updateTripStatus);
@@ -15,13 +16,14 @@ export const useTripSocket = () => {
   useEffect(() => {
     const handleConnect = () => {
       console.log('⚡ [Socket] Conectado exitosamente con id:', socket.id);
+      syncActiveTripState();
     };
     const handleConnectError = (err: any) => {
       console.warn('⚠️ [Socket] Error de conexión:', err?.message || err);
     };
     const handleNewOffer = (payload: TripOfferPayload) => {
       console.log('🔔 [Socket] OFERTA RECIBIDA:', payload?.tripId, payload);
-      setCurrentOffer(payload);
+      enqueueOffer(payload);
     };
 
     socket.on('connect', handleConnect);
@@ -37,7 +39,7 @@ export const useTripSocket = () => {
       socket.off('connect_error', handleConnectError);
       socket.off('trip:offer', handleNewOffer);
     };
-  }, [setCurrentOffer]);
+  }, [enqueueOffer]);
 
   // Manejo de la sala del viaje activo (ride:join / trip:status_changed / ride:leave)
   useEffect(() => {

@@ -4,12 +4,14 @@ import {
   useSharedValue,
   withTiming,
   runOnJS,
+  cancelAnimation,
 } from 'react-native-reanimated';
 
 export const useOfferTimer = (
   ttlSeconds: number,
   onExpire: () => void,
-  isActive: boolean
+  isActive: boolean,
+  offerKey?: string
 ) => {
   const progress = useSharedValue(1);
 
@@ -22,6 +24,8 @@ export const useOfferTimer = (
   }, [onExpire]);
 
   useEffect(() => {
+    cancelAnimation(progress);
+
     if (isActive && ttlSeconds > 0) {
       progress.value = 1;
       progress.value = withTiming(
@@ -43,7 +47,11 @@ export const useOfferTimer = (
     function triggerExpire() {
       onExpireRef.current();
     }
-  }, [isActive, ttlSeconds, progress]);
+
+    return () => {
+      cancelAnimation(progress);
+    };
+  }, [isActive, ttlSeconds, progress, offerKey]);
 
   return { progress };
 };

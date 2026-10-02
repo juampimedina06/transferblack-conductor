@@ -1,8 +1,15 @@
 import { transferApi } from '../../api/transferApi';
 import { ApiErrorResponse } from '../../auth/interface/auth.interface';
 
-import { AcceptOfferInput, AcceptOfferResponse, Trip, TripRequestError } from '../interface/trip.interface';
-export type { AcceptOfferInput, AcceptOfferResponse, Trip };
+import {
+  AcceptOfferInput,
+  AcceptOfferResponse,
+  Trip,
+  TripRequestError,
+  ActiveTripSummary,
+  ActiveTripResponse,
+} from '../interface/trip.interface';
+export type { AcceptOfferInput, AcceptOfferResponse, Trip, ActiveTripSummary, ActiveTripResponse };
 export { TripRequestError };
 
 /**
@@ -135,6 +142,23 @@ export const getTripById = async (tripId: string): Promise<Trip> => {
     const apiError = error.response?.data as ApiErrorResponse | undefined;
     throw new TripRequestError(
       apiError?.error?.message || 'Error al consultar estado del viaje',
+      error.response?.status,
+      apiError?.error?.code
+    );
+  }
+};
+
+export const getActiveTrip = async (): Promise<ActiveTripSummary | null> => {
+  try {
+    const response = await transferApi.get<ActiveTripResponse>('/driver/me/active-trip');
+    return response.data?.data?.trip ?? null;
+  } catch (error: any) {
+    if (error?.response?.status === 404) {
+      return null;
+    }
+    const apiError = error.response?.data as ApiErrorResponse | undefined;
+    throw new TripRequestError(
+      apiError?.error?.message || 'Error al consultar viaje activo del conductor',
       error.response?.status,
       apiError?.error?.code
     );

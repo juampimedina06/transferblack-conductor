@@ -272,23 +272,24 @@ Contratos verificados leyendo el backend (`transferblack/backend`, solo lectura)
 - **`GET /driver/me`** responde `{ data: { driverProfile: { id, availabilityStatus, ... }, vehicle, driverDocuments, vehicleDocuments } }`. El id del conductor es `data.driverProfile.id`, no `data.id`.
 - **Un viaje en `in_progress` no lo puede cancelar el chofer**: `canDriverCancelTrip` excluye ese estado y `POST /rides/:id/cancel` es solo de pasajero/admin. La única salida es `complete`.
 
-## 9. Diagnóstico: viajes huérfanos en `in_progress` (abierto, requiere backend)
+## 9. Diagnóstico: viajes huérfanos en `in_progress` (RESUELTO)
 
-**Síntoma**: el conductor queda con un viaje asignado que la app no muestra. El radar le sigue mandando ofertas y **todas** fallan con `409 DRIVER_HAS_ACTIVE_TRIP`. Caso real: viaje `TB-A2D4AB820E` (`0c28cf97-d8dd-4dcc-8181-5af1fde95e56`), conductor `e78d1d97-7495-4cb4-b591-2e054c2c7fe5`, `in_progress` desde `2026-09-30T03:03:15.532Z`, pago `voucher`.
+**Síntoma original**: el conductor quedaba con un viaje asignado que la app no mostraba o perdía tras logout/reinicio. El radar le seguía mandando ofertas y **todas** fallaban con `409 DRIVER_HAS_ACTIVE_TRIP`.
 
-**Causa raíz (backend)**: en el momento del `connect`, `socket-server.ts` fuerza `availabilityStatus = ONLINE` y pisa el `in_trip` que había escrito la aceptación. El estado miente: en producción ese conductor con viaje vivo reportaba `online`. **El frontend no puede detectarlo** porque el único campo que delata el desync es ese.
+**Causa raíz (backend)**: en el momento del `connect`, `socket-server.ts` forzaba `availabilityStatus = ONLINE` y pisaba el `in_trip` que había escrito la aceptación. Además, no existía un endpoint para consultar el viaje activo del conductor.
 
-**Causa raíz (frontend, ya corregida)**: el logout borraba `activeTrip` del store persistido sin mirar su estado. Como `activeTrip` es el único id del viaje que la app conoce, tirarlo dejaba el viaje vivo en el servidor sin forma de recuperarlo. Ahora el logout pide confirmación y **conserva** el viaje vivo; los terminales sí se limpian.
+**Resolución en backend**:
+1. **Endpoint `GET /api/v1/driver/me/active-trip`**: Implementado con `authorizeRoles('driver')`. Devuelve `{ status: 'success', data: { trip: ActiveTripSummary | null } }`.
+2. **Preservación de `in_trip`**: Guard en conexión de socket (`setAvailabilityStatusIfNot(userId, IN_TRIP, ONLINE)`).
 
-**Segunda causa raíz (frontend, ya corregida)**: el sync del dashboard comparaba `err?.response?.status === 404` sobre un `Error` creado a mano que nunca arrastraba la respuesta de axios, así que ese chequeo era código muerto y un `activeTrip` fantasma no se limpiaba nunca. Se agregó `TripRequestError` (lleva `status` y `code`) y ahora limpia en 404 **y 403** — el 403 importa porque `assertCanReadTrip` lo devuelve cuando el viaje es de otro conductor.
-
-**Mejora de UX ya aplicada**: `acceptTripOffer` traduce uno por uno los 8 códigos 409 en vez de mostrar el mensaje genérico. El caso relevante: `DRIVER_HAS_ACTIVE_TRIP` → *"Ya tenés un viaje en curso. Terminalo antes de aceptar otro."* Los códigos desconocidos caen al mensaje del backend.
-
-### Lo que falta (backend, `transferblack/backend`)
-
-1. **Endpoint de viaje activo**: `GET /api/v1/driver/me/active-trip` con `authorizeRoles('driver')`, que devuelva el viaje en curso o `null`. El método **ya existe** (`TripRepository.findActiveTripIdByDriver`) pero solo lo usa `location.service.ts` por dentro. Con esto la app se autosincroniza al arrancar y la clase de bug desaparece de raíz.
-2. **No pisar `in_trip`**: `setAvailabilityStatusIfNot(userId, IN_TRIP, ONLINE)` en el `connect` del socket.
-
-### Rescate manual mientras tanto
-
-`scripts/complete_stuck_trip.mjs`. Preflight verificado contra la API real: devuelve `TB-A2D4AB820E` / `in_progress` / `driver_id` correcto / `voucher` / `started_at` correcto, y corta antes del POST sin TTY. **El POST no se ejecutó todavía.** Riesgo conocido: `complete` dispara `settlePaymentOnCompletion` + `markVoucherAsUsedInTransaction` en la misma transacción; si eso falla, el viaje sigue en `in_progress` y hay que corregirlo en el backend.
+**Resolución en frontend (`transferblack-conductor`)**:
+1. **Acción `getActiveTrip()`**: En [`trip.actions.ts`](file:///c:/Users/Juampi/Downloads/Programacion/react-native/freelance/transferblack-conductor/src/core/trip/actions/trip.actions.ts) consumiendo `GET /driver/me/active-trip`.
+2. **Hook y función `useActiveTripSync` / `syncActiveTripState`**: En [`useActiveTripSync.ts`](file:///c:/Users/Juampi/Downloads/Programacion/react-native/freelance/transferblack-conductor/src/presentation/trip/hooks/useActiveTripSync.ts).
+   - Se ejecuta al montar el Dashboard ([`(home)/index.tsx`](file:///c:/Users/Juampi/Downloads/Programacion/react-native/freelance/transferblack-conductor/src/app/%28home%29/index.tsx)) y al reconectarse el WebSocket (`socket.on('connect')` en [`useTripSocket.ts`](file:///c:/Users/Juampi/Downloads/Programacion/react-native/freelance/transferblack-conductor/src/presentation/trip/hooks/useTripSocket.ts)).
+   - Si el backend retorna un viaje activo, obtiene la entidad completa vía `getTripById(id)` y monta `ActiveTripOverlay` de inmediato.
+   - Si el backend retorna `trip: null`, limpia cualquier viaje fantasma local con `setActiveTrip(null)`, liberando al chofer.
+3. **Cola FIFO de ofertas con TTL completo**:
+   - `offerQueue` en [`useDriverTripStore.ts`](file:///c:/Users/Juampi/Downloads/Programacion/react-native/freelance/transferblack-conductor/src/presentation/trip/store/useDriverTripStore.ts) con deduplicación por `tripId`.
+   - Cuando hay múltiples viajes en `searching`, no se pisan entre sí. Cada uno espera en cola y al mostrarse recibe sus 15 segundos completos (`ttlSeconds`).
+   - Badge visual `+N en espera` en [`ConnectionBottomSheet.tsx`](file:///c:/Users/Juampi/Downloads/Programacion/react-native/freelance/transferblack-conductor/src/presentation/components/dashboard/ConnectionBottomSheet.tsx).
+   - Suite de 52 tests automatizados pasando en Vitest (`__tests__/trip/activeTripSync.test.ts` y `__tests__/trip/useDriverTripStore.test.ts`).

@@ -283,21 +283,24 @@ npm run lint
 
 ---
 
-## ⚠️ Pendiente en el Backend
+## ✅ Sincronización de Viaje Activo y Cola de Ofertas
 
-Contexto completo y detalle de contratos en [`context.md`](./context.md) → *Diagnóstico: viajes huérfanos en `in_progress`*.
+### 1. Sincronización automática de viaje activo (`GET /driver/me/active-trip`)
+- **Endpoint**: `GET /api/v1/driver/me/active-trip` protegido con `authorizeRoles('driver')`.
+- **Integración frontend**:
+  - Implementada la acción `getActiveTrip()` en [`trip.actions.ts`](file:///c:/Users/Juampi/Downloads/Programacion/react-native/freelance/transferblack-conductor/src/core/trip/actions/trip.actions.ts).
+  - El hook [`useActiveTripSync.ts`](file:///c:/Users/Juampi/Downloads/Programacion/react-native/freelance/transferblack-conductor/src/presentation/trip/hooks/useActiveTripSync.ts) se ejecuta al montar el Dashboard y tras cada reconexión del WebSocket (`socket.on('connect')`).
+  - **Rehidratación**: Si el backend devuelve un viaje activo (`assigned`, `driver_arriving`, `driver_arrived` o `in_progress`), la app consulta `getTripById` para obtener geometría, mapa y chat, montando inmediatamente `ActiveTripOverlay`.
+  - **Limpieza de fantasmas**: Si el backend devuelve `trip: null` y la app tenía un viaje en curso en memoria local, este se limpia automáticamente para liberar al chofer y evitar errores 409 (`DRIVER_HAS_ACTIVE_TRIP`).
 
-El frontend ya no genera este problema, pero **no puede resolverlo solo**: si a un conductor se le pierde el viaje activo en la base, la app no tiene forma de recuperarlo porque no existe ningún endpoint que diga "este es tu viaje en curso". Hay que tocar el backend (`transferblack/backend`, solo lectura desde este repo).
-
-### 1. Exponer el viaje activo del conductor
-- **Qué falta**: un `GET /api/v1/driver/me/active-trip` con `authorizeRoles('driver')` que devuelva el viaje en curso o `null`.
-- **Por qué**: el método **ya existe** (`TripRepository.findActiveTripIdByDriver`), pero hoy solo lo consume `location.service.ts` por dentro. Sin esto, un conductor que cerró sesión con un viaje vivo no tiene forma de volver a tomarlo: el radar le sigue mandando ofertas y todas fallan con `409 DRIVER_HAS_ACTIVE_TRIP`.
-- **Cómo lo consume la app**: al sincronizar en el dashboard, si devuelve viaje se reconstruye el `activeTrip` del store; si devuelve `null` se limpia. Con eso el bug desaparece de raíz, sin scripts de rescate.
-
-### 2. No pisar `in_trip` al conectar el socket
-- **Qué falla**: `socket-server.ts` fuerza `ONLINE` en cada `connect`, sobreescribiendo el `in_trip` que escribió la aceptación del viaje.
-- **Consecuencia medida en producción**: un conductor con un viaje asignado reporta `availabilityStatus: "online"`. El radar lo sigue considerando disponible, le manda ofertas y esas ofertas chocan contra `DRIVER_HAS_ACTIVE_TRIP`.
-- **Fix**: `setAvailabilityStatusIfNot(userId, IN_TRIP, ONLINE)`. Es la mitad que más daño hace, porque mientras el estado mienta el frontend tampoco puede detectar el desync por sí mismo.
+### 2. Cola FIFO de Ofertas de Viaje
+- **Problema previo**: Cuando varios viajes estaban en estado `searching` en la misma zona, el backend emitía múltiples eventos `trip:offer` casi simultáneos, pisando la oferta visible antes de que el conductor pudiera responderla.
+- **Solución implementada**:
+  - Cola FIFO en [`useDriverTripStore.ts`](file:///c:/Users/Juampi/Downloads/Programacion/react-native/freelance/transferblack-conductor/src/presentation/trip/store/useDriverTripStore.ts) (`offerQueue`).
+  - Deduplicación estricta por `tripId`.
+  - Al rechazar una oferta o expirar el timer, se presenta la siguiente con sus **15 segundos completos** (`ttlSeconds`).
+  - Contador visual `+N en espera` en [`ConnectionBottomSheet.tsx`](file:///c:/Users/Juampi/Downloads/Programacion/react-native/freelance/transferblack-conductor/src/presentation/components/dashboard/ConnectionBottomSheet.tsx).
+  - Vaciado total de la cola al aceptar un viaje o apagar disponibilidad.
 
 ### Mientras tanto: script de rescate
 `scripts/complete_stuck_trip.mjs` (**no se ejecutó automáticamente**) loguea al conductor dueño del viaje y dispara el mismo `POST /rides/:id/complete` que usaría la app, previa confirmación interactiva.
