@@ -1,6 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { View, TextInput, StyleSheet, Keyboard } from 'react-native';
-import { THEME_COLORS } from '../../../core/constants/theme';
+import { View, TextInput, Keyboard } from 'react-native';
 import * as Haptics from 'expo-haptics';
 
 interface PinOtpInputProps {
@@ -12,7 +11,18 @@ interface PinOtpInputProps {
 
 export const PinOtpInput = ({ length = 4, onPinChange, onPinComplete, hasError = false }: PinOtpInputProps) => {
   const [pin, setPin] = useState<string[]>(new Array(length).fill(''));
+  const [prevHasError, setPrevHasError] = useState(hasError);
   const inputRefs = useRef<TextInput[]>([]);
+
+  // Clearing the PIN is a reaction to a prop change, so it is adjusted while
+  // rendering: React discards this render and re-runs it before painting, which
+  // means the stale PIN is never shown and no extra commit is scheduled.
+  if (hasError !== prevHasError) {
+    setPrevHasError(hasError);
+    if (hasError) {
+      setPin(new Array(length).fill(''));
+    }
+  }
 
   const handleChange = (text: string, index: number) => {
     const newPin = [...pin];
@@ -42,14 +52,20 @@ export const PinOtpInput = ({ length = 4, onPinChange, onPinComplete, hasError =
     }
   };
 
+  // The error effect must not depend on onPinChange: parents usually pass an
+  // inline arrow, and depending on it would re-run the effect on every render.
+  // The ref keeps the latest callback without coupling the effect to it.
+  const onPinChangeRef = useRef(onPinChange);
+
+  React.useEffect(() => {
+    onPinChangeRef.current = onPinChange;
+  }, [onPinChange]);
+
+  // Side effects only: the PIN reset itself happens during render, above.
   React.useEffect(() => {
     if (hasError) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      setPin(newPin => {
-        const resetPin = new Array(length).fill('');
-        onPinChange('');
-        return resetPin;
-      });
+      onPinChangeRef.current('');
       inputRefs.current[0]?.focus();
     }
   }, [hasError]);

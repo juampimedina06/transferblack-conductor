@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, StyleSheet, Image } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -56,7 +56,17 @@ export const SplashAnimation = ({ onAnimationEnd }: SplashAnimationProps) => {
     }, 4000);
 
     return () => clearTimeout(timeout);
-  }, [fontsLoaded, onAnimationEnd]);
+  }, [
+    fontsLoaded,
+    onAnimationEnd,
+    lineScaleX,
+    logoOpacity,
+    logoScale,
+    subtitleOpacity,
+    subtitleTranslateY,
+    titleOpacity,
+    titleTranslateY,
+  ]);
 
   const logoStyle = useAnimatedStyle(() => ({
     opacity: logoOpacity.value,
@@ -102,7 +112,7 @@ export const SplashAnimation = ({ onAnimationEnd }: SplashAnimationProps) => {
       {/* Divisor Elegante */}
       <Animated.View 
         className="h-[1px] w-2/3 bg-gold opacity-60 mb-6"
-        style={[lineStyle, styles.glow]}
+        style={lineStyle}
       />
 
       {/* Subtítulo Premium */}

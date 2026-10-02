@@ -10,7 +10,6 @@ import {
   TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME_COLORS } from '../../../core/constants/theme';
 
 interface SecurityModalProps {

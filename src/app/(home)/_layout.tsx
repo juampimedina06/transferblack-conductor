@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { Stack, router, usePathname, Redirect } from 'expo-router';
 import { transferApi } from '@/core/api/transferApi';
 import { useAuthStore } from '@/presentation/auth/store/useAuthStore';
@@ -8,11 +8,9 @@ export default function HomeLayout() {
   const user = useAuthStore((state) => state.user);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const pathname = usePathname();
-  const [isVerifying, setIsVerifying] = useState(true);
 
   useEffect(() => {
     if (!isAuthenticated || !user?.id) {
-      setIsVerifying(false);
       return;
     }
 
@@ -36,7 +34,7 @@ export default function HomeLayout() {
             } else if (driverProfile?.approvalStatus === 'pending' || driverProfile?.approvalStatus === 'rejected') {
               isApproved = false;
             }
-          } catch (e) {
+          } catch {
             // Ignorar error de consulta de perfil de conductor
           }
         }
@@ -60,7 +58,7 @@ export default function HomeLayout() {
               }
               return;
             }
-          } catch (e) {
+          } catch {
             // Sin reunión agendada
           }
 
@@ -83,8 +81,6 @@ export default function HomeLayout() {
         }
       } catch (error) {
         console.error("Error comprobando estado de onboarding en HomeLayout", error);
-      } finally {
-        setIsVerifying(false);
       }
     };
 
@@ -102,6 +98,7 @@ export default function HomeLayout() {
       <Stack.Screen name="confirmed-appointment/index" />
       <Stack.Screen name="pending-approval/index" />
       <Stack.Screen name="wallet/index" />
+      <Stack.Screen name="chat/index" options={{ headerShown: false }} />
     </Stack>
   );
 }

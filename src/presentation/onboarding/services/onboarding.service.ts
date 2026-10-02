@@ -32,20 +32,20 @@ interface SubmitApplicationDto {
     chassisNumber: string;
     engineNumber: string;
   };
-  driverDocuments: Array<{
+  driverDocuments: {
     documentType: string;
     filePath: string;
     documentNumber?: string;
     issuedAt?: string;
     expiresAt?: string;
-  }>;
-  vehicleDocuments: Array<{
+  }[];
+  vehicleDocuments: {
     documentType: string;
     filePath: string;
     documentNumber?: string;
     issuedAt?: string;
     expiresAt?: string;
-  }>;
+  }[];
 }
 
 export const OnboardingService = {
@@ -101,7 +101,7 @@ export const OnboardingService = {
     return response.data;
   },
 
-  getDraftDocuments: async (): Promise<Array<{
+  getDraftDocuments: async (): Promise<{
     documentType: DocumentType;
     filePath: string;
     mimeType: string;
@@ -110,10 +110,10 @@ export const OnboardingService = {
       expiresAt?: string | null;
     };
     uploadedAt: string;
-  }>> => {
+  }[]> => {
     const response = await transferApi.get<{
       status: string;
-      data: Array<{
+      data: {
         documentType: DocumentType;
         filePath: string;
         mimeType: string;
@@ -122,7 +122,7 @@ export const OnboardingService = {
           expiresAt?: string | null;
         };
         uploadedAt: string;
-      }>;
+      }[];
     }>('/driver/documents/draft');
 
     return response.data.data;

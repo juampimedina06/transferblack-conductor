@@ -9,11 +9,13 @@ El proyecto implementa una arquitectura desacoplada y orientada a capas, prioriz
 ## 📋 Tabla de Contenidos
 - [Requisitos del Entorno](#-requisitos-del-entorno)
 - [Instalación y Ejecución](#-instalación-y-ejecución)
+- [Troubleshooting: lint no arranca en Windows](#-troubleshooting-lint-no-arranca-en-windows)
 - [Flujos Principales Implementados](#-flujos-principales-implementados)
 - [Arquitectura del Proyecto](#-arquitectura-del-proyecto)
 - [Pila Tecnológica y Decisiones de Diseño](#-pila-tecnológica-y-decisiones-de-diseño)
 - [Sistema de Diseño y Tokens](#-sistema-de-diseño-y-tokens)
 - [Calidad de Código y Convenciones](#-calidad-de-código-y-convenciones)
+- [Pendiente en el Backend](#-pendiente-en-el-backend)
 - [Guías de Contribución y Agentes de IA](#-guías-de-contribución-y-agentes-de-ia)
 
 ---
@@ -24,6 +26,7 @@ Para asegurar consistencia entre el equipo y evitar desfasajes en el entorno nat
 
 - **Node.js**: `v20.x` o superior (LTS recomendado)
 - **npm**: `v10.x` o superior
+- **Visual C++ Redistributable (x64)**: **Requerido en Windows.** Sin él, `npm run lint` no arranca. Ver [Troubleshooting](#-troubleshooting-lint-no-arranca-en-windows).
 - **Expo CLI**: Integrado en el SDK (`npx expo`)
 - **JDK (Java Development Kit)**: JDK 17 (requerido para builds y ejecución nativa en Android)
 - **Android Studio & SDK**: Android SDK Platform 34+ (para emuladores y desarrollo nativo)
@@ -58,6 +61,43 @@ Para asegurar consistencia entre el equipo y evitar desfasajes en el entorno nat
    ```bash
    npx expo-doctor
    ```
+
+### 🩺 Troubleshooting: `lint` no arranca en Windows
+
+Si `npm run lint` falla antes de analizar un solo archivo con:
+
+```
+Error: Cannot find native binding. npm has a bug related to optional dependencies
+(https://github.com/npm/cli/issues/4828). Please try `npm i` again after removing
+both package-lock.json and node_modules directory.
+```
+
+**No sigas ese consejo: es un mensaje engañoso.** No es un bug de npm y borrar `node_modules` no lo arregla.
+
+La causa real es que falta el **Visual C++ Redistributable**. La cadena de dependencias es:
+
+```text
+eslint-config-expo → typescript-eslint → eslint-import-resolver-typescript
+  → unrs-resolver → @unrs/resolver-binding-win32-x64-msvc
+```
+
+Ese binding es un binario nativo que enlaza contra `VCRUNTIME140_1.dll`. Windows trae `VCRUNTIME140.dll` de fábrica, pero **`_1` solo la instala el Redistributable**. Sin ella, `LoadLibrary` falla con el error 126 y el loader de `unrs-resolver` lo reporta con el mensaje genérico de arriba.
+
+**Solución:**
+
+```bash
+winget install --id Microsoft.VCRedist.2015+.x64
+```
+
+O descargalo desde <https://aka.ms/vc14/vc_redist.x64.exe> (permalink oficial de Microsoft). Requiere permisos de administrador.
+
+**Para diagnosticar si ya está instalado:**
+
+```bash
+node -e "require('@unrs/resolver-binding-win32-x64-msvc'); console.log('OK')"
+```
+
+> `npx tsc --noEmit` y `npx vitest` **no** dependen de `unrs-resolver` y funcionan aunque falte el Redistributable. Si el typecheck pasa pero el lint no, el problema es este.
 
 ---
 
@@ -236,6 +276,42 @@ npm run lint
 - **TypeScript Estricto**: No usar `any`. Toda interfaz de API o componente debe estar tipada.
 - **Manejo de Errores**: Todo mensaje de error que llegue al conductor debe expresarse en español claro y comprensible, evitando tecnicismos.
 - **Accesibilidad**: Botones e iconos interactivos deben contar con `accessibilityLabel` y cumplir con un área táctil mínima de 44x44 pt.
+
+> ✅ **Baseline del lint**: `npm run lint` termina con **0 errores y 0 warnings** en `src/`, y sale con código 0. El typecheck también está limpio (`tsc --noEmit` sale con 0) y `npx vitest` corre 28 tests en 4 archivos. El detalle de lo que se corrigió está en [`context.md`](./context.md) → *Tooling y Calidad de Código*.
+>
+> Ojo: `npm run lint` solo mira `src/`. Los scripts de `scripts/` no entran, así que si los tocás corré `npx eslint scripts/<archivo>` aparte. Ahí queda 1 error preexistente: `get_driver_coords.mjs` importa `pg`, que no está declarado en `package.json`.
+
+---
+
+## ✅ Sincronización de Viaje Activo y Cola de Ofertas
+
+### 1. Sincronización automática de viaje activo (`GET /driver/me/active-trip`)
+- **Endpoint**: `GET /api/v1/driver/me/active-trip` protegido con `authorizeRoles('driver')`.
+- **Integración frontend**:
+  - Implementada la acción `getActiveTrip()` en [`trip.actions.ts`](file:///c:/Users/Juampi/Downloads/Programacion/react-native/freelance/transferblack-conductor/src/core/trip/actions/trip.actions.ts).
+  - El hook [`useActiveTripSync.ts`](file:///c:/Users/Juampi/Downloads/Programacion/react-native/freelance/transferblack-conductor/src/presentation/trip/hooks/useActiveTripSync.ts) se ejecuta al montar el Dashboard y tras cada reconexión del WebSocket (`socket.on('connect')`).
+  - **Rehidratación**: Si el backend devuelve un viaje activo (`assigned`, `driver_arriving`, `driver_arrived` o `in_progress`), la app consulta `getTripById` para obtener geometría, mapa y chat, montando inmediatamente `ActiveTripOverlay`.
+  - **Limpieza de fantasmas**: Si el backend devuelve `trip: null` y la app tenía un viaje en curso en memoria local, este se limpia automáticamente para liberar al chofer y evitar errores 409 (`DRIVER_HAS_ACTIVE_TRIP`).
+
+### 2. Cola FIFO de Ofertas de Viaje
+- **Problema previo**: Cuando varios viajes estaban en estado `searching` en la misma zona, el backend emitía múltiples eventos `trip:offer` casi simultáneos, pisando la oferta visible antes de que el conductor pudiera responderla.
+- **Solución implementada**:
+  - Cola FIFO en [`useDriverTripStore.ts`](file:///c:/Users/Juampi/Downloads/Programacion/react-native/freelance/transferblack-conductor/src/presentation/trip/store/useDriverTripStore.ts) (`offerQueue`).
+  - Deduplicación estricta por `tripId`.
+  - Al rechazar una oferta o expirar el timer, se presenta la siguiente con sus **15 segundos completos** (`ttlSeconds`).
+  - Contador visual `+N en espera` en [`ConnectionBottomSheet.tsx`](file:///c:/Users/Juampi/Downloads/Programacion/react-native/freelance/transferblack-conductor/src/presentation/components/dashboard/ConnectionBottomSheet.tsx).
+  - Vaciado total de la cola al aceptar un viaje o apagar disponibilidad.
+
+### Mientras tanto: script de rescate
+`scripts/complete_stuck_trip.mjs` (**no se ejecutó automáticamente**) loguea al conductor dueño del viaje y dispara el mismo `POST /rides/:id/complete` que usaría la app, previa confirmación interactiva.
+
+```bash
+node scripts/complete_stuck_trip.mjs
+node scripts/complete_stuck_trip.mjs --trip-id <uuid> --public-code <code>
+node scripts/complete_stuck_trip.mjs --yes
+```
+
+Hace preflight del estado real del viaje, verifica que el conductor autenticado sea el dueño, avisa si el pago es `voucher` (que se consume al completar) y vuelve a leer el viaje al final para verificar. Ojo: `in_progress` **no** se puede cancelar desde el chofer (`canDriverCancelTrip` lo excluye), así que completar es la única salida.
 
 ---
 

@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME_COLORS } from '../../core/constants/theme';
 import { socket } from '../../core/socket/socket';
@@ -17,10 +17,10 @@ import { SecurityModal } from '../../presentation/components/dashboard/SecurityM
 import { DriverProgressModal } from '../../presentation/components/dashboard/DriverProgressModal';
 import { useDashboardStats } from '../../presentation/hooks/useDashboardStats';
 import { useTripSocket } from '../../presentation/trip/hooks/useTripSocket';
+import { useActiveTripSync } from '../../presentation/trip/hooks/useActiveTripSync';
 import { useDriverTripStore } from '../../presentation/trip/store/useDriverTripStore';
 import { ActiveTripOverlay } from '../../presentation/components/trip/ActiveTripOverlay';
 import { ActiveTripTopHeader } from '../../presentation/components/trip/ActiveTripTopHeader';
-import { getTripById } from '../../core/trip/actions/trip.actions';
 import { TripReceiptModal } from '../../presentation/components/trip/TripReceiptModal';
 import { useWalletStore } from '../../presentation/wallet/store/useWalletStore';
 
@@ -34,7 +34,9 @@ export default function DriverDashboardScreen() {
   const [isProgressModalVisible, setIsProgressModalVisible] = useState(false);
   const [bottomHeight, setBottomHeight] = useState(100);
 
-  const { location, errorMsg } = useDriverLocation(isAvailable || !!activeTrip);
+  const hasActiveTrip = !!activeTrip;
+
+  const { location, errorMsg } = useDriverLocation(isAvailable || hasActiveTrip);
   const { stats } = useDashboardStats(isAvailable);
   const { summary, fetchSummary } = useWalletStore();
 
@@ -50,7 +52,7 @@ export default function DriverDashboardScreen() {
     let isCancelled = false;
 
     const manageSocketConnection = async () => {
-      if (isAvailable || !!activeTrip) {
+      if (isAvailable || hasActiveTrip) {
         const token = await authStorage.getAccessToken();
         if (token && !isCancelled) {
           socket.auth = { token };
@@ -70,53 +72,53 @@ export default function DriverDashboardScreen() {
     return () => {
       isCancelled = true;
     };
-  }, [isAvailable, !!activeTrip]);
+  }, [isAvailable, hasActiveTrip]);
 
-  // Sincroniza el estado del viaje activo con el backend al abrir o montar la app
-  useEffect(() => {
-    if (!activeTrip?.id) return;
-
-    let isMounted = true;
-    const syncTrip = async () => {
-      try {
-        const freshTrip = await getTripById(activeTrip.id);
-        if (!isMounted) return;
-
-        if (freshTrip.status === 'cancelled') {
-          useDriverTripStore.getState().setActiveTrip(null);
-          Alert.alert(
-            'Viaje no disponible',
-            `El viaje fue cancelado.`,
-            [{ text: 'Entendido' }]
-          );
-        } else if (freshTrip.status !== activeTrip.status) {
-          useDriverTripStore.getState().updateTripStatus(freshTrip.status);
-        }
-      } catch (err: any) {
-        // Si el viaje no se encuentra (404), limpiamos el estado local
-        if (err?.message?.includes('no encontrado') || err?.response?.status === 404) {
-          useDriverTripStore.getState().setActiveTrip(null);
-        }
-      }
-    };
-
-    syncTrip();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [activeTrip?.id]);
+  // Sincroniza el estado del viaje activo con GET /driver/me/active-trip al abrir o montar la app
+  useActiveTripSync();
 
   const toggleAvailability = (value: boolean) => {
     setIsAvailable(value);
   };
 
-  const handleLogout = async () => {
+  const performLogout = async () => {
     setIsAvailable(false);
     socket.disconnect();
-    useDriverTripStore.getState().setActiveTrip(null);
+
+    const trip = useDriverTripStore.getState().activeTrip;
+    const isTripLive = !!trip && trip.status !== 'completed' && trip.status !== 'cancelled';
+
+    // Un viaje en curso NO se borra. Es el unico id del viaje que la app tiene,
+    // y no hay forma de recuperarlo si se pierde: no existe endpoint de "mi
+    // viaje activo" para el conductor. El store esta persistido, asi que vuelve
+    // al iniciar sesion y el sync de arriba lo resincroniza con el backend.
+    // Borrarlo dejaba el viaje asignado en el servidor y al conductor sin
+    // forma de sacarselo de encima. Un viaje ya terminado solo estorba: se limpia.
+    if (!isTripLive) {
+      useDriverTripStore.getState().setActiveTrip(null);
+    }
+
     await logout();
     router.replace('/auth/login' as any);
+  };
+
+  const handleLogout = () => {
+    const trip = activeTrip;
+    const isTripLive = !!trip && trip.status !== 'completed' && trip.status !== 'cancelled';
+
+    if (!isTripLive) {
+      performLogout();
+      return;
+    }
+
+    Alert.alert(
+      'Tenés un viaje en curso',
+      'Si cerrás sesión, el viaje sigue asignado y lo vas a tener al volver a entrar.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Cerrar sesión', style: 'destructive', onPress: performLogout },
+      ]
+    );
   };
 
   // Coordenadas por defecto (ej. centro de Buenos Aires) si aún no hay ubicación

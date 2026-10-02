@@ -29,7 +29,7 @@ export const getCurrentLocation = async (): Promise<LatLng> => {
       latitude: coords.latitude,
       longitude: coords.longitude,
     };
-  } catch (error) {
+  } catch {
     throw new Error('No se pudo obtener la ubicación actual del dispositivo.');
   }
 };

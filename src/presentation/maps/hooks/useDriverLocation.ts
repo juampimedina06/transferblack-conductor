@@ -16,27 +16,36 @@ export const useDriverLocation = (isAvailable: boolean): { location: LatLng | nu
   }, [lastKnownLocation]);
 
   useEffect(() => {
-    const initLocation = async (): Promise<void> => {
+    let cancelled = false;
+
+    const run = async (): Promise<void> => {
       try {
         const permission = await checkLocationPermission();
+        if (cancelled) return;
         if (permission !== PermissionStatus.GRANTED) {
           const requested = await requestLocationPermission();
+          if (cancelled) return;
           if (requested !== PermissionStatus.GRANTED) {
             setErrorMsg('Permiso de ubicación denegado.');
             return;
           }
         }
         const loc = await getLocation();
+        if (cancelled) return;
         if (!loc) {
           setErrorMsg('No se pudo obtener la ubicación actual.');
         }
       } catch (err: any) {
-        setErrorMsg(err?.message || 'Error al inicializar ubicación.');
+        if (!cancelled) setErrorMsg(err?.message || 'Error al inicializar ubicación.');
       }
     };
 
-    initLocation();
-  }, []);
+    void run();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [getLocation]);
 
   // Emisión periódica de ubicación por WebSocket cada 5 segundos cuando el conductor está disponible
   useEffect(() => {

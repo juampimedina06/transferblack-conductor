@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Platform, StyleSheet, View, ViewProps } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
 import MapView, { PROVIDER_GOOGLE, Polyline, Marker } from "react-native-maps";
@@ -108,7 +108,7 @@ export const CustomMap = ({
       stiffness: 150,
       mass: 0.8,
     });
-  }, [targetBottom]);
+  }, [targetBottom, animatedBottom]);
 
   const fabContainerStyle = useAnimatedStyle(() => ({
     bottom: animatedBottom.value,
@@ -164,9 +164,8 @@ export const CustomMap = ({
     return [];
   }, [activeRouteGeometry, activePickup, activeDropoff]);
 
-  // Adjust camera to fit offer coordinates
-  useEffect(() => {
-    if ((!currentOffer && !activeTrip) || !mapRef.current) return;
+  // Ajustar la cámara a las coordenadas de la oferta o del viaje activo
+  const fitCoords = useMemo<LatLng[]>(() => {
     const coords: LatLng[] = [];
 
     if (activePickup?.latitude && activePickup?.longitude) {
@@ -187,14 +186,30 @@ export const CustomMap = ({
       coords.push(lastKnownLocation);
     }
 
-    if (coords.length > 0) {
+    return coords;
+  }, [activePickup, activeDropoff, lastKnownLocation]);
+
+  const shouldFitCamera = !!((currentOffer || activeTrip) && fitCoords.length > 0);
+  const [wasFittingForOffer, setWasFittingForOffer] = useState(shouldFitCamera);
+
+  // Mientras la cámara encuadra la oferta el auto-follow queda apagado. Se ajusta
+  // durante el render para que el efecto se dedique a tocar el mapa, que sí es
+  // un sistema externo. Antes se apagaba en cada tick de GPS, sobreescribiendo
+  // que el usuario volviera a activar el seguimiento a mano.
+  if (shouldFitCamera !== wasFittingForOffer) {
+    setWasFittingForOffer(shouldFitCamera);
+    if (shouldFitCamera) {
       setIsFollowingUser(false);
-      mapRef.current.fitToCoordinates(coords, {
-        edgePadding: { top: 90, right: 50, bottom: 260, left: 50 },
-        animated: true,
-      });
     }
-  }, [currentOffer, activeTrip, activePickup, activeDropoff, lastKnownLocation]);
+  }
+
+  useEffect(() => {
+    if (!shouldFitCamera || !mapRef.current) return;
+    mapRef.current.fitToCoordinates(fitCoords, {
+      edgePadding: { top: 90, right: 50, bottom: 260, left: 50 },
+      animated: true,
+    });
+  }, [shouldFitCamera, fitCoords]);
 
   const moveCameraToLocation = (latLng: LatLng) => {
     if (!mapRef.current) return;
@@ -223,7 +238,7 @@ export const CustomMap = ({
     return () => {
       clearWatchLocation();
     };
-  }, []);
+  }, [watchLocation, clearWatchLocation]);
 
   useEffect(() => {
     if (lastKnownLocation && isFollowingUser && !currentOffer) {

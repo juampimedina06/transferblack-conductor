@@ -1,26 +1,26 @@
-import React, { useState, useMemo } from 'react';
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  Alert, 
-  ActivityIndicator, 
-  PanResponder, 
-  LayoutAnimation, 
-  Platform, 
-  UIManager 
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { Trip } from '../../../core/trip/interface/trip.interface';
+import { router } from 'expo-router';
+import { useMemo, useState } from 'react';
+import {
+  Alert,
+  LayoutAnimation,
+  PanResponder,
+  Platform,
+  Text,
+  TouchableOpacity,
+  UIManager,
+  View
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME_COLORS } from '../../../core/constants/theme';
+import { completeTrip, driverArrived, driverCancelTrip, startTrip } from '../../../core/trip/actions/trip.actions';
+import { Trip } from '../../../core/trip/interface/trip.interface';
+import { useDriverLocation } from '../../maps/hooks/useDriverLocation';
+import { useDriverTripStore } from '../../trip/store/useDriverTripStore';
 import { SwipeToArriveButton } from './SwipeToArriveButton';
 import { SwipeToFinishButton } from './SwipeToFinishButton';
 import { WaitingBottomSheet } from './WaitingBottomSheet';
-import { driverArrived, startTrip, driverCancelTrip, completeTrip } from '../../../core/trip/actions/trip.actions';
-import { useDriverTripStore } from '../../trip/store/useDriverTripStore';
-import { useDriverLocation } from '../../maps/hooks/useDriverLocation';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -88,7 +88,7 @@ export const ActiveTripOverlay = ({ trip, onHeightChange }: ActiveTripOverlayPro
       Alert.alert('Error', 'No se pudo obtener la ubicación actual.');
       return;
     }
-    
+
     try {
       setIsLoading(true);
       await driverArrived(trip.id, {
@@ -136,10 +136,10 @@ export const ActiveTripOverlay = ({ trip, onHeightChange }: ActiveTripOverlayPro
 
   if (trip.status === 'driver_arrived') {
     return (
-      <WaitingBottomSheet 
-        trip={trip} 
-        onStartTrip={handleStartTrip} 
-        onCancel={handleCancelTrip} 
+      <WaitingBottomSheet
+        trip={trip}
+        onStartTrip={handleStartTrip}
+        onCancel={handleCancelTrip}
         onHeightChange={onHeightChange}
       />
     );
@@ -149,17 +149,17 @@ export const ActiveTripOverlay = ({ trip, onHeightChange }: ActiveTripOverlayPro
     const preferences = trip.passenger?.preferences || [];
 
     return (
-      <SafeAreaView 
+      <SafeAreaView
         onLayout={(e) => onHeightChange?.(e.nativeEvent.layout.height)}
-        className="absolute bottom-0 w-full px-4 pb-5 pt-2 bg-obsidian rounded-t-3xl border-t border-charcoal shadow-2xl shadow-black" 
+        className="absolute bottom-0 w-full px-4 pb-5 pt-2 bg-obsidian rounded-t-3xl border-t border-charcoal shadow-2xl shadow-black"
         edges={['bottom']}
       >
         {/* Top Interactive Area (Swipe down to minimize / Swipe up to expand) */}
         <View {...panResponder.panHandlers} className="w-full pt-1 pb-1.5 items-center">
           <View className="w-12 h-1.5 bg-zinc-600 rounded-full mb-1.5" />
-          
+
           {isMinimized ? (
-            <TouchableOpacity 
+            <TouchableOpacity
               activeOpacity={0.8}
               onPress={() => toggleMinimize(false)}
               className="w-full flex-row items-center justify-between px-1 mb-2.5"
@@ -263,7 +263,7 @@ export const ActiveTripOverlay = ({ trip, onHeightChange }: ActiveTripOverlayPro
               </View>
 
               <View className="flex-row gap-2">
-                <TouchableOpacity 
+                <TouchableOpacity
                   accessibilityLabel="Llamar al pasajero"
                   accessibilityRole="button"
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -271,11 +271,12 @@ export const ActiveTripOverlay = ({ trip, onHeightChange }: ActiveTripOverlayPro
                 >
                   <Ionicons name="call" size={16} color={THEME_COLORS.platinum} />
                 </TouchableOpacity>
-                <TouchableOpacity 
+                <TouchableOpacity
                   accessibilityLabel="Chatear con el pasajero"
                   accessibilityRole="button"
+                  onPress={() => router.push('/(home)/chat')}
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  className="w-9 h-9 rounded-full bg-obsidian border border-charcoal items-center justify-center"
+                  className="w-9 h-9 rounded-full bg-obsidian border border-charcoal items-center justify-center active:opacity-70"
                 >
                   <Ionicons name="chatbubble" size={16} color={THEME_COLORS.platinum} />
                 </TouchableOpacity>
@@ -290,8 +291,8 @@ export const ActiveTripOverlay = ({ trip, onHeightChange }: ActiveTripOverlayPro
                 </Text>
                 <View className="flex-row flex-wrap">
                   {preferences.map((pref, idx) => (
-                    <View 
-                      key={`${pref}-${idx}`} 
+                    <View
+                      key={`${pref}-${idx}`}
                       className="flex-row items-center bg-[#D4AF37]/10 border border-[#D4AF37]/25 px-2.5 py-1 rounded-full mr-1.5 mb-1.5"
                     >
                       <Ionicons name={getPreferenceIcon(pref)} size={11} color={THEME_COLORS.gold} />
@@ -370,17 +371,17 @@ export const ActiveTripOverlay = ({ trip, onHeightChange }: ActiveTripOverlayPro
     const preferences = trip.passenger?.preferences || [];
 
     return (
-      <SafeAreaView 
+      <SafeAreaView
         onLayout={(e) => onHeightChange?.(e.nativeEvent.layout.height)}
-        className="absolute bottom-0 w-full px-4 pb-6 pt-2 bg-obsidian rounded-t-3xl border-t border-charcoal shadow-2xl shadow-black" 
+        className="absolute bottom-0 w-full px-4 pb-6 pt-2 bg-obsidian rounded-t-3xl border-t border-charcoal shadow-2xl shadow-black"
         edges={['bottom']}
       >
         {/* Top Interactive Area (Swipe down to minimize / Swipe up to expand) */}
         <View {...panResponder.panHandlers} className="w-full pt-1 pb-1.5 items-center">
           <View className="w-12 h-1.5 bg-zinc-600 rounded-full mb-1.5" />
-          
+
           {isMinimized ? (
-            <TouchableOpacity 
+            <TouchableOpacity
               activeOpacity={0.8}
               onPress={() => toggleMinimize(false)}
               className="w-full flex-row items-center justify-between px-1 mb-2.5"
@@ -460,8 +461,8 @@ export const ActiveTripOverlay = ({ trip, onHeightChange }: ActiveTripOverlayPro
                 </Text>
                 <View className="flex-row flex-wrap">
                   {preferences.map((pref, idx) => (
-                    <View 
-                      key={`${pref}-${idx}`} 
+                    <View
+                      key={`${pref}-${idx}`}
                       className="flex-row items-center bg-[#D4AF37]/10 border border-[#D4AF37]/25 px-2.5 py-1 rounded-full mr-1.5 mb-1.5"
                     >
                       <Ionicons name={getPreferenceIcon(pref)} size={11} color={THEME_COLORS.gold} />
@@ -477,7 +478,7 @@ export const ActiveTripOverlay = ({ trip, onHeightChange }: ActiveTripOverlayPro
         )}
 
         <View className="items-center">
-          <SwipeToFinishButton 
+          <SwipeToFinishButton
             onFinish={async () => {
               if (!location) return;
               try {
@@ -486,7 +487,7 @@ export const ActiveTripOverlay = ({ trip, onHeightChange }: ActiveTripOverlayPro
                   latitude: location.latitude,
                   longitude: location.longitude,
                 });
-                
+
                 // Emulate Haptic success
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
@@ -498,7 +499,7 @@ export const ActiveTripOverlay = ({ trip, onHeightChange }: ActiveTripOverlayPro
                 setIsLoading(false);
               }
             }}
-            isLoading={isLoading} 
+            isLoading={isLoading}
           />
         </View>
       </SafeAreaView>

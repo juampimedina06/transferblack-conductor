@@ -17,6 +17,7 @@ import { useCourtesyTimer } from '../../trip/hooks/useCourtesyTimer';
 import { THEME_COLORS } from '../../../core/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { router } from 'expo-router';
 
 interface WaitingBottomSheetProps {
   trip: Trip;
@@ -214,8 +215,9 @@ export const WaitingBottomSheet = ({ trip, onStartTrip, onCancel, onHeightChange
                   <TouchableOpacity 
                     accessibilityLabel="Chatear con el pasajero"
                     accessibilityRole="button"
+                    onPress={() => router.push('/(home)/chat')}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    className="w-10 h-10 rounded-full bg-[#1F1F23] border border-[#2E2E33] items-center justify-center"
+                    className="w-10 h-10 rounded-full bg-[#1F1F23] border border-[#2E2E33] items-center justify-center active:opacity-70"
                   >
                     <Ionicons name="chatbubble" size={17} color={THEME_COLORS.platinum} />
                   </TouchableOpacity>

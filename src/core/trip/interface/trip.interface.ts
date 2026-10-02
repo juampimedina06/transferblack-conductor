@@ -79,7 +79,8 @@ export interface Trip {
   };
   chat?: {
     coordinator_user_id: string;
-    coordinator_role: string;
+    coordinator_name: string;
+    coordinator_role: 'passenger' | 'requester';
     passenger_user_id: string;
     is_third_party_trip: boolean;
     third_party?: {
@@ -113,4 +114,54 @@ export interface DriverCancelInput {
 
 export interface TripResponse {
   data: Trip;
+}
+
+/**
+ * Error de API que conserva el status y el codigo del backend. Las actions
+ * lanzan `Error` pelado, y el status se perdia: los `catch` que comparaban
+ * `err.response.status` nunca se cumplian porque el `Error` recien creado no
+ * arrastra la respuesta de axios.
+ */
+export class TripRequestError extends Error {
+  status?: number;
+  code?: string;
+
+  constructor(message: string, status?: number, code?: string) {
+    super(message);
+    this.name = 'TripRequestError';
+    this.status = status;
+    this.code = code;
+  }
+}
+
+export interface ActiveTripPassengerSummary {
+  id: string | null;
+  firstName: string;
+  phone: string;
+}
+
+export interface ActiveTripLocationSummary {
+  address: string;
+  latitude: number;
+  longitude: number;
+}
+
+export interface ActiveTripSummary {
+  id: string;
+  code: string;
+  status: 'assigned' | 'driver_arriving' | 'driver_arrived' | 'in_progress';
+  origin: ActiveTripLocationSummary;
+  destination: ActiveTripLocationSummary;
+  passenger: ActiveTripPassengerSummary;
+  fare: number;
+  startedAt: string | null;
+  paymentMethod: string;
+  isVoucher: boolean;
+}
+
+export interface ActiveTripResponse {
+  status: string;
+  data: {
+    trip: ActiveTripSummary | null;
+  };
 }

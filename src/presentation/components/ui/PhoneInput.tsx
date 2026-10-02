@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from 'react';
 import {
   View,
   Text,
@@ -60,7 +60,7 @@ export const PhoneInput = forwardRef<TextInput, PhoneInputProps>(
     const [isFocused, setIsFocused] = useState(false);
 
     // Encontrar código inicial a partir del valor existente o el default (+54)
-    const findInitialCountry = (val: string): CountryDialCode => {
+    const findInitialCountry = useCallback((val: string): CountryDialCode => {
       if (val && val.startsWith('+')) {
         // Ordenar por longitud descendente para matchear códigos más específicos primero
         const matched = [...COUNTRIES_DIAL_CODES]
@@ -72,19 +72,19 @@ export const PhoneInput = forwardRef<TextInput, PhoneInputProps>(
         COUNTRIES_DIAL_CODES.find((c) => c.code === defaultCountryCode) ||
         COUNTRIES_DIAL_CODES[0]
       );
-    };
+    }, [defaultCountryCode]);
 
     const initialCountry = findInitialCountry(value);
     const [selectedCountry, setSelectedCountry] = useState<CountryDialCode>(initialCountry);
 
     // Extraer dígitos nacionales del valor completo
-    const getNationalDigits = (fullVal: string, code: string) => {
+    const getNationalDigits = useCallback((fullVal: string, code: string) => {
       if (!fullVal) return '';
       if (fullVal.startsWith(code)) {
         return fullVal.slice(code.length);
       }
       return fullVal.replace(/^\+\d+/, '');
-    };
+    }, []);
 
     const [nationalNumber, setNationalNumber] = useState(
       getNationalDigits(value, initialCountry.code)
@@ -99,7 +99,7 @@ export const PhoneInput = forwardRef<TextInput, PhoneInputProps>(
       } else {
         setNationalNumber('');
       }
-    }, [value]);
+    }, [value, findInitialCountry, getNationalDigits]);
 
     const handleTextChange = (text: string) => {
       // Limpiar todo lo que no sea dígito

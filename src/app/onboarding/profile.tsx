@@ -16,7 +16,7 @@ import { useAuthStore } from '../../presentation/auth/store/useAuthStore';
 
 const GENDER_OPTIONS = [
   { label: 'Masculino', value: 'MASCULINO' },
-  { label: 'Femenino', value: 'FEMENINOO' },
+  { label: 'Femenino', value: 'FEMENINO' },
   { label: 'Otro / Prefiero no decir', value: 'OTRO' },
 ];
 

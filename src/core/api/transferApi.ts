@@ -1,14 +1,14 @@
-import axios from "axios";
+import axios, { create } from "axios";
+import { authStorage } from '../../presentation/auth/store/authStorage';
+import { useAuthStore } from '../../presentation/auth/store/useAuthStore';
 
-export const transferApi = axios.create({
+export const transferApi = create({
   baseURL: process.env.EXPO_PUBLIC_API_URL,
   timeout: 15000,
   headers: {
     "Content-Type": "application/json",
   },
 });
-
-import { authStorage } from '../../presentation/auth/store/authStorage';
 
 // Interceptor para inyectar token de autenticación
 transferApi.interceptors.request.use(
@@ -24,13 +24,11 @@ transferApi.interceptors.request.use(
   }
 );
 
-import { useAuthStore } from '../../presentation/auth/store/useAuthStore';
-
 let isRefreshing = false;
-let failedQueue: Array<{
+let failedQueue: {
   resolve: (value?: unknown) => void;
   reject: (reason?: unknown) => void;
-}> = [];
+}[] = [];
 
 const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue.forEach((prom) => {
@@ -48,9 +46,15 @@ transferApi.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    const status = error.response?.status;
+    const isForbidden = status === 403 && (
+      error.response?.data?.error?.code === 'FORBIDDEN' ||
+      error.response?.data?.code === 'FORBIDDEN' ||
+      error.response?.data?.error?.message === 'No tienes permisos para realizar esta accion'
+    );
 
     if (
-      error.response?.status === 401 &&
+      (status === 401 || isForbidden) &&
       originalRequest &&
       !originalRequest._retry &&
       !originalRequest.url?.includes('/auth/login') &&
@@ -98,7 +102,10 @@ transferApi.interceptors.response.use(
         return transferApi(originalRequest);
       } catch (refreshErr) {
         processQueue(refreshErr, null);
-        await useAuthStore.getState().logout();
+        // Only logout automatically if session is unauthenticated (401), not on permission check (403)
+        if (!isForbidden) {
+          await useAuthStore.getState().logout();
+        }
         return Promise.reject(refreshErr);
       } finally {
         isRefreshing = false;

@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -41,7 +41,7 @@ export default function ConfirmedAppointmentScreen() {
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
 
-  const fetchMeeting = async (silent = false) => {
+  const fetchMeeting = useCallback(async (silent = false) => {
     try {
       const response = await transferApi.get('/driver/meeting');
       if (response.data) {
@@ -61,7 +61,7 @@ export default function ConfirmedAppointmentScreen() {
     } finally {
       if (!silent) setLoading(false);
     }
-  };
+  }, [logout]);
 
   useFocusEffect(
     useCallback(() => {
@@ -74,7 +74,7 @@ export default function ConfirmedAppointmentScreen() {
       }, 5000);
 
       return () => clearInterval(interval);
-    }, [])
+    }, [fetchMeeting])
   );
 
   const onRefresh = async () => {
@@ -142,10 +142,14 @@ export default function ConfirmedAppointmentScreen() {
   const isRescheduleRequested = meeting.status === 'reschedule_requested';
 
   const scheduledDate = new Date(meeting.scheduledAt);
-  const dayName = scheduledDate.toLocaleDateString('es-AR', { weekday: 'long' });
-  const dayNumber = scheduledDate.getDate();
-  const monthName = scheduledDate.toLocaleDateString('es-AR', { month: 'long' });
-  const yearNumber = scheduledDate.getFullYear();
+  // Formateo en un solo lugar para que el año no se pierda: la fecha se armaba a
+  // mano y quedaba "lunes, 5 enero", que es ambiguo si el turno no es de este año.
+  const scheduledDateLabel = scheduledDate.toLocaleDateString('es-AR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
   const timeFormatted = scheduledDate.toLocaleTimeString('es-AR', {
     hour: '2-digit',
     minute: '2-digit',
@@ -221,8 +225,8 @@ export default function ConfirmedAppointmentScreen() {
               <Text className="text-ash font-montserrat text-[11px] uppercase tracking-wider mb-1">
                 Fecha
               </Text>
-              <Text className="text-platinum font-montserrat-medium text-base capitalize">
-                {dayName}, {dayNumber} {monthName}
+              <Text className="text-platinum font-montserrat-medium text-base">
+                {scheduledDateLabel.charAt(0).toUpperCase() + scheduledDateLabel.slice(1)}
               </Text>
             </View>
             <View className="items-end">

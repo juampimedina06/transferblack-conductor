@@ -1,6 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
@@ -32,7 +31,9 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
   const insets = useSafeAreaInsets();
   const user = useAuthStore((state) => state.user);
   const currentOffer = useDriverTripStore((state) => state.currentOffer);
+  const offerQueue = useDriverTripStore((state) => state.offerQueue);
   const clearOffer = useDriverTripStore((state) => state.clearOffer);
+  const clearAllOffers = useDriverTripStore((state) => state.clearAllOffers);
   const setActiveTrip = useDriverTripStore((state) => state.setActiveTrip);
   const lastKnownLocation = useLocationStore((state) => state.lastKnownLocation);
 
@@ -85,7 +86,7 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
     } else {
       pulseAnim.value = 0;
     }
-  }, [isAvailable, currentOffer]);
+  }, [isAvailable, currentOffer, pulseAnim]);
 
   const radarWave1Style = useAnimatedStyle(() => ({
     transform: [{ scale: interpolate(pulseAnim.value, [0, 1], [1, 2.2]) }],
@@ -102,12 +103,13 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
 
   // Offer TTL Timer
   const ttl = currentOffer?.ttlSeconds || 15;
+  const offerKey = currentOffer ? `${currentOffer.tripId}-${currentOffer.offerId || ''}` : undefined;
   const handleExpire = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     clearOffer();
   };
 
-  const { progress } = useOfferTimer(ttl, handleExpire, !!currentOffer);
+  const { progress } = useOfferTimer(ttl, handleExpire, !!currentOffer, offerKey);
 
   // Haptic alert on incoming offer
   useEffect(() => {
@@ -182,7 +184,7 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
           longitude: lastKnownLocation.longitude,
         });
         arrivingTripData = arrivingRes?.data;
-      } catch (e) {
+      } catch {
         // Fallback transition if transition request had error
       }
 
@@ -228,7 +230,7 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
 
       setActiveTrip(activeTrip);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      clearOffer();
+      clearAllOffers();
     } catch (error: any) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Aviso', error.message);
@@ -260,7 +262,7 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
           {/* Top Edge Specular Glass Reflection */}
           <View className="absolute top-0 left-8 right-8 h-[1px] bg-white/25 pointer-events-none" />
 
-          {/* Header Row: Category Badge */}
+          {/* Header Row: Category Badge & Queued Offers Badge */}
           <View className="flex-row items-center justify-between mb-3.5">
             <View className="flex-row items-center">
               <View className="flex-row items-center bg-[#171722]/90 border border-[#D4AF37]/35 px-3 py-1.5 rounded-full mr-2.5">
@@ -275,6 +277,15 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
                 </Text>
               </View>
             </View>
+
+            {offerQueue.length > 0 && (
+              <View className="bg-[#D4AF37]/15 border border-[#D4AF37]/40 px-2.5 py-1 rounded-full flex-row items-center">
+                <Ionicons name="layers-outline" size={12} color={THEME_COLORS.gold} />
+                <Text className="text-[#D4AF37] font-montserrat-semibold text-[10px] ml-1">
+                  +{offerQueue.length} {offerQueue.length === 1 ? 'en espera' : 'en espera'}
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* Earnings & Payment Method */}
@@ -448,6 +459,21 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
             {/* Glass Specular Meniscus Reflection across the top lip */}
             <View className="absolute top-0 left-4 right-4 h-[1px] bg-white/40 z-30 pointer-events-none" />
             <View className="absolute bottom-0 left-6 right-6 h-[1px] bg-[#D4AF37]/20 z-30 pointer-events-none" />
+          </TouchableOpacity>
+
+          {/* Secondary action: hide the offer. Local only — the dispatch module exposes
+              no reject endpoint, so the offer stays pending on the backend until it expires. */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={handleReject}
+            disabled={isAccepting}
+            accessibilityRole="button"
+            accessibilityLabel="Descartar la oferta de viaje"
+            className="w-full h-12 mt-2.5 rounded-2xl items-center justify-center border border-white/10 bg-white/[0.04]"
+          >
+            <Text className="text-zinc-400 font-montserrat-semibold text-xs uppercase tracking-widest">
+              Descartar
+            </Text>
           </TouchableOpacity>
         </View>
       </View>

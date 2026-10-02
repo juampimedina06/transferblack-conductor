@@ -18,7 +18,7 @@ export const EmergencyFAB = ({ onPress, bottomOffset }: EmergencyFABProps) => {
       stiffness: 150,
       mass: 0.8,
     });
-  }, [targetBottom]);
+  }, [targetBottom, animatedBottom]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     bottom: animatedBottom.value,

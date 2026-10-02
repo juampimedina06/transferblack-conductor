@@ -24,7 +24,7 @@ export function SkeletonBox({ className, style, ...rest }: SkeletonBoxProps) {
       -1,
       true
     );
-  }, []);
+  }, [opacity]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
