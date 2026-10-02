@@ -70,8 +70,12 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
       keyExtractor={keyExtractor}
       inverted
       // Newest messages at the bottom without manual scrollToEnd
-      contentContainerStyle={{ flexGrow: 1, paddingTop: 12 }}
-      ListEmptyComponent={<ChatEmptyState />}
+      contentContainerStyle={{ paddingVertical: 12, paddingHorizontal: 4 }}
+      ListEmptyComponent={
+        <View style={{ transform: [{ scaleY: -1 }], flex: 1, paddingVertical: 40 }}>
+          <ChatEmptyState />
+        </View>
+      }
       ListFooterComponent={<ChatListFooter isFetchingNextPage={isFetchingNextPage} />}
       onEndReached={() => {
         if (hasNextPage && !isFetchingNextPage) {

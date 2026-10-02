@@ -15,7 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { transferApi } from '../../../core/api/transferApi';
 import { THEME_COLORS } from '../../../core/constants/theme';
 import { acceptTripOffer, driverArriving } from '../../../core/trip/actions/trip.actions';
-import { Trip } from '../../../core/trip/interface/trip.interface';
+import { Trip, getPaymentMethodInfo } from '../../../core/trip/interface/trip.interface';
 import { useLocationStore } from '../../maps/store/useLocationStore';
 import { useOfferTimer } from '../../trip/hooks/useOfferTimer';
 import { useDriverTripStore } from '../../trip/store/useDriverTripStore';
@@ -196,8 +196,10 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
         payment_method: arrivingTripData?.payment_method || currentOffer.fare?.paymentMethod || 'cash',
         driver_id: arrivingTripData?.driver_id || '',
         vehicle_id: activeVehicle,
-        estimated_fare: String(arrivingTripData?.estimated_fare || currentOffer.fare?.netEarnings || currentOffer.fare?.totalFare || ''),
+        estimated_fare: String(arrivingTripData?.estimated_fare || currentOffer.fare?.totalFare || currentOffer.fare?.netEarnings || ''),
         final_fare: arrivingTripData?.final_fare || '',
+        driver_earnings: currentOffer.fare?.netEarnings,
+        fare_details: currentOffer.fare,
         currency: arrivingTripData?.currency || currentOffer.fare?.currency || 'ARS',
         confirmed_at: arrivingTripData?.confirmed_at || '',
         assigned_at: arrivingTripData?.assigned_at || new Date().toISOString(),
@@ -211,20 +213,19 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
         dropoff: currentOffer.dropoff,
         routeGeometry: currentOffer.routeGeometry,
         passenger: currentOffer.passenger,
-        third_party: {
-          name: currentOffer.passenger?.fullName || 'Pasajero',
-          phone_e164: '',
-          email: '',
-        },
+        third_party: arrivingTripData?.third_party || currentOffer.third_party || undefined,
         chat: arrivingTripData?.chat || {
           coordinator_user_id: '',
+          coordinator_name: '',
           coordinator_role: 'passenger',
           passenger_user_id: '',
-          is_third_party_trip: false,
-          third_party: {
-            name: currentOffer.passenger?.fullName || 'Pasajero',
-            phone_e164: '',
-          },
+          is_third_party_trip: Boolean(arrivingTripData?.third_party || currentOffer.third_party),
+          third_party: arrivingTripData?.third_party
+            ? {
+                name: arrivingTripData.third_party.name,
+                phone_e164: arrivingTripData.third_party.phone_e164,
+              }
+            : undefined,
         },
       };
 
@@ -299,16 +300,21 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
               </Text>
             </View>
 
-            <View className="flex-row items-center bg-white/[0.05] border border-white/10 px-3 py-1.5 rounded-xl mb-1">
-              <Ionicons
-                name={currentOffer.fare.paymentMethod?.toLowerCase() === 'card' ? 'card-outline' : 'cash-outline'}
-                size={14}
-                color={THEME_COLORS.gold}
-              />
-              <Text className="text-zinc-300 font-montserrat-semibold text-xs ml-1.5 uppercase tracking-wider">
-                {currentOffer.fare.paymentMethod?.toLowerCase() === 'card' ? 'Tarjeta' : 'Efectivo'}
-              </Text>
-            </View>
+            {(() => {
+              const paymentInfo = getPaymentMethodInfo(currentOffer.fare.paymentMethod);
+              return (
+                <View className="flex-row items-center bg-white/[0.05] border border-white/10 px-3 py-1.5 rounded-xl mb-1">
+                  <Ionicons
+                    name={paymentInfo.icon}
+                    size={14}
+                    color={THEME_COLORS.gold}
+                  />
+                  <Text className="text-zinc-300 font-montserrat-semibold text-xs ml-1.5 uppercase tracking-wider">
+                    {paymentInfo.label}
+                  </Text>
+                </View>
+              );
+            })()}
           </View>
 
           {/* Passenger Identity Glass Strip */}

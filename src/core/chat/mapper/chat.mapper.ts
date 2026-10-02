@@ -58,17 +58,21 @@ export const mergeMessages = (existing: ChatMessage[], incoming: ChatMessage[]):
 
   const add = (msg: ChatMessage) => {
     // Replace optimistic entry if this is the confirmed version
-    const optimistic = byClientId.get(msg.clientMessageId);
-    if (optimistic) {
-      byId.delete(optimistic.id);
+    if (msg.clientMessageId) {
+      const optimistic = byClientId.get(msg.clientMessageId);
+      if (optimistic && optimistic.id !== msg.id) {
+        byId.delete(optimistic.id);
+      }
+      byClientId.set(msg.clientMessageId, msg);
     }
-    byId.set(msg.id, msg);
-    byClientId.set(msg.clientMessageId, msg);
+    if (msg.id) {
+      byId.set(msg.id, msg);
+    }
   };
 
   for (const msg of existing) add(msg);
   for (const msg of incoming) {
-    const existingConfirmed = byId.get(msg.id);
+    const existingConfirmed = msg.id ? byId.get(msg.id) : undefined;
     if (existingConfirmed) {
       // Already confirmed — keep the one with more read info
       if (msg.readAt && !existingConfirmed.readAt) {
