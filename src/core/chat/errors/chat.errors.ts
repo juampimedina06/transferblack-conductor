@@ -16,9 +16,39 @@ export const CHAT_ERROR_MAP: Record<string, string> = {
   UNKNOWN: 'Ocurrió un error inesperado.',
 };
 
-export const getChatErrorText = (code: string, isTripInProgress: boolean): string => {
+export const extractChatError = (
+  error: unknown,
+): { code: string; message: string } => {
+  const axiosError = error as any;
+  const data = axiosError?.response?.data;
+  const errObj = data?.error;
+
+  const code = errObj?.code ?? data?.code ?? 'UNKNOWN';
+  let rawMessage = errObj?.message ?? data?.message;
+
+  if (Array.isArray(rawMessage)) {
+    rawMessage = rawMessage.join('. ');
+  }
+
+  return {
+    code: typeof code === 'string' ? code : 'UNKNOWN',
+    message: typeof rawMessage === 'string' ? rawMessage : '',
+  };
+};
+
+export const getChatErrorText = (
+  code: string,
+  isTripInProgress: boolean,
+  serverMessage?: string,
+): string => {
   if (code === 'CHAT_CLOSED' && isTripInProgress) {
     return CHAT_ERROR_MAP.CHAT_CLOSED_IN_PROGRESS;
   }
-  return CHAT_ERROR_MAP[code] ?? CHAT_ERROR_MAP.UNKNOWN;
+  if (CHAT_ERROR_MAP[code]) {
+    return CHAT_ERROR_MAP[code];
+  }
+  if (serverMessage && serverMessage.trim().length > 0) {
+    return serverMessage;
+  }
+  return CHAT_ERROR_MAP.UNKNOWN;
 };

@@ -46,7 +46,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
     ({ item }: ListRenderItemInfo<ChatMessage>) => (
       <ChatBubble
         message={item}
-        isOwn={item.senderId === driverUserId}
+        isOwn={item.senderId === driverUserId || item.senderRole === 'provider'}
         onRetry={onRetry}
       />
     ),

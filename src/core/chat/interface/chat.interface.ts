@@ -2,11 +2,13 @@
  * Raw API shapes (snake_case / camelCase exactly as they arrive from the backend).
  * These are only used in the mapper layer — never spread into components.
  */
+export type ChatSenderRole = 'passenger' | 'provider';
+
 export interface ApiChatMessage {
   id: string;
   tripId: string;
   senderId: string;
-  senderRole: 'driver' | 'passenger' | 'requester';
+  senderRole: ChatSenderRole;
   clientMessageId: string;
   content: string;
   createdAt: string;
@@ -24,7 +26,7 @@ export interface ChatMessage {
   id: string;
   tripId: string;
   senderId: string;
-  senderRole: 'driver' | 'passenger' | 'requester';
+  senderRole: ChatSenderRole;
   clientMessageId: string;
   content: string;
   createdAt: string;
@@ -62,7 +64,16 @@ export interface SocketMessageReadPayload {
   reader_id: string;
 }
 
+export interface ApiChatError {
+  code: string;
+  message: string | string[];
+}
+
+export interface ApiChatErrorResponse {
+  error: ApiChatError;
+}
+
 export interface ChatError {
   code: string;
-  message: string;
+  message: string | string[];
 }

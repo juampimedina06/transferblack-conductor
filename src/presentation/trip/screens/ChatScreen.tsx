@@ -13,7 +13,11 @@ import { useChatMessages } from '@/hooks/chat/useChatMessages';
 import { useSendMessage } from '@/hooks/chat/useSendMessage';
 import { useReadMessages } from '@/hooks/chat/useReadMessages';
 import { useChatSocket } from '@/hooks/chat/useChatSocket';
-import { mapSocketMessageToDomain } from '@/core/chat/mapper/chat.mapper';
+import {
+  mapSocketMessageToDomain,
+  ChatBlockedReason,
+  getChatBlockedReason,
+} from '@/core/chat/mapper/chat.mapper';
 import {
   SocketMessageCreatedPayload,
   SocketMessageReadPayload,
@@ -24,10 +28,6 @@ import { ChatHeader } from '../components/ChatHeader';
 import { ChatMessageList } from '../components/ChatMessageList';
 import { ChatInput } from '../components/ChatInput';
 import { ChatQuickReplies } from '../components/ChatQuickReplies';
-
-type BlockedReason = 'in_progress' | 'closed' | null;
-
-const BLOCKED_STATUSES = new Set(['in_progress', 'completed', 'cancelled'] as const);
 
 interface ChatViewProps {
   trip: Trip;
@@ -41,15 +41,9 @@ const ChatView: React.FC<ChatViewProps> = ({ trip, driverUserId }) => {
   const tripStatus = trip.status;
   const isTripInProgress = tripStatus === 'in_progress';
 
-  // Derived blocked reason
+  // Derived blocked reason with 24-hour post-trip grace window
   const [chatClosed, setChatClosed] = useState(false);
-  const blockedReason: BlockedReason = chatClosed
-    ? 'closed'
-    : BLOCKED_STATUSES.has(tripStatus as any)
-    ? isTripInProgress
-      ? 'in_progress'
-      : 'closed'
-    : null;
+  const blockedReason: ChatBlockedReason = getChatBlockedReason(trip, chatClosed);
 
   // ── React Query hooks ───────────────────────────────────────────────────────
   const {
@@ -98,12 +92,28 @@ const ChatView: React.FC<ChatViewProps> = ({ trip, driverUserId }) => {
     [applyReadReceiptToCache, driverUserId],
   );
 
-  useChatSocket({
+  const { isConnected } = useChatSocket({
     tripId,
     onMessageCreated,
     onMessageRead,
     onReconnect: catchUp,
   });
+
+  // ── Polling fallback when socket connection is disconnected ────────────────
+  useEffect(() => {
+    if (isConnected) return;
+
+    const interval = setInterval(() => {
+      catchUp();
+    }, 8000);
+
+    return () => clearInterval(interval);
+  }, [isConnected, catchUp]);
+
+  // Mark read when messages change and screen is active
+  useEffect(() => {
+    markRead();
+  }, [messages, markRead]);
 
   // ── Send ────────────────────────────────────────────────────────────────────
   const { sendMessage, retryMessage } = useSendMessage({

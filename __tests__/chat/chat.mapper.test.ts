@@ -11,7 +11,7 @@ const makeApi = (overrides: Partial<ApiChatMessage> = {}): ApiChatMessage => ({
   id: 'msg-1',
   tripId: 'trip-1',
   senderId: 'user-driver',
-  senderRole: 'driver',
+  senderRole: 'provider',
   clientMessageId: 'client-1',
   content: 'Hello',
   createdAt: '2024-01-01T10:00:00Z',
@@ -24,7 +24,7 @@ const makeDomain = (overrides: Partial<ChatMessage> = {}): ChatMessage => ({
   id: 'msg-1',
   tripId: 'trip-1',
   senderId: 'user-driver',
-  senderRole: 'driver',
+  senderRole: 'provider',
   clientMessageId: 'client-1',
   content: 'Hello',
   createdAt: '2024-01-01T10:00:00Z',
@@ -40,7 +40,13 @@ describe('mapApiMessageToDomain', () => {
     const result = mapApiMessageToDomain(makeApi());
     expect(result.status).toBe('sent');
     expect(result.id).toBe('msg-1');
+    expect(result.senderRole).toBe('provider');
     expect((result as any).deliveredAt).toBeUndefined();
+  });
+
+  it('normalizes legacy driver senderRole to provider', () => {
+    const result = mapApiMessageToDomain(makeApi({ senderRole: 'driver' as any }));
+    expect(result.senderRole).toBe('provider');
   });
 
   it('preserves null readAt', () => {
@@ -66,6 +72,7 @@ describe('mapSocketMessageToDomain', () => {
 describe('getRoleLabel', () => {
   it.each([
     ['passenger', 'Pasajero'],
+    ['provider', 'Conductor'],
     ['requester', 'Coordinación'],
   ] as const)('maps %s → %s', (role, expected) => {
     expect(getRoleLabel(role)).toBe(expected);

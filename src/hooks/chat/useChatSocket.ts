@@ -52,25 +52,28 @@ export const useChatSocket = ({
     const socket = socketRef.current;
     if (!socket?.connected) return;
 
-    socket.emit('chat.join', { tripId }, (ack: { ok: boolean; tripId?: string; error?: { code: string; message: string } }) => {
-      if (ack.ok) {
-        // Successfully joined — trigger catch-up fetch
-        onReconnectRef.current();
-      } else {
-        const code = ack.error?.code ?? 'UNKNOWN';
-        if (code === 'UNAUTHORIZED' || code === 'TOKEN_EXPIRED') {
-          // Try refreshing token once and reconnect
-          authStorage.getAccessToken().then((token) => {
-            if (token && socket) {
-              socket.auth = { token: `Bearer ${token}` };
-              socket.disconnect();
-              socket.connect();
-            }
-          });
+    socket.emit(
+      'chat.join',
+      { tripId },
+      (ack?: { ok?: boolean; tripId?: string; error?: { code: string; message: string | string[] } }) => {
+        if (ack?.ok) {
+          // Successfully joined room ride_<tripId> — trigger catch-up fetch
+          onReconnectRef.current();
+        } else if (ack?.error) {
+          const code = ack.error.code ?? 'UNKNOWN';
+          if (code === 'UNAUTHORIZED' || code === 'TOKEN_EXPIRED') {
+            // Try refreshing token once and reconnect
+            authStorage.getAccessToken().then((token) => {
+              if (token && socket) {
+                socket.auth = { token: `Bearer ${token}` };
+                socket.disconnect();
+                socket.connect();
+              }
+            });
+          }
         }
-        // Errors are surfaced via connection state — no loop retry
-      }
-    });
+      },
+    );
   }, [tripId]);
 
   useEffect(() => {
@@ -80,11 +83,12 @@ export const useChatSocket = ({
       const token = await authStorage.getAccessToken();
       if (!token) return;
 
-      const url = process.env.EXPO_PUBLIC_API_URL ?? '';
+      const rawUrl = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.0.100:3000/api/v1';
+      const socketUrl = rawUrl.replace(/\/api\/v1\/?$/, '').replace(/\/api\/?$/, '');
 
-      const socket = io(url, {
+      const socket = io(socketUrl, {
         auth: { token: `Bearer ${token}` },
-        transports: ['websocket'],
+        transports: ['websocket', 'polling'],
         autoConnect: true,
       });
 
@@ -106,13 +110,15 @@ export const useChatSocket = ({
       });
 
       socket.on('chat.message.created', (payload: SocketMessageCreatedPayload) => {
-        if (payload.tripId === tripId) {
+        const msgTripId = payload.tripId || (payload as any).trip_id;
+        if (msgTripId === tripId) {
           onMessageCreatedRef.current(payload);
         }
       });
 
       socket.on('chat.message.read', (payload: SocketMessageReadPayload) => {
-        if (payload.trip_id === tripId) {
+        const msgTripId = payload.trip_id || (payload as any).tripId;
+        if (msgTripId === tripId) {
           onMessageReadRef.current(payload);
         }
       });
@@ -135,7 +141,7 @@ export const useChatSocket = ({
     return () => {
       const socket = socketRef.current;
       if (socket) {
-        socket.emit('chat.leave', { tripId });
+        socket.emit('chat.leave', { tripId }, () => {});
         socket.disconnect();
         socketRef.current = null;
       }

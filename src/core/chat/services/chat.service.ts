@@ -7,6 +7,22 @@ import {
 } from '../interface/chat.interface';
 import { mapGetMessagesResponse } from '../mapper/chat.mapper';
 
+/**
+ * Resolves the chat REST endpoint ensuring the /api prefix is always present
+ * regardless of whether transferApi's baseURL has /api/v1, /api, or is the root domain.
+ * Contract: /api/v1/trips/:tripId/messages
+ */
+const resolveChatPath = (tripId: string, subpath: string = ''): string => {
+  const base = (transferApi.defaults.baseURL ?? '').replace(/\/+$/, '');
+  if (base.endsWith('/api/v1')) {
+    return `/trips/${tripId}/messages${subpath}`;
+  }
+  if (base.endsWith('/api')) {
+    return `/v1/trips/${tripId}/messages${subpath}`;
+  }
+  return `/api/v1/trips/${tripId}/messages${subpath}`;
+};
+
 export class ChatService {
   /**
    * Fetch paginated messages for a trip.
@@ -25,8 +41,9 @@ export class ChatService {
     if (before) params.before = before;
     if (after) params.after = after;
 
+    const endpoint = resolveChatPath(tripId);
     const response = await transferApi.get<ApiGetMessagesResponse>(
-      `/v1/trips/${tripId}/messages`,
+      endpoint,
       { params },
     );
     return mapGetMessagesResponse(response.data);
@@ -37,7 +54,8 @@ export class ChatService {
    * Returns 201 (created) or 200 (already existed).
    */
   static async sendMessage(tripId: string, payload: SendMessagePayload): Promise<void> {
-    await transferApi.post(`/v1/trips/${tripId}/messages`, payload);
+    const endpoint = resolveChatPath(tripId);
+    await transferApi.post(endpoint, payload);
   }
 
   /**
@@ -45,6 +63,7 @@ export class ChatService {
    * Must be the id of the last message from the OTHER participant that the driver saw.
    */
   static async readMessages(tripId: string, payload: ReadMessagePayload): Promise<void> {
-    await transferApi.post(`/v1/trips/${tripId}/messages/read`, payload);
+    const endpoint = resolveChatPath(tripId, '/read');
+    await transferApi.post(endpoint, payload);
   }
 }

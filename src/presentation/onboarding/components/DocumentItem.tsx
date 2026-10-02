@@ -85,7 +85,8 @@ export const DocumentItem: React.FC<DocumentItemProps> = ({
     (previewUri ? previewUri.toLowerCase().endsWith('.pdf') : false);
   const isImage = !isPdf && !!previewUri;
 
-  const isMetadataMissing = !issuedAt || !expiresAt;
+  const isVehicleDoc = type === 'vehicle_title' || type === 'itv';
+  const isMetadataMissing = !issuedAt || !expiresAt || (isVehicleDoc && !docNumber?.trim());
 
   // Si ya está subido e ingresó metadatos inicia minimizado, si no, expandido
   const shouldExpand = !isUploaded || isMetadataMissing;
@@ -410,7 +411,7 @@ export const DocumentItem: React.FC<DocumentItemProps> = ({
               </Text>
               {isMetadataMissing ? (
                 <Text className="text-amber-400 font-montserrat-medium text-xs mt-0.5">
-                  ⚠️ Faltan fechas de vigencia
+                  ⚠️ Faltan datos obligatorios
                 </Text>
               ) : docNumber || expiresAt ? (
                 <Text className="text-ash font-montserrat text-xs mt-0.5" numberOfLines={1}>
@@ -494,7 +495,9 @@ export const DocumentItem: React.FC<DocumentItemProps> = ({
             {label}
           </Text>
           <Text className="text-gold font-montserrat text-xs mt-1">
-            * Requiere fechas de emisión y vencimiento
+            {isVehicleDoc 
+              ? '* Requiere N° de trámite y fechas de vigencia' 
+              : '* Requiere fechas de emisión y vencimiento'}
           </Text>
         </View>
 
@@ -590,8 +593,8 @@ export const DocumentItem: React.FC<DocumentItemProps> = ({
       <View className="flex-row gap-3 mb-4">
         <TouchableOpacity
           onPress={() => {
-            if (!issuedAt || !expiresAt) {
-              Alert.alert('Faltan datos', 'Por favor ingresá la fecha de emisión y vencimiento antes de cargar el documento.');
+            if (isMetadataMissing) {
+              Alert.alert('Faltan datos', isVehicleDoc ? 'Por favor ingresá el número de documento y las fechas de vigencia antes de cargar.' : 'Por favor ingresá la fecha de emisión y vencimiento antes de cargar el documento.');
               return;
             }
             setIsScannerOpen(true);
@@ -608,8 +611,8 @@ export const DocumentItem: React.FC<DocumentItemProps> = ({
 
         <TouchableOpacity
           onPress={() => {
-            if (!issuedAt || !expiresAt) {
-              Alert.alert('Faltan datos', 'Por favor ingresá la fecha de emisión y vencimiento antes de cargar el documento.');
+            if (isMetadataMissing) {
+              Alert.alert('Faltan datos', isVehicleDoc ? 'Por favor ingresá el número de documento y las fechas de vigencia antes de cargar.' : 'Por favor ingresá la fecha de emisión y vencimiento antes de cargar el documento.');
               return;
             }
             handlePickDocument();

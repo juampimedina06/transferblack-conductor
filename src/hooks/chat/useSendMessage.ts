@@ -2,7 +2,7 @@ import { useCallback, useRef } from 'react';
 import * as Crypto from 'expo-crypto';
 import { ChatService } from '@/core/chat/services/chat.service';
 import { ChatMessage } from '@/core/chat/interface/chat.interface';
-import { getChatErrorText } from '@/core/chat/errors/chat.errors';
+import { extractChatError, getChatErrorText } from '@/core/chat/errors/chat.errors';
 
 interface UseSendMessageProps {
   tripId: string;
@@ -38,12 +38,12 @@ export const useSendMessage = ({
       if (inFlightRef.current.has(clientMessageId)) return;
       inFlightRef.current.add(clientMessageId);
 
-      // Optimistic insert
+      // Optimistic insert with 'provider' role (driver)
       const optimistic: ChatMessage = {
         id: clientMessageId, // temporary — will be replaced on server confirm
         tripId,
         senderId: driverUserId,
-        senderRole: 'driver',
+        senderRole: 'provider',
         clientMessageId,
         content: trimmed,
         createdAt: new Date().toISOString(),
@@ -65,7 +65,7 @@ export const useSendMessage = ({
         inFlightRef.current.delete(clientMessageId);
 
         const status = err?.response?.status as number | undefined;
-        const code: string = err?.response?.data?.code ?? err?.response?.data?.error?.code ?? 'UNKNOWN';
+        const { code, message: serverMessage } = extractChatError(err);
 
         if (status === 409 && code === 'CHAT_CLOSED') {
           upsertMessage({ ...optimistic, status: 'failed' });
@@ -89,7 +89,7 @@ export const useSendMessage = ({
 
         // Network / 5xx → failed, user can retry
         upsertMessage({ ...optimistic, status: 'failed' });
-        onError?.(getChatErrorText(code, isTripInProgress));
+        onError?.(getChatErrorText(code, isTripInProgress, serverMessage));
       } finally {
         inFlightRef.current.delete(clientMessageId);
       }

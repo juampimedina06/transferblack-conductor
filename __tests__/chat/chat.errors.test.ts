@@ -1,4 +1,44 @@
-import { getChatErrorText } from '@/core/chat/errors/chat.errors';
+import { extractChatError, getChatErrorText } from '@/core/chat/errors/chat.errors';
+
+describe('extractChatError', () => {
+  it('extracts code and string message from unified error envelope', () => {
+    const error = {
+      response: {
+        data: {
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'El contenido no puede estar vacío',
+          },
+        },
+      },
+    };
+    const result = extractChatError(error);
+    expect(result.code).toBe('VALIDATION_ERROR');
+    expect(result.message).toBe('El contenido no puede estar vacío');
+  });
+
+  it('joins array message from VALIDATION_ERROR', () => {
+    const error = {
+      response: {
+        data: {
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: ['El contenido es requerido', 'Longitud mínima 1 carácter'],
+          },
+        },
+      },
+    };
+    const result = extractChatError(error);
+    expect(result.code).toBe('VALIDATION_ERROR');
+    expect(result.message).toBe('El contenido es requerido. Longitud mínima 1 carácter');
+  });
+
+  it('falls back to UNKNOWN when response is missing', () => {
+    const result = extractChatError(new Error('Network error'));
+    expect(result.code).toBe('UNKNOWN');
+    expect(result.message).toBe('');
+  });
+});
 
 describe('getChatErrorText', () => {
   it('returns in_progress message for CHAT_CLOSED when trip is in progress', () => {

@@ -64,10 +64,16 @@ export default function DocumentsScreen() {
         missing.push(`${docName} (Fechas de vigencia)`);
         continue;
       }
+      
+      const isVehicleDoc = type === 'vehicle_title' || type === 'itv';
+      if (isVehicleDoc && (!state.metadata?.documentNumber || state.metadata.documentNumber.trim() === '')) {
+        missing.push(`${docName} (Número de documento/trámite obligatorio)`);
+        continue;
+      }
 
       const parsedMetadata = documentMetadataSchema.safeParse(state.metadata);
       if (!parsedMetadata.success) {
-        missing.push(`${docName} (Revisá las fechas de emisión y vencimiento)`);
+        missing.push(`${docName} (Revisá los datos ingresados)`);
       }
     }
     

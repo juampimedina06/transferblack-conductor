@@ -46,9 +46,15 @@ transferApi.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    const status = error.response?.status;
+    const isForbidden = status === 403 && (
+      error.response?.data?.error?.code === 'FORBIDDEN' ||
+      error.response?.data?.code === 'FORBIDDEN' ||
+      error.response?.data?.error?.message === 'No tienes permisos para realizar esta accion'
+    );
 
     if (
-      error.response?.status === 401 &&
+      (status === 401 || isForbidden) &&
       originalRequest &&
       !originalRequest._retry &&
       !originalRequest.url?.includes('/auth/login') &&
@@ -96,7 +102,10 @@ transferApi.interceptors.response.use(
         return transferApi(originalRequest);
       } catch (refreshErr) {
         processQueue(refreshErr, null);
-        await useAuthStore.getState().logout();
+        // Only logout automatically if session is unauthenticated (401), not on permission check (403)
+        if (!isForbidden) {
+          await useAuthStore.getState().logout();
+        }
         return Promise.reject(refreshErr);
       } finally {
         isRefreshing = false;

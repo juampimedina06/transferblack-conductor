@@ -7,17 +7,22 @@ import {
 } from '../interface/chat.interface';
 
 /** Map a raw API message to a domain ChatMessage */
-export const mapApiMessageToDomain = (raw: ApiChatMessage): ChatMessage => ({
-  id: raw.id,
-  tripId: raw.tripId,
-  senderId: raw.senderId,
-  senderRole: raw.senderRole,
-  clientMessageId: raw.clientMessageId,
-  content: raw.content,
-  createdAt: raw.createdAt,
-  readAt: raw.readAt,
-  status: 'sent',
-});
+export const mapApiMessageToDomain = (raw: ApiChatMessage | any): ChatMessage => {
+  const roleRaw = raw.senderRole ?? raw.sender_role;
+  const senderRole = roleRaw === 'driver' ? 'provider' : (roleRaw as 'passenger' | 'provider');
+
+  return {
+    id: raw.id,
+    tripId: raw.tripId ?? raw.trip_id,
+    senderId: raw.senderId ?? raw.sender_id,
+    senderRole,
+    clientMessageId: raw.clientMessageId ?? raw.client_message_id,
+    content: raw.content,
+    createdAt: raw.createdAt ?? raw.created_at,
+    readAt: raw.readAt ?? raw.read_at ?? null,
+    status: 'sent',
+  };
+};
 
 /** Map a socket chat.message.created payload to domain (same shape as ApiChatMessage) */
 export const mapSocketMessageToDomain = (payload: SocketMessageCreatedPayload): ChatMessage =>
@@ -31,12 +36,13 @@ export const mapGetMessagesResponse = (raw: ApiGetMessagesResponse): GetMessages
 
 // ── Role label map ────────────────────────────────────────────────────────────
 
-const ROLE_LABEL: Record<'passenger' | 'requester', string> = {
+const ROLE_LABEL: Record<string, string> = {
   passenger: 'Pasajero',
+  provider: 'Conductor',
   requester: 'Coordinación',
 };
 
-export const getRoleLabel = (role: 'passenger' | 'requester'): string =>
+export const getRoleLabel = (role: string): string =>
   ROLE_LABEL[role] ?? 'Interlocutor';
 
 // ── Merge / deduplication helpers ─────────────────────────────────────────────
@@ -101,4 +107,60 @@ export const applyReadReceipt = (
     }
     return m;
   });
+};
+
+// ── Post-trip grace window helpers ──────────────────────────────────────────
+
+export const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+
+export type ChatBlockedReason = 'in_progress' | 'closed' | null;
+
+/**
+ * Checks whether the post-trip chat has expired.
+ * The chat closes strictly 24 hours after the trip is completed (finishedAt) or cancelled (cancelledAt).
+ * Subsequent trip updates (e.g. updated_at) do NOT extend the open window.
+ */
+export const isPostTripChatExpired = (trip: {
+  status: string;
+  finished_at?: string | null;
+  cancelled_at?: string | null;
+  finishedAt?: string | null;
+  cancelledAt?: string | null;
+}): boolean => {
+  const isEnded = trip.status === 'completed' || trip.status === 'cancelled';
+  if (!isEnded) return false;
+
+  const rawTimestamp =
+    trip.finished_at ||
+    trip.finishedAt ||
+    trip.cancelled_at ||
+    trip.cancelledAt;
+
+  if (!rawTimestamp) {
+    return true;
+  }
+
+  const endTime = new Date(rawTimestamp).getTime();
+  if (isNaN(endTime)) return true;
+
+  return Date.now() - endTime > TWENTY_FOUR_HOURS_MS;
+};
+
+/**
+ * Computes the blocked reason for the chat.
+ */
+export const getChatBlockedReason = (
+  trip: {
+    status: string;
+    finished_at?: string | null;
+    cancelled_at?: string | null;
+    finishedAt?: string | null;
+    cancelledAt?: string | null;
+  },
+  chatClosedExplicitly: boolean = false,
+): ChatBlockedReason => {
+  if (chatClosedExplicitly) return 'closed';
+  if (trip.status === 'in_progress') return 'in_progress';
+  if (isPostTripChatExpired(trip)) return 'closed';
+  return null;
 };
