@@ -46,6 +46,7 @@ Docs: https://docs.expo.dev/eas/index.md
 - **Interfaces:** Crear interfaces de TypeScript detalladas y precisas para las respuestas del backend, pero sin generar "ruido" innecesario o sobreingeniería.
 - **Dudas sobre la API:** Ante cualquier duda sobre payloads o funcionamiento del backend, buscar e investigar directamente en el código del proyecto `transferblack/backend`.
 - **Manejo de Errores:** Todos los mensajes de error mostrados al usuario y su gestión interna DEBEN estar en español.
+- **Idioma de Pull Requests y Documentación:** Las descripciones de Pull Requests, resúmenes y documentación DEBEN redactarse SIEMPRE en español.
 
 ## Rol y Comportamiento del Agente
 - **El humano lidera:** Yo (el usuario) tomo las decisiones de arquitectura y diseño. Tu trabajo es ejecutar, sugerir mejoras puntuales y escribir código que respete mis decisiones.
