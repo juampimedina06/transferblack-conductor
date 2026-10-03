@@ -42,6 +42,25 @@ export interface UserProfileResponse {
   data: UserProfile;
 }
 
+export interface ForgotPasswordResponse {
+  data: {
+    message: string;
+  };
+}
+
+export interface ResetPasswordVerifyResponse {
+  data: {
+    reset_token: string;
+    expires_in: number;
+  };
+}
+
+export interface ResetPasswordResponse {
+  data: {
+    message: string;
+  };
+}
+
 export interface ApiErrorDetail {
   attempts_remaining?: number;
   [key: string]: unknown;
