@@ -4,6 +4,9 @@ import {
   ApiErrorResponse,
   AuthError,
   AuthResponse,
+  ForgotPasswordResponse,
+  ResetPasswordResponse,
+  ResetPasswordVerifyResponse,
   UserProfileResponse,
 } from '../interface/auth.interface';
 
@@ -71,6 +74,41 @@ export const authActions = {
       await transferApi.post('/auth/resend-verification');
     } catch (error: unknown) {
       return handleApiError(error, 'Error al reenviar el PIN.');
+    }
+  },
+
+  async forgotPassword(email: string): Promise<ForgotPasswordResponse> {
+    try {
+      const { data } = await transferApi.post<ForgotPasswordResponse>('/auth/forgot-password', {
+        email: email.trim().toLowerCase(),
+      });
+      return data;
+    } catch (error: unknown) {
+      return handleApiError(error, 'Error al solicitar el código de recuperación.');
+    }
+  },
+
+  async verifyResetPasswordCode(email: string, code: string): Promise<ResetPasswordVerifyResponse> {
+    try {
+      const { data } = await transferApi.post<ResetPasswordVerifyResponse>('/auth/reset-password/verify', {
+        email: email.trim().toLowerCase(),
+        code: code.trim(),
+      });
+      return data;
+    } catch (error: unknown) {
+      return handleApiError(error, 'Error al verificar el código de recuperación.');
+    }
+  },
+
+  async resetPassword(resetToken: string, newPassword: string): Promise<ResetPasswordResponse> {
+    try {
+      const { data } = await transferApi.post<ResetPasswordResponse>('/auth/reset-password', {
+        reset_token: resetToken,
+        new_password: newPassword,
+      });
+      return data;
+    } catch (error: unknown) {
+      return handleApiError(error, 'Error al restablecer la contraseña.');
     }
   },
 };

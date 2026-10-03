@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { Link, router } from 'expo-router';
 import React, { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import * as z from 'zod';
 import { authActions } from '../../../core/auth/action/auth.actions';
 import { Button } from '../../../presentation/components/ui/Button';
@@ -113,7 +113,19 @@ export default function LoginScreen(): React.JSX.Element {
           )}
         />
 
-        <View className="mt-8">
+        <View className="flex-row justify-end -mt-2 mb-6">
+          <Link href={'/forgot-password' as any} asChild>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="¿Olvidaste tu contraseña?"
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text className="text-gold font-montserrat-medium text-sm">¿Olvidaste tu contraseña?</Text>
+            </TouchableOpacity>
+          </Link>
+        </View>
+
+        <View className="mt-2">
           <Button label="Entrar a mi cuenta" onPress={handleSubmit(onSubmit)} isLoading={isLoading} />
         </View>
 
