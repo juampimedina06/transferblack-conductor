@@ -147,14 +147,23 @@ node -e "require('@unrs/resolver-binding-win32-x64-msvc'); console.log('OK')"
   - Auto-encuadre de cámara (`fitToCoordinates`) englobando conductor, origen y destino.
   - Controles FAB reposicionados dinámicamente mediante resortes de `react-native-reanimated` por encima del panel inferior.
 
-### 7. Bóveda Financiera (Wallet), Retiros y Movimientos Contables
+### 7. Bóveda Financiera (Wallet), Configuración de Medio de Cobro y Retiros
 - **Módulo de Bóveda en `src/app/(home)/wallet/index.tsx`**: Centro financiero VIP del conductor con visualización en tiempo real de su estado contable (`GET /driver/wallet`).
-- **Control de Saldo Neto y Deuda de Comisiones**:
-  - Visualización desglosada entre **Saldo Contable**, **Monto Disponible para Retiro** (`available_for_payout`) y **Deuda de Comisiones en Efectivo** (`cash_commission_debt`).
-  - **Detección de Restricción Operativa (`is_cash_restricted`)**: Alertas visuales de alta visibilidad cuando la deuda de comisiones por viajes en efectivo supera el umbral permitido (`cash_restriction_threshold`).
-- **Solicitud de Retiro a CBU (`PayoutModal.tsx`)**:
-  - Modal interactivo con previsualización del CBU/Alias bancario auditado en el perfil.
-  - Control de montos con atajo de "Retirar todo", validaciones de formato decimal estricto y envío seguro a `POST /driver/wallet/payout`.
+  - **Saldo Disponible Diferenciado**: Muestra prominentemente el **Saldo Disponible para Retirar** (`available_balance`), contrastado con el saldo total contable (`balance`), límite de deuda (`debt_limit`) y desglose de movimientos (`breakdown`).
+  - **Banner de Retiro en Curso (`pending_payout`)**: Notificación visual con estado en tiempo real (`requested` = Pendiente, `approved` = En Proceso) y bloqueo automático del botón de solicitud de retiros mientras exista una abierta.
+  - **Accesos Rápidos**: Atajos directos a la configuración de cuenta de cobro y al historial de retiros.
+- **Configuración de Medio de Cobro (`src/app/(home)/wallet/payout-method.tsx`)**:
+  - Pantalla dedicada con selector CBU / CVU, validación estricta de 22 dígitos numéricos, Alias (6 a 50 car.), Titular y CUIT/DNI.
+  - Consulta y precarga de cuenta existente (`GET /driver/payout-method`) y actualización reactiva (`PUT /driver/payout-method`) con React Hook Form + Zod.
+- **Solicitud de Retiro (`PayoutModal.tsx`)**:
+  - Verificación previa de medio de cobro: si no está configurado, bloquea la acción y guía al conductor a registrarlo.
+  - Confirmación visual de destino (Alias y CBU/CVU) antes de confirmar.
+  - Validación de monto (mayor a 0 y $\le$ `available_balance`) con atajo de "Máximo".
+  - Envío al endpoint oficial `POST /driver/payouts` con `{ amount: string }` y actualización atómica del resumen.
+- **Historial de Solicitudes de Retiro (`src/app/(home)/wallet/payout-history.tsx`)**:
+  - Lista paginada (`GET /driver/payouts?page=1&limit=20`) con pull-to-refresh y carga infinita.
+  - Badges cromáticos por estado (`requested`, `approved`, `paid`, `rejected`).
+  - Despliegue de motivo de rechazo (`rejection_reason`), referencia bancaria (`transfer_reference`) y enlace de visualización de comprobante (`receipt_url`).
 - **Libro Mayor de Transacciones y Filtros Reactivos**:
   - Consulta de movimientos (`GET /driver/wallet/transactions`) con categorización mediante chips de filtrado:
     - **Todos**: Auditoría cronológica completa del balance.
@@ -176,7 +185,9 @@ src/
 │   │   ├── confirmed-appointment/ # Cita de entrevista confirmada y polling
 │   │   ├── pending-approval/   # Pantalla de revisión de solicitud
 │   │   ├── wallet/             # Bóveda Financiera, retiros y libro mayor
-│   │   │   └── index.tsx
+│   │   │   ├── index.tsx       # Resumen de billetera y saldos
+│   │   │   ├── payout-method.tsx # Configuración de CBU/CVU y Alias
+│   │   │   └── payout-history.tsx # Historial de solicitudes de retiro
 │   │   ├── index.tsx           # Dashboard principal con mapa y viajes
 │   │   └── _layout.tsx         # Layout con guardas de onboarding y aprobación
 │   ├── auth/                   # Autenticación (login, registro)
@@ -192,8 +203,8 @@ src/
 │   │   ├── actions/            # trip.actions.ts (accept, arrive, start, cancel, complete)
 │   │   └── interface/          # trip.interface.ts (Trip, TripOfferPayload, DTOs)
 │   └── wallet/                 # Dominio contable y financiero
-│       ├── actions/            # wallet.actions.ts (getWalletSummary, getWalletTransactions, requestPayout)
-│       └── interface/          # wallet.interface.ts (DriverWalletSummary, WalletTransaction, etc.)
+│       ├── actions/            # wallet.actions.ts (wallet summary, payout methods, payouts history)
+│       └── interface/          # wallet.interface.ts (DriverWalletSummary, DriverPayoutMethod, etc.)
 │
 └── presentation/               # Capa visual (React Native + NativeWind)
     ├── auth/                   # Estado de sesión y almacenamiento seguro (authStorage)
@@ -208,7 +219,9 @@ src/
     ├── onboarding/             # Componentes y stores específicos del onboarding
     ├── providers/              # QueryClientProvider y configuraciones globales
     ├── trip/                   # useDriverTripStore, useTripSocket, useCourtesyTimer
-    └── wallet/                 # useWalletStore (estado global de saldo y transacciones)
+    └── wallet/                 # Capa de presentación financiera
+        ├── schemas/            # Schemas Zod de formularios (payout-method.schema.ts)
+        └── store/              # useWalletStore (estado global de saldo, cobros e historial)
 ```
 
 ### Reglas Arquitectónicas Innegociables:

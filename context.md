@@ -74,15 +74,30 @@ Este archivo sirve como referencia rápida y fuente de la verdad para el comport
 - **Cliente Socket.io:** Instancia centralizada (`socket.ts`) con reconexión automática y desconexión controlada.
 - **Autenticación por Token:** Inyección dinámica de credenciales (`socket.auth = { token }`) obtenidas de `authStorage` al ponerse en estado disponible o tener viaje activo, desconectando en reposo o al cerrar sesión.
 
-### Bóveda Financiera y Retiros (`src/app/(home)/wallet/`, `src/core/wallet/`, `src/presentation/wallet/`)
+### Bóveda Financiera, Cuenta de Cobro y Retiros (`src/app/(home)/wallet/`, `src/core/wallet/`, `src/presentation/wallet/`)
 - **Resumen Financiero (`useWalletStore`, `GET /driver/wallet`):**
-  - Muestra saldo contable neto (`balance`), saldo disponible para retiro (`available_for_payout`) y deuda acumulada por comisiones de viajes en efectivo (`cash_commission_debt`).
-  - Detección de bloqueo operativo por deuda (`is_cash_restricted`) contra el umbral de la plataforma (`cash_restriction_threshold`).
-- **Retiros a CBU (`PayoutModal.tsx`, `POST /driver/wallet/payout`):**
-  - Envío del monto formateado estrictamente como string con dos decimales (`{ amount: Number(val).toFixed(2) }`) según el schema Zod del backend.
-  - Previsualización del CBU/Alias bancario del chofer y confirmaciones con háptica.
+  - Muestra saldo disponible para retiro (`available_balance`), saldo contable neto (`balance`), límite de deuda (`debt_limit`) y desglose analítico (`breakdown`).
+  - Detección de restricción operativa por deuda acumulada (`is_cash_restricted`).
+  - Banner informativo de retiro en curso (`pending_payout` con estados `requested` o `approved`), con enlace directo al historial y bloqueo de nuevas solicitudes mientras haya una en proceso.
+  - Accesos directos a "Configurar Cuenta de Cobro" e "Historial de Retiros".
+- **Configuración de Medio de Cobro (`src/app/(home)/wallet/payout-method.tsx`):**
+  - Consulta y precarga de cuenta existente (`GET /driver/payout-method`) y guardado/actualización (`PUT /driver/payout-method`).
+  - Validación con React Hook Form + Zod (`payout-method.schema.ts`):
+    - Selector CBU o CVU.
+    - CBU/CVU validado estrictamente a 22 dígitos numéricos.
+    - Alias de 6 a 50 caracteres.
+    - Nombre del titular (mínimo 2 caracteres) y CUIT/DNI (mínimo 6 caracteres).
+- **Solicitud de Retiro (`PayoutModal.tsx`, `POST /driver/payouts`):**
+  - Validación de medio de cobro configurado: si no existe, bloquea la acción y ofrece redirección inmediata a la pantalla de configuración.
+  - Tarjeta de confirmación visual de destino (Alias y CBU/CVU) previo al envío.
+  - Control de montos (mayor a 0 y $\le$ `available_balance`) con botón de "Máximo".
+  - Envío al endpoint oficial `POST /driver/payouts` con `{ amount: string }` y actualización atómica del estado financiero.
+- **Historial de Retiros Paginado (`src/app/(home)/wallet/payout-history.tsx`, `GET /driver/payouts`):**
+  - Lista paginada con pull-to-refresh y carga infinita (`page` y `limit=20`).
+  - Badges por estado (`requested` = Pendiente, `approved` = En Proceso, `paid` = Pagado, `rejected` = Rechazado).
+  - Despliegue de motivo de rechazo (`rejection_reason`), referencia de transferencia bancaria (`transfer_reference`) y botón para abrir comprobante digital (`receipt_url`).
 - **Libro Mayor de Transacciones (`GET /driver/wallet/transactions`):**
-  - Lista filtrable mediante selector de chips: Todos, Ingresos (`trip_earning`), Comisiones (`cash_trip_commission`), Retiros CBU (`payout`).
+  - Lista filtrable mediante selector de chips: Todos, Ingresos (`trip_earning`), Comisiones (`trip_commission_debt`), Retiros CBU (`payout`).
 - **Integración en Dashboard:**
   - Header pill con saldo en tiempo real y alerta de deuda.
   - Tarjeta 1 de `DashboardCarousel` con balance y acceso directo a la pantalla de la bóveda.
