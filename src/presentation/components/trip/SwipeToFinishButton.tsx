@@ -31,6 +31,8 @@ export const SwipeToFinishButton = ({ onFinish, isLoading = false }: SwipeToFini
   };
 
   const panGesture = Gesture.Pan()
+    .activeOffsetX([-10, 10])
+    .failOffsetY([-10, 10])
     .onStart(() => {
       contextX.value = translateX.value;
     })

@@ -41,6 +41,22 @@ export interface TripOfferPayload {
   routeGeometry?: any;
   require_pin?: boolean;
   boarding_pin?: string | null;
+  third_party?: {
+    name: string;
+    phone_e164: string;
+    email?: string | null;
+  };
+  chat?: {
+    coordinator_user_id: string;
+    coordinator_name: string;
+    coordinator_role: 'passenger' | 'requester';
+    passenger_user_id: string | null;
+    is_third_party_trip: boolean;
+    third_party?: {
+      name: string;
+      phone_e164: string;
+    } | null;
+  };
 }
 
 export interface AcceptOfferInput {
@@ -64,6 +80,8 @@ export interface Trip {
   vehicle_id: string;
   estimated_fare: string;
   final_fare: string;
+  driver_earnings?: number;
+  fare_details?: TripFareDetails;
   currency: string;
   confirmed_at: string;
   assigned_at: string;
@@ -156,7 +174,7 @@ export interface ActiveTripSummary {
   fare: number;
   startedAt: string | null;
   paymentMethod: string;
-  isVoucher: boolean;
+  isVoucher?: boolean;
 }
 
 export interface ActiveTripResponse {
@@ -165,3 +183,20 @@ export interface ActiveTripResponse {
     trip: ActiveTripSummary | null;
   };
 }
+
+export interface PaymentMethodInfo {
+  label: string;
+  icon: 'cash-outline' | 'card-outline' | 'business-outline';
+  isCash: boolean;
+}
+
+export const getPaymentMethodInfo = (method?: string | null): PaymentMethodInfo => {
+  const m = method?.toLowerCase().trim() || '';
+  if (m === 'cash' || m === 'efectivo') {
+    return { label: 'Efectivo', icon: 'cash-outline', isCash: true };
+  }
+  if (m === 'corporate' || m === 'corporativo') {
+    return { label: 'Corporativo', icon: 'business-outline', isCash: false };
+  }
+  return { label: 'Tarjeta', icon: 'card-outline', isCash: false };
+};

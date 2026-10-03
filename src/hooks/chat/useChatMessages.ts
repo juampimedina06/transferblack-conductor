@@ -31,11 +31,15 @@ export const useChatMessages = (tripId: string) => {
     getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
   });
 
-  /** All messages flat, newest first */
-  const allMessages = useMemo<ChatMessage[]>(
-    () => (query.data ? query.data.pages.flatMap((p) => p.data) : []),
-    [query.data]
-  );
+  /** All messages flat, deduplicated and strictly sorted newest-first */
+  const allMessages = useMemo<ChatMessage[]>(() => {
+    if (!query.data) return [];
+    const flat = query.data.pages.flatMap((p) => p.data);
+    const merged = mergeMessages([], flat);
+    return merged.sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+  }, [query.data]);
 
   /**
    * Called after socket reconnect or foreground:
@@ -61,6 +65,9 @@ export const useChatMessages = (tripId: string) => {
         if (!old) return old;
         const [firstPage, ...rest] = old.pages;
         const merged = mergeMessages(firstPage.data, fresh.data);
+        merged.sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        );
         return {
           ...old,
           pages: [{ ...firstPage, data: merged }, ...rest],

@@ -31,6 +31,8 @@ export const SwipeToArriveButton = ({ onArrive, isLoading = false }: SwipeToArri
   };
 
   const panGesture = Gesture.Pan()
+    .activeOffsetX([-10, 10])
+    .failOffsetY([-10, 10])
     .onStart(() => {
       contextX.value = translateX.value;
     })
