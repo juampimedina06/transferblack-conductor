@@ -17,6 +17,8 @@ import { THEME_COLORS } from '@/core/constants/theme';
 import { ScheduledTripCard } from '@/presentation/components/scheduled-trips/ScheduledTripCard';
 import { ScheduledTripSkeleton } from '@/presentation/components/scheduled-trips/ScheduledTripSkeleton';
 import { ScheduledTripDetailModal } from '@/presentation/components/scheduled-trips/ScheduledTripDetailModal';
+import * as Haptics from 'expo-haptics';
+import { LiquidGlassContainer } from '@/presentation/components/ui/LiquidGlassContainer';
 
 export default function ScheduledTripsScreen() {
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
@@ -57,36 +59,39 @@ export default function ScheduledTripsScreen() {
       <StatusBar style="light" />
       <SafeAreaView className="flex-1" edges={['top', 'bottom']}>
         {/* Top Header */}
-        <View className="flex-row items-center justify-between px-5 py-3 border-b border-white/[0.08]">
+        <View className="flex-row items-center justify-between px-4 py-3 border-b border-white/10">
           <View className="flex-row items-center">
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.back();
+              }}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               accessibilityRole="button"
               accessibilityLabel="Volver al dashboard"
-              className="w-10 h-10 rounded-full bg-charcoal items-center justify-center border border-charcoal mr-3 shadow-sm shadow-black"
+              className="w-11 h-11 rounded-full bg-white/5 border border-white/10 items-center justify-center mr-3 active:scale-95"
             >
-              <Ionicons name="arrow-back" size={20} color={THEME_COLORS.platinum} />
+              <Ionicons name="arrow-back" size={22} color={THEME_COLORS.gold} />
             </TouchableOpacity>
             <View>
               <Text className="text-white font-montserrat-bold text-lg">
                 Mis Reservas
               </Text>
-              <Text className="text-zinc-400 font-montserrat text-xs">
+              <Text className="text-ash font-montserrat text-xs">
                 Viajes programados asignados
               </Text>
             </View>
           </View>
 
           <View className="flex-row items-center">
-            <View className="w-8 h-8 rounded-full bg-[#D4AF37]/15 border border-[#D4AF37]/35 items-center justify-center">
-              <Ionicons name="calendar" size={16} color={THEME_COLORS.gold} />
+            <View className="w-10 h-10 rounded-full bg-gold/15 border border-gold/30 items-center justify-center">
+              <Ionicons name="calendar" size={18} color={THEME_COLORS.gold} />
             </View>
           </View>
         </View>
 
         {/* Content Area */}
-        <View className="flex-1 px-5 pt-4">
+        <View className="flex-1 px-4 pt-4">
           {isLoading ? (
             <ScheduledTripSkeleton />
           ) : errorMsg ? (
@@ -97,12 +102,15 @@ export default function ScheduledTripsScreen() {
               <Text className="text-white font-montserrat-bold text-lg mb-2 text-center">
                 Error al cargar reservas
               </Text>
-              <Text className="text-zinc-400 font-montserrat text-xs text-center mb-6 leading-5">
+              <Text className="text-ash font-montserrat text-xs text-center mb-6 leading-5">
                 {errorMsg}
               </Text>
               <TouchableOpacity
-                onPress={() => refetch()}
-                className="bg-gold px-6 py-3 rounded-full active:opacity-80"
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  refetch();
+                }}
+                className="bg-gold px-6 py-3.5 rounded-2xl active:opacity-90 shadow-md shadow-gold/20"
               >
                 <Text className="text-obsidian font-montserrat-bold text-xs tracking-wider uppercase">
                   Reintentar
@@ -111,15 +119,20 @@ export default function ScheduledTripsScreen() {
             </View>
           ) : trips.length === 0 ? (
             <View className="flex-1 items-center justify-center px-6 pb-12">
-              <View className="w-20 h-20 rounded-full bg-white/[0.03] border border-white/[0.08] items-center justify-center mb-4">
-                <Ionicons name="calendar-outline" size={36} color={THEME_COLORS.ash} />
-              </View>
-              <Text className="text-white font-montserrat-bold text-base mb-1.5 text-center">
-                Sin reservas programadas
-              </Text>
-              <Text className="text-zinc-400 font-montserrat text-xs text-center leading-5 max-w-[280px]">
-                Cuando la administración te asigne un viaje programado o abono, aparecerá listado aquí.
-              </Text>
+              <LiquidGlassContainer
+                variant="default"
+                className="rounded-3xl p-8 items-center justify-center border border-white/10 max-w-[320px]"
+              >
+                <View className="w-16 h-16 rounded-full bg-gold/15 border border-gold/30 items-center justify-center mb-4">
+                  <Ionicons name="calendar-outline" size={32} color={THEME_COLORS.gold} />
+                </View>
+                <Text className="text-white font-montserrat-bold text-base mb-1.5 text-center">
+                  Sin reservas programadas
+                </Text>
+                <Text className="text-ash font-montserrat text-xs text-center leading-relaxed">
+                  Cuando la administración te asigne un viaje programado o abono, aparecerá listado aquí.
+                </Text>
+              </LiquidGlassContainer>
             </View>
           ) : (
             <FlatList

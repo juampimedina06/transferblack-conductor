@@ -24,6 +24,8 @@ import {
 } from '../../../presentation/wallet/schemas/payout-method.schema';
 import { Input } from '../../../presentation/components/ui/Input';
 import { Button } from '../../../presentation/components/ui/Button';
+import * as Haptics from 'expo-haptics';
+import { LiquidGlassContainer } from '../../../presentation/components/ui/LiquidGlassContainer';
 
 export default function PayoutMethodScreen() {
   const {
@@ -74,6 +76,7 @@ export default function PayoutMethodScreen() {
 
   const onSubmit = async (formData: PayoutMethodFormData) => {
     try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       await savePayoutMethod({
         account_type: formData.account_type,
         cbu_cvu: formData.cbu_cvu.trim(),
@@ -82,6 +85,7 @@ export default function PayoutMethodScreen() {
         account_holder_document: formData.account_holder_document.trim(),
       });
 
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert(
         'Cuenta guardada',
         'Tu medio de cobro se ha registrado correctamente.',
@@ -93,6 +97,7 @@ export default function PayoutMethodScreen() {
         ]
       );
     } catch (err: unknown) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       const msg = err instanceof Error ? err.message : 'No se pudo guardar el medio de cobro';
       Alert.alert('Error', msg);
     }
@@ -103,16 +108,19 @@ export default function PayoutMethodScreen() {
       <StatusBar style="light" />
 
       {/* Header */}
-      <View className="px-4 py-3 flex-row items-center border-b border-charcoal/50">
+      <View className="px-4 py-3 flex-row items-center border-b border-white/10">
         <TouchableOpacity
           accessibilityRole="button"
           accessibilityLabel="Volver a la billetera"
-          onPress={() => router.back()}
-          className="w-10 h-10 rounded-full bg-charcoal/30 items-center justify-center"
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.back();
+          }}
+          className="w-11 h-11 rounded-2xl bg-white/5 border border-white/10 items-center justify-center active:scale-95"
         >
-          <Ionicons name="arrow-back" size={24} color={THEME_COLORS.platinum} />
+          <Ionicons name="arrow-back" size={22} color={THEME_COLORS.gold} />
         </TouchableOpacity>
-        <Text className="text-platinum font-montserrat-bold text-lg ml-4">
+        <Text className="text-white font-montserrat-bold text-lg ml-3">
           Configurar Cuenta de Cobro
         </Text>
       </View>
@@ -122,7 +130,7 @@ export default function PayoutMethodScreen() {
         className="flex-1"
       >
         <ScrollView
-          className="flex-1 px-4 pt-6"
+          className="flex-1 px-4 pt-5"
           contentContainerStyle={{ paddingBottom: 40 }}
           keyboardShouldPersistTaps="handled"
         >
@@ -136,61 +144,74 @@ export default function PayoutMethodScreen() {
           ) : (
             <>
               {/* Info Banner */}
-              <View className="bg-charcoal/30 border border-charcoal/60 rounded-2xl p-4 mb-6 flex-row items-start">
+              <LiquidGlassContainer
+                variant="default"
+                className="rounded-2xl p-4 mb-5 flex-row items-start border border-white/10"
+              >
                 <Ionicons name="shield-checkmark-outline" size={24} color={THEME_COLORS.gold} className="mt-0.5" />
                 <View className="ml-3 flex-1">
-                  <Text className="text-platinum font-montserrat-semibold text-sm mb-1">
+                  <Text className="text-white font-montserrat-semibold text-sm mb-1">
                     Cuenta para recibir transferencias
                   </Text>
                   <Text className="text-ash font-montserrat text-xs leading-relaxed">
                     Asegurate de que los datos correspondan a una cuenta bancaria o virtual activa a tu nombre.
                   </Text>
                 </View>
-              </View>
+              </LiquidGlassContainer>
 
               {/* Selector CBU / CVU */}
               <View className="mb-5">
-                <Text className="mb-2 text-sm font-montserrat-medium text-platinum">
+                <Text className="mb-2 text-sm font-montserrat-semibold text-white">
                   Tipo de Cuenta
                 </Text>
                 <Controller
                   control={control}
                   name="account_type"
                   render={({ field: { value, onChange } }) => (
-                    <View className="flex-row space-x-3">
+                    <View className="flex-row gap-3">
                       <TouchableOpacity
-                        activeOpacity={0.8}
-                        onPress={() => onChange('CVU')}
-                        className={`flex-1 py-3.5 rounded-xl border items-center justify-center ${
+                        activeOpacity={0.85}
+                        onPress={() => {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          onChange('CVU');
+                        }}
+                        className={`flex-1 h-12 rounded-2xl border items-center justify-center ${
                           value === 'CVU'
-                            ? 'bg-gold/15 border-gold'
-                            : 'bg-charcoal/40 border-charcoal'
+                            ? 'bg-gold/15 border-gold shadow-sm shadow-gold/20'
+                            : 'bg-white/5 border-white/10'
                         }`}
+                        accessibilityRole="button"
+                        accessibilityLabel="Seleccionar CVU billetera virtual"
                       >
                         <Text
                           className={`font-montserrat-bold text-sm ${
                             value === 'CVU' ? 'text-gold' : 'text-ash'
                           }`}
                         >
-                          CVU (Billetera Virtual)
+                          CVU (Virtual)
                         </Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity
-                        activeOpacity={0.8}
-                        onPress={() => onChange('CBU')}
-                        className={`flex-1 py-3.5 rounded-xl border items-center justify-center ${
+                        activeOpacity={0.85}
+                        onPress={() => {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          onChange('CBU');
+                        }}
+                        className={`flex-1 h-12 rounded-2xl border items-center justify-center ${
                           value === 'CBU'
-                            ? 'bg-gold/15 border-gold'
-                            : 'bg-charcoal/40 border-charcoal'
+                            ? 'bg-gold/15 border-gold shadow-sm shadow-gold/20'
+                            : 'bg-white/5 border-white/10'
                         }`}
+                        accessibilityRole="button"
+                        accessibilityLabel="Seleccionar CBU cuenta bancaria"
                       >
                         <Text
                           className={`font-montserrat-bold text-sm ${
                             value === 'CBU' ? 'text-gold' : 'text-ash'
                           }`}
                         >
-                          CBU (Cuenta Bancaria)
+                          CBU (Bancaria)
                         </Text>
                       </TouchableOpacity>
                     </View>

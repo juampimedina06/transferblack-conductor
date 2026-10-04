@@ -63,7 +63,10 @@ export default function RegisterScreen(): React.JSX.Element {
   };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1 bg-obsidian">
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1 bg-obsidian relative overflow-hidden">
+      {/* Champagne Ambient Glow Flare */}
+      <View className="absolute -top-20 self-center w-80 h-80 rounded-full bg-[#D4AF37]/10 blur-3xl pointer-events-none" />
+
       <ScrollView
         contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 40, paddingBottom: 260 }}
         keyboardShouldPersistTaps="handled"

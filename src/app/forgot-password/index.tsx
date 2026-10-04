@@ -1,3 +1,4 @@
+import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { router } from 'expo-router';
@@ -39,6 +40,7 @@ export default function ForgotPasswordRequestScreen(): React.JSX.Element {
   });
 
   const handleBack = (): void => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.replace('/auth/login' as any);
   };
 
@@ -58,6 +60,7 @@ export default function ForgotPasswordRequestScreen(): React.JSX.Element {
           {
             text: 'Continuar',
             onPress: () => {
+              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
               router.push('/forgot-password/verify' as any);
             },
           },
@@ -68,6 +71,11 @@ export default function ForgotPasswordRequestScreen(): React.JSX.Element {
 
   return (
     <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-obsidian">
+      {/* Ambient background glow */}
+      <View
+        pointerEvents="none"
+        className="absolute -top-24 -left-24 w-80 h-80 rounded-full bg-[#D4AF37]/10 blur-3xl"
+      />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         className="flex-1"
@@ -84,16 +92,16 @@ export default function ForgotPasswordRequestScreen(): React.JSX.Element {
               accessibilityRole="button"
               accessibilityLabel="Volver al inicio de sesión"
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              className="w-10 h-10 items-center justify-center rounded-full"
+              className="w-11 h-11 items-center justify-center rounded-2xl bg-white/5 border border-white/10 active:scale-95"
             >
-              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+              <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
 
           {/* Header */}
           <View className="items-center mt-2 mb-8">
-            <View className="w-20 h-20 rounded-full bg-[#151518] border border-gold/30 items-center justify-center mb-6">
-              <Ionicons name="lock-closed" size={40} color={THEME_COLORS.gold} />
+            <View className="w-20 h-20 rounded-3xl bg-[#D4AF37]/10 border border-[#D4AF37]/30 items-center justify-center mb-6 shadow-lg shadow-black/40">
+              <Ionicons name="lock-closed" size={38} color={THEME_COLORS.gold} />
             </View>
             <Text className="text-3xl font-montserrat-bold text-white text-center mb-3">
               ¿Olvidaste tu contraseña?

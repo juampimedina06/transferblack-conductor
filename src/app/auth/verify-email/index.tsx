@@ -1,3 +1,4 @@
+import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { router } from 'expo-router';
@@ -38,6 +39,7 @@ export default function VerifyEmailScreen(): React.JSX.Element {
   const logout = useAuthStore((state) => state.logout);
 
   const handleBack = async (): Promise<void> => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     await logout();
     router.replace('/auth/login' as any);
   };
@@ -68,19 +70,15 @@ export default function VerifyEmailScreen(): React.JSX.Element {
   const onSubmit = async (data: VerifyFormData): Promise<void> => {
     try {
       setIsLoading(true);
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       await authActions.verifyEmail(data.token);
       markEmailAsVerified();
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert('Éxito', 'Email verificado correctamente');
 
-      const user = useAuthStore.getState().user;
-      const isDriver = user?.roles?.includes('driver');
-
-      if (!isDriver) {
-        router.replace('/(home)' as any);
-      } else {
-        router.replace('/(home)' as any);
-      }
+      router.replace('/(home)' as any);
     } catch (error: unknown) {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       if (error instanceof AuthError) {
         if (error.status === 400 && error.details?.attempts_remaining !== undefined) {
           Alert.alert('Error', `PIN incorrecto. Intentos restantes: ${error.details.attempts_remaining}`);
@@ -104,6 +102,7 @@ export default function VerifyEmailScreen(): React.JSX.Element {
   const handleResend = async (): Promise<void> => {
     try {
       setIsLoading(true);
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       await authActions.resendVerification();
       Alert.alert('PIN Enviado', 'Revisá tu casilla de correo');
       setCooldown(60);
@@ -129,6 +128,11 @@ export default function VerifyEmailScreen(): React.JSX.Element {
 
   return (
     <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-obsidian">
+      {/* Ambient background glow */}
+      <View
+        pointerEvents="none"
+        className="absolute -top-24 -left-24 w-80 h-80 rounded-full bg-[#D4AF37]/10 blur-3xl"
+      />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         className="flex-1"
@@ -145,20 +149,22 @@ export default function VerifyEmailScreen(): React.JSX.Element {
               accessibilityRole="button"
               accessibilityLabel="Volver al inicio de sesión"
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              className="w-10 h-10 items-center justify-center rounded-full"
+              className="w-11 h-11 items-center justify-center rounded-2xl bg-white/5 border border-white/10 active:scale-95"
             >
-              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+              <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
 
           {/* Icon and Header */}
           <View className="items-center mt-2 mb-8">
-            <Ionicons name="shield-checkmark" size={68} color={THEME_COLORS.gold} />
-            <Text className="text-3xl font-montserrat-bold text-white text-center mt-6 mb-3">
-              Verifica tu correo
+            <View className="w-20 h-20 rounded-3xl bg-[#D4AF37]/10 border border-[#D4AF37]/30 items-center justify-center mb-6 shadow-lg shadow-black/40">
+              <Ionicons name="shield-checkmark" size={38} color={THEME_COLORS.gold} />
+            </View>
+            <Text className="text-3xl font-montserrat-bold text-white text-center mb-3">
+              Verificá tu correo
             </Text>
             <Text className="text-ash font-montserrat text-sm text-center px-4 leading-6">
-              Ingresa el código de 6 dígitos que enviamos a tu casilla de correo para activar tu cuenta.
+              Ingresá el código de 6 dígitos que enviamos a tu casilla de correo para activar tu cuenta.
             </Text>
           </View>
 
@@ -177,15 +183,22 @@ export default function VerifyEmailScreen(): React.JSX.Element {
                       <TouchableOpacity
                         key={index}
                         activeOpacity={1}
-                        onPress={() => inputRef.current?.focus()}
-                        className={`w-12 h-16 rounded-2xl items-center justify-center bg-[#151518] border ${isCurrent
-                            ? 'border-gold'
+                        onPress={() => {
+                          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          inputRef.current?.focus();
+                        }}
+                        className={`w-12 h-16 rounded-2xl items-center justify-center bg-[#12131A]/90 border ${
+                          isCurrent
+                            ? 'border-gold bg-gold/5 shadow-sm shadow-gold/20'
                             : digit
-                              ? 'border-neutral-600'
-                              : 'border-[#262629]'
-                          }`}
+                              ? 'border-white/30 bg-white/5'
+                              : 'border-white/10'
+                        }`}
                       >
-                        <Text className="text-2xl font-montserrat-bold text-white">
+                        <Text
+                          className="text-2xl font-montserrat-bold text-white"
+                          style={{ fontVariant: ['tabular-nums'] }}
+                        >
                           {digit}
                         </Text>
                       </TouchableOpacity>

@@ -6,15 +6,18 @@ import {
   Text,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
+import { THEME_COLORS } from '@/core/constants/theme';
+import { LiquidGlassContainer } from '@/presentation/components/ui/LiquidGlassContainer';
 
 type BlockedReason = 'in_progress' | 'closed' | null;
 
 const getBlockedLabel = (reason: BlockedReason): string => {
   switch (reason) {
     case 'in_progress':
-      return 'El viaje ya comenzó. Chat deshabilitado por seguridad vial.';
+      return 'Viaje en curso. Chat pausado por seguridad vial al conducir.';
     case 'closed':
-      return 'El chat está cerrado.';
+      return 'El chat de este viaje se encuentra cerrado.';
     default:
       return '';
   }
@@ -34,52 +37,56 @@ export const ChatInput: React.FC<ChatInputProps> = ({ blockedReason, onSend }) =
 
   const handleSend = () => {
     if (!canSend) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onSend(text.trim());
     setText('');
   };
 
   if (isBlocked) {
     return (
-      <View className="w-full px-4 py-3 bg-[#141416] border-t border-[#2C2C2E] flex-row items-center">
-        <View className="flex-1 flex-row items-center gap-2">
-          <Ionicons name="lock-closed-outline" size={16} color="rgba(255,255,255,0.3)" />
+      <LiquidGlassContainer
+        variant="default"
+        className="w-full px-4 py-3.5 border-t border-white/10 flex-row items-center"
+      >
+        <View className="flex-1 flex-row items-center gap-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-2">
+          <Ionicons name="shield-checkmark" size={18} color="#FBBF24" />
           <Text
-            className="text-[rgba(255,255,255,0.35)] text-[13px] flex-1"
+            className="text-amber-200/90 font-montserrat text-xs flex-1 leading-4"
             numberOfLines={2}
           >
             {getBlockedLabel(blockedReason)}
           </Text>
         </View>
-      </View>
+      </LiquidGlassContainer>
     );
   }
 
   return (
-    <View
-      className="w-full px-4 py-3 bg-[#141416] border-t border-[#2C2C2E] flex-row items-center"
-      style={{ gap: 10 }}
+    <LiquidGlassContainer
+      variant="default"
+      className="w-full px-4 py-3 border-t border-white/10 flex-row items-center gap-2.5"
     >
       <TextInput
         ref={inputRef}
         value={text}
         onChangeText={setText}
         placeholder="Escribí un mensaje..."
-        placeholderTextColor="rgba(255,255,255,0.3)"
-        className="flex-1 bg-[#1C1C1E] rounded-2xl px-4 py-2.5 text-[#E4E4E5] text-[15px]"
+        placeholderTextColor="#71717A"
+        className="flex-1 bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-white font-montserrat text-sm"
         multiline
         maxLength={1000}
         returnKeyType="send"
         onSubmitEditing={handleSend}
         blurOnSubmit={false}
         accessibilityLabel="Campo de mensaje"
-        style={{ maxHeight: 120 }}
+        style={{ maxHeight: 100 }}
       />
 
       <TouchableOpacity
         onPress={handleSend}
         disabled={!canSend}
-        className={`w-10 h-10 rounded-full items-center justify-center ${
-          canSend ? 'bg-[#D4AF37]' : 'bg-[#2C2C2E]'
+        className={`w-12 h-12 rounded-2xl items-center justify-center active:scale-95 ${
+          canSend ? 'bg-gold shadow-md shadow-gold/20' : 'bg-charcoal border border-white/5 opacity-50'
         }`}
         accessibilityLabel="Enviar mensaje"
         accessibilityRole="button"
@@ -88,9 +95,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({ blockedReason, onSend }) =
         <Ionicons
           name="send"
           size={18}
-          color={canSend ? '#0A0A0C' : 'rgba(255,255,255,0.2)'}
+          color={canSend ? THEME_COLORS.obsidian : THEME_COLORS.ash}
         />
       </TouchableOpacity>
-    </View>
+    </LiquidGlassContainer>
   );
 };
+

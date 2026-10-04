@@ -24,13 +24,13 @@ const StatusTick = ({
   readAt: string | null;
 }) => {
   if (status === 'sending') {
-    return <Ionicons name="time-outline" size={12} color="rgba(0,0,0,0.4)" />;
+    return <Ionicons name="time-outline" size={12} color="rgba(0,0,0,0.5)" />;
   }
   if (status === 'failed') {
-    return <Ionicons name="alert-circle-outline" size={13} color="#FF3B30" />;
+    return <Ionicons name="alert-circle" size={13} color="#EF4444" />;
   }
   // sent
-  const color = readAt ? '#0A5FA0' : 'rgba(0,0,0,0.4)';
+  const color = readAt ? '#0284C7' : 'rgba(0,0,0,0.5)';
   return (
     <View className="flex-row">
       <Ionicons name="checkmark" size={13} color={color} style={{ marginRight: -6 }} />
@@ -40,26 +40,27 @@ const StatusTick = ({
 };
 
 export const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isOwn, onRetry }) => {
-  const bubbleBase = 'max-w-[78%] px-3 pt-2 pb-1 rounded-2xl';
-  const ownStyle = `${bubbleBase} bg-[#D4AF37] rounded-br-sm self-end`;
-  const otherStyle = `${bubbleBase} bg-[#2C2C2E] rounded-bl-sm self-start`;
+  const bubbleBase = 'max-w-[82%] px-3.5 pt-2.5 pb-1.5 rounded-2xl shadow-sm';
+  const ownStyle = `${bubbleBase} bg-gold rounded-br-sm self-end`;
+  const otherStyle = `${bubbleBase} bg-charcoal border border-white/10 rounded-bl-sm self-start`;
 
   return (
-    <View className={`mb-1 ${isOwn ? 'items-end px-3' : 'items-start px-3'}`}>
+    <View className={`mb-1.5 ${isOwn ? 'items-end px-3' : 'items-start px-3'}`}>
       <View className={isOwn ? ownStyle : otherStyle}>
         <Text
-          className={`text-[15px] leading-[21px] ${
-            isOwn ? 'text-[#1A1200]' : 'text-[#E4E4E5]'
+          className={`text-[15px] font-montserrat leading-[22px] ${
+            isOwn ? 'text-obsidian font-montserrat-medium' : 'text-white'
           }`}
         >
           {message.content}
         </Text>
 
-        <View className="flex-row items-center justify-end mt-0.5 gap-1">
+        <View className="flex-row items-center justify-end mt-1 gap-1">
           <Text
-            className={`text-[10px] ${
-              isOwn ? 'text-[rgba(0,0,0,0.45)]' : 'text-[rgba(255,255,255,0.4)]'
+            className={`text-[10px] font-montserrat ${
+              isOwn ? 'text-obsidian/60' : 'text-ash'
             }`}
+            style={{ fontVariant: ['tabular-nums'] }}
           >
             {formatTime(message.createdAt)}
           </Text>
@@ -75,7 +76,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isOwn, onRetry 
               accessibilityLabel="Reintentar envío"
               accessibilityRole="button"
             >
-              <Text className="text-[#FF3B30] text-[11px] ml-1">Reintentar</Text>
+              <Text className="text-red-500 font-montserrat-semibold text-[11px] ml-1">Reintentar</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -83,3 +84,4 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isOwn, onRetry 
     </View>
   );
 };
+

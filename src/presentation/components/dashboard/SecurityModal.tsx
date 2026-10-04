@@ -10,6 +10,7 @@ import {
   TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { THEME_COLORS } from '../../../core/constants/theme';
 
 interface SecurityModalProps {
@@ -133,50 +134,68 @@ export const SecurityModal = ({ visible, onClose }: SecurityModalProps) => {
       onRequestClose={onClose}
     >
       <TouchableWithoutFeedback onPress={onClose}>
-        <View className="flex-1 bg-black/60 justify-end">
+        <View className="flex-1 bg-black/75 justify-end">
           <TouchableWithoutFeedback>
-            <View className="bg-[#1C1C1E] rounded-t-3xl border-t border-[#2C2C2E] max-h-[85%] pb-8 shadow-2xl">
+            <View className="bg-[#0A0B10]/98 rounded-t-[36px] border-t border-red-500/30 max-h-[85%] pb-8 shadow-2xl relative overflow-hidden">
+              {/* Top Specular Edge Glass Highlight */}
+              <View className="absolute top-0 left-8 right-8 h-[1px] bg-white/25 pointer-events-none" />
+
+              {/* Ambient Glow */}
+              <View className="absolute -top-16 -right-16 w-44 h-44 rounded-full bg-red-500/10 blur-3xl pointer-events-none" />
+
+              {/* Drag Handle Indicator */}
+              <View className="w-11 h-1 bg-white/25 rounded-full self-center mt-3 mb-1" />
+
               {/* Header */}
-              <View className="px-5 pt-5 pb-3 flex-row items-center justify-between border-b border-[#2C2C2E]">
+              <View className="px-5 pt-3 pb-3 flex-row items-center justify-between border-b border-white/10">
                 <TouchableOpacity
-                  onPress={onClose}
-                  className="w-10 h-10 items-center justify-center rounded-full bg-[#2C2C2E]/60"
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    onClose();
+                  }}
+                  className="w-10 h-10 items-center justify-center rounded-2xl bg-white/5 border border-white/15"
                   accessibilityLabel="Cerrar funciones de seguridad"
                 >
-                  <Ionicons name="close" size={24} color={THEME_COLORS.platinum} />
+                  <Ionicons name="close" size={20} color={THEME_COLORS.platinum} />
                 </TouchableOpacity>
 
-                <Text className="text-platinum font-montserrat-bold text-lg text-center flex-1 pr-10">
-                  Funciones de seguridad
+                <Text className="text-white font-montserrat-bold text-base text-center flex-1 pr-10 uppercase tracking-wide">
+                  Funciones de Seguridad
                 </Text>
               </View>
 
               {/* Items List */}
               <ScrollView
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingVertical: 8 }}
+                contentContainerStyle={{ paddingVertical: 10, paddingHorizontal: 16 }}
               >
                 {securityItems.map((item) => (
                   <TouchableOpacity
                     key={item.id}
                     onPress={item.onPress}
-                    activeOpacity={0.7}
-                    className="flex-row items-center px-5 py-4 border-b border-[#2C2C2E]/40"
+                    activeOpacity={0.75}
+                    className={`flex-row items-center px-4 py-3.5 mb-2.5 rounded-2xl border ${
+                      item.id === '911'
+                        ? 'bg-red-500/15 border-red-500/40'
+                        : 'bg-white/[0.03] border-white/10'
+                    }`}
                   >
                     {/* Left Icon */}
-                    <View className="w-10 items-center justify-center mr-3">
+                    <View className={`w-11 h-11 rounded-xl items-center justify-center mr-3 ${
+                      item.id === '911' ? 'bg-red-500/20' : 'bg-white/5 border border-white/10'
+                    }`}>
                       <Ionicons
                         name={item.icon}
-                        size={24}
-                        color={item.iconColor || THEME_COLORS.platinum}
+                        size={21}
+                        color={item.iconColor || (item.id === '911' ? '#EF4444' : THEME_COLORS.platinum)}
                       />
                     </View>
 
                     {/* Content */}
                     <View className="flex-1 pr-2">
                       <Text
-                        className={`font-montserrat-semibold text-base mb-0.5 ${
-                          item.id === '911' ? 'text-red-500 font-montserrat-bold' : 'text-platinum'
+                        className={`font-montserrat-semibold text-sm mb-0.5 ${
+                          item.id === '911' ? 'text-red-400 font-montserrat-bold' : 'text-white'
                         }`}
                       >
                         {item.title}
@@ -188,8 +207,8 @@ export const SecurityModal = ({ visible, onClose }: SecurityModalProps) => {
 
                     {/* Badge */}
                     {item.badge && (
-                      <View className="bg-[#2C2C2E] px-2.5 py-1 rounded-full mr-2">
-                        <Text className="text-ash font-montserrat-semibold text-[11px]">
+                      <View className="bg-white/10 border border-white/15 px-2.5 py-1 rounded-full mr-2">
+                        <Text className="text-ash font-montserrat-semibold text-[10px] uppercase">
                           {item.badge}
                         </Text>
                       </View>
@@ -198,8 +217,8 @@ export const SecurityModal = ({ visible, onClose }: SecurityModalProps) => {
                     {/* Arrow */}
                     <Ionicons
                       name="chevron-forward"
-                      size={18}
-                      color={THEME_COLORS.ash}
+                      size={16}
+                      color={item.id === '911' ? '#F87171' : THEME_COLORS.ash}
                     />
                   </TouchableOpacity>
                 ))}

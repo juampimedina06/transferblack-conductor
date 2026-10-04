@@ -39,7 +39,6 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
 
   const [vehicleId, setVehicleId] = useState<string | null>(null);
   const [isAccepting, setIsAccepting] = useState(false);
-  const [buttonWidth, setButtonWidth] = useState<number>(0);
 
   // Fetch active vehicle ID on mount
   useEffect(() => {
@@ -110,31 +109,29 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
   };
 
   const { progress } = useOfferTimer(ttl, handleExpire, !!currentOffer, offerKey);
+  const [prevOfferKey, setPrevOfferKey] = useState<string | undefined>(offerKey);
+  const [secondsLeft, setSecondsLeft] = useState<number>(ttl);
 
-  // Haptic alert on incoming offer
+  if (offerKey !== prevOfferKey) {
+    setPrevOfferKey(offerKey);
+    setSecondsLeft(ttl);
+  }
+
   useEffect(() => {
-    let interval: ReturnType<typeof setInterval>;
-    if (currentOffer) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      interval = setInterval(() => {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      }, 1500);
-    }
-    return () => clearInterval(interval);
-  }, [currentOffer]);
+    if (!currentOffer) return;
 
-  // Liquid Gold Button Draining Styles
-  const liquidFillStyle = useAnimatedStyle(() => {
+    const interval = setInterval(() => {
+      setSecondsLeft((prev) => (prev <= 1 ? 0 : prev - 1));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [currentOffer, offerKey]);
+
+  // Top Edge Hairline Progress Bar
+  const timerBarStyle = useAnimatedStyle(() => {
     const widthPercent = Math.max(0, Math.min(100, progress.value * 100));
     return {
       width: `${widthPercent}%`,
-      opacity: interpolate(progress.value, [0, 0.1, 0.35, 1], [0.65, 0.78, 0.92, 1]),
-    };
-  });
-
-  const liquidMeniscusStyle = useAnimatedStyle(() => {
-    return {
-      opacity: interpolate(progress.value, [0, 0.04, 0.15, 1], [0, 0.4, 0.85, 1]),
     };
   });
 
@@ -255,47 +252,67 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
         className="absolute bottom-0 left-0 right-0 w-full px-4 z-50"
         style={{ paddingBottom: Math.max(insets.bottom, 16) }}
       >
-        <View className="w-full bg-[#0A0B10]/90 border border-[#D4AF37]/35 rounded-[32px] p-5 shadow-2xl shadow-black overflow-hidden relative">
-          {/* Champagne Ambient Glow Flares */}
-          <View className="absolute -top-16 -right-16 w-44 h-44 rounded-full bg-[#D4AF37]/10 blur-3xl pointer-events-none" />
-          <View className="absolute -bottom-16 -left-16 w-44 h-44 rounded-full bg-[#D4AF37]/5 blur-3xl pointer-events-none" />
+        <View className="w-full bg-[#0D0E15]/95 border border-white/10 rounded-[32px] p-5 shadow-2xl shadow-black relative overflow-hidden">
+          {/* Top Edge Hairline Countdown Timer */}
+          <Animated.View
+            style={[
+              timerBarStyle,
+              {
+                height: 3,
+                backgroundColor: THEME_COLORS.gold,
+                position: 'absolute',
+                top: 0,
+                left: 0,
+              },
+            ]}
+          />
 
-          {/* Top Edge Specular Glass Reflection */}
-          <View className="absolute top-0 left-8 right-8 h-[1px] bg-white/25 pointer-events-none" />
-
-          {/* Header Row: Category Badge & Queued Offers Badge */}
-          <View className="flex-row items-center justify-between mb-3.5">
+          {/* Header Row: Tier Badge & Countdown */}
+          <View className="flex-row items-center justify-between mb-4 mt-0.5">
             <View className="flex-row items-center">
-              <View className="flex-row items-center bg-[#171722]/90 border border-[#D4AF37]/35 px-3 py-1.5 rounded-full mr-2.5">
-                <Ionicons name="car-sport" size={13} color={THEME_COLORS.gold} />
-                <Text className="text-white font-montserrat-bold text-[11px] ml-1.5 uppercase tracking-wider">
+              <View className="flex-row items-center bg-white/5 border border-white/10 px-3.5 py-1.5 rounded-full mr-2">
+                <Ionicons name="car-sport" size={14} color={THEME_COLORS.gold} />
+                <Text className="text-white font-montserrat-bold text-xs ml-1.5 uppercase tracking-wider">
                   TransferBlack
                 </Text>
               </View>
-              <View className="bg-[#D4AF37]/10 border border-[#D4AF37]/25 px-2.5 py-1 rounded-full">
-                <Text className="text-[#D4AF37] font-montserrat-semibold text-[10px] tracking-widest uppercase">
+              <View className="bg-gold/15 border border-gold/30 px-3 py-1 rounded-full">
+                <Text className="text-gold font-montserrat-bold text-xs tracking-wider uppercase">
                   {currentOffer.passenger?.category || 'VIP'}
                 </Text>
               </View>
             </View>
 
-            {offerQueue.length > 0 && (
-              <View className="bg-[#D4AF37]/15 border border-[#D4AF37]/40 px-2.5 py-1 rounded-full flex-row items-center">
-                <Ionicons name="layers-outline" size={12} color={THEME_COLORS.gold} />
-                <Text className="text-[#D4AF37] font-montserrat-semibold text-[10px] ml-1">
-                  +{offerQueue.length} {offerQueue.length === 1 ? 'en espera' : 'en espera'}
+            <View className="flex-row items-center gap-2">
+              {offerQueue.length > 0 && (
+                <View className="bg-white/5 border border-white/10 px-2.5 py-1 rounded-full">
+                  <Text className="text-zinc-300 font-montserrat-semibold text-[11px]">
+                    +{offerQueue.length}
+                  </Text>
+                </View>
+              )}
+              <View className="flex-row items-center bg-gold/15 border border-gold/30 px-3 py-1 rounded-full">
+                <Ionicons name="time-outline" size={13} color={THEME_COLORS.gold} />
+                <Text
+                  className="text-gold font-montserrat-bold text-xs ml-1.5"
+                  style={{ fontVariant: ['tabular-nums'] }}
+                >
+                  {secondsLeft}s
                 </Text>
               </View>
-            )}
+            </View>
           </View>
 
           {/* Earnings & Payment Method */}
-          <View className="flex-row items-end justify-between mb-3.5 px-0.5">
+          <View className="flex-row items-end justify-between mb-4">
             <View>
-              <Text className="text-zinc-400 font-montserrat-semibold text-[10px] tracking-widest uppercase mb-1">
-                Tarifa VIP • Ganancia Neta
+              <Text className="text-zinc-400 font-montserrat text-[10px] tracking-widest uppercase mb-1">
+                Ganancia Neta
               </Text>
-              <Text className="text-white font-montserrat-bold text-3xl tracking-tight">
+              <Text
+                style={{ fontVariant: ['tabular-nums'] }}
+                className="text-white font-montserrat-bold text-4xl tracking-tight"
+              >
                 ${Number(currentOffer.fare.netEarnings || currentOffer.fare.totalFare || 0).toLocaleString('es-AR')}
               </Text>
             </View>
@@ -303,13 +320,13 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
             {(() => {
               const paymentInfo = getPaymentMethodInfo(currentOffer.fare.paymentMethod);
               return (
-                <View className="flex-row items-center bg-white/[0.05] border border-white/10 px-3 py-1.5 rounded-xl mb-1">
+                <View className="flex-row items-center bg-white/5 border border-white/10 px-3.5 py-2 rounded-xl">
                   <Ionicons
                     name={paymentInfo.icon}
-                    size={14}
+                    size={16}
                     color={THEME_COLORS.gold}
                   />
-                  <Text className="text-zinc-300 font-montserrat-semibold text-xs ml-1.5 uppercase tracking-wider">
+                  <Text className="text-zinc-200 font-montserrat-semibold text-xs ml-2 uppercase tracking-wider">
                     {paymentInfo.label}
                   </Text>
                 </View>
@@ -317,7 +334,7 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
             })()}
           </View>
 
-          {/* Passenger Identity Glass Strip */}
+          {/* Passenger Identity Row */}
           {(() => {
             const isThirdPartyOffer = Boolean(currentOffer.third_party?.name);
             const passengerDisplayName = isThirdPartyOffer
@@ -332,37 +349,40 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
             const isNewPassenger = !ratingCount || ratingCount === 0 || ratingAvg == null;
 
             return (
-              <View className="flex-row items-center justify-between bg-white/[0.03] border border-white/[0.08] rounded-2xl px-3.5 py-2.5 mb-3.5">
-                <View className="flex-row items-center flex-1 mr-2">
-                  <View className="w-8 h-8 rounded-full bg-[#D4AF37]/15 border border-[#D4AF37]/35 items-center justify-center mr-2.5">
-                    <Text className="text-[#D4AF37] font-montserrat-bold text-xs">
+              <View className="flex-row items-center justify-between py-3 border-t border-white/10 mb-3">
+                <View className="flex-row items-center flex-1 mr-3">
+                  <View className="w-10 h-10 rounded-2xl bg-white/5 border border-white/10 items-center justify-center mr-3">
+                    <Text className="text-gold font-montserrat-bold text-sm">
                       {avatarInitial}
                     </Text>
                   </View>
                   <View className="flex-1">
-                    <View className="flex-row items-center">
-                      <Text className="text-white font-montserrat-semibold text-xs mr-1.5" numberOfLines={1}>
-                        {passengerDisplayName}
-                      </Text>
-                      <Ionicons name="shield-checkmark" size={13} color="#38BDF8" />
-                    </View>
+                    <Text className="text-white font-montserrat-semibold text-sm" numberOfLines={1}>
+                      {passengerDisplayName}
+                    </Text>
+                    <Text className="text-zinc-400 font-montserrat text-xs mt-0.5">
+                      {isThirdPartyOffer ? 'Pasajero tercero' : 'Pasajero VIP'}
+                    </Text>
                   </View>
                 </View>
 
                 {isNewPassenger ? (
-                  <View className="flex-row items-center bg-white/[0.04] px-2.5 py-1 rounded-lg border border-white/[0.08]">
+                  <View className="bg-white/5 px-3 py-1.5 rounded-xl border border-white/10">
                     <Text className="text-zinc-300 font-montserrat-medium text-xs">
-                      Pasajero nuevo
+                      Nuevo
                     </Text>
                   </View>
                 ) : (
-                  <View className="flex-row items-center bg-white/[0.04] px-2.5 py-1 rounded-lg border border-white/[0.08]">
-                    <Ionicons name="star" size={12} color="#F59E0B" />
-                    <Text className="text-white font-montserrat-bold text-xs ml-1">
+                  <View className="flex-row items-center bg-white/5 px-3 py-1.5 rounded-xl border border-white/10">
+                    <Ionicons name="star" size={13} color="#F59E0B" />
+                    <Text
+                      className="text-white font-montserrat-bold text-xs ml-1"
+                      style={{ fontVariant: ['tabular-nums'] }}
+                    >
                       {Number(ratingAvg).toFixed(2)}
                     </Text>
-                    <Text className="text-zinc-400 font-montserrat text-[11px] ml-1">
-                      · {ratingCount} {ratingCount === 1 ? 'viaje' : 'viajes'}
+                    <Text className="text-zinc-400 font-montserrat text-xs ml-1">
+                      · {ratingCount} v.
                     </Text>
                   </View>
                 )}
@@ -370,29 +390,27 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
             );
           })()}
 
-          {/* Route Trajectory (Liquid Neon Glass) */}
-          <View className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-3.5 mb-4">
+          {/* Route Trajectory */}
+          <View className="py-3 border-t border-white/10 mb-5">
             {/* Pickup Node */}
-            <View className="flex-row items-start">
-              <View className="items-center mr-3 mt-0.5">
-                <View className="w-3.5 h-3.5 rounded-full bg-emerald-400/20 border border-emerald-400 items-center justify-center">
-                  <View className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400" />
-                </View>
-                <View className="w-0.5 h-7 border-l border-dashed border-zinc-600 my-0.5" />
+            <View className="flex-row items-start mb-3">
+              <View className="items-center mr-3 mt-1">
+                <View className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+                <View className="w-0.5 h-7 bg-white/15 my-0.5" />
               </View>
 
-              <View className="flex-1 -mt-0.5">
+              <View className="flex-1">
                 <View className="flex-row items-center justify-between mb-0.5">
-                  <Text className="text-emerald-400 font-montserrat-semibold text-[10px] uppercase tracking-wider">
+                  <Text className="text-ash font-montserrat text-[10px] uppercase tracking-wider">
                     Punto de partida
                   </Text>
-                  <View className="bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                    <Text className="text-emerald-400 font-montserrat-semibold text-[10px]">
+                  <View className="bg-emerald-500/15 px-2 py-0.5 rounded-md border border-emerald-500/30">
+                    <Text className="text-emerald-400 font-montserrat-bold text-[11px]">
                       A {currentOffer.pickup?.etaMinutes || 2} min
                     </Text>
                   </View>
                 </View>
-                <Text className="text-white font-montserrat-medium text-xs leading-4" numberOfLines={1}>
+                <Text className="text-white font-montserrat-medium text-sm leading-5" numberOfLines={2}>
                   {currentOffer.pickup?.address || 'Origen solicitado'}
                 </Text>
               </View>
@@ -401,108 +419,59 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
             {/* Dropoff Node */}
             <View className="flex-row items-start">
               <View className="items-center mr-3 mt-1">
-                <View className="w-3 h-3 rounded-sm bg-[#D4AF37] rotate-45 shadow-sm shadow-[#D4AF37]/80" />
+                <View className="w-2.5 h-2.5 rounded-full bg-red-400" />
               </View>
 
-              <View className="flex-1 mt-0.5">
+              <View className="flex-1">
                 <View className="flex-row items-center justify-between mb-0.5">
-                  <Text className="text-[#D4AF37] font-montserrat-semibold text-[10px] uppercase tracking-wider">
+                  <Text className="text-ash font-montserrat text-[10px] uppercase tracking-wider">
                     Destino final
                   </Text>
-                  <View className="bg-[#D4AF37]/10 px-2 py-0.5 rounded border border-[#D4AF37]/20">
-                    <Text className="text-[#D4AF37] font-montserrat-semibold text-[10px]">
+                  <View className="bg-white/5 px-2 py-0.5 rounded-md border border-white/10">
+                    <Text className="text-zinc-300 font-montserrat-medium text-[11px]">
                       ~{currentOffer.dropoff?.durationMinutes || 15} min
                     </Text>
                   </View>
                 </View>
-                <Text className="text-zinc-200 font-montserrat-medium text-xs leading-4" numberOfLines={1}>
+                <Text className="text-zinc-200 font-montserrat-medium text-sm leading-5" numberOfLines={2}>
                   {currentOffer.dropoff?.address || 'Destino no especificado'}
                 </Text>
               </View>
             </View>
           </View>
 
-          {/* HERO ELEMENT: Liquid Gold Draining Glass Button */}
+          {/* Action Buttons: Solid Ergonomic Gold Button & Glass Dismiss */}
           <TouchableOpacity
             activeOpacity={0.88}
             onPress={handleAccept}
             disabled={isAccepting}
-            onLayout={(e) => setButtonWidth(e.nativeEvent.layout.width)}
-            className="w-full h-14 rounded-2xl relative overflow-hidden justify-center items-center border border-[#D4AF37]/45 bg-[#121218]/90 shadow-xl shadow-black"
+            accessibilityRole="button"
+            accessibilityLabel="Aceptar viaje entrante"
+            className="w-full h-15 rounded-2xl justify-center items-center bg-gold shadow-lg shadow-gold/20 active:opacity-90"
           >
-            {/* Base Empty Glass Layer: Revealed progressively as liquid gold drains */}
-            <View className="absolute inset-0 flex-row items-center justify-center bg-[#13141C]/60">
-              <Text className="text-[#D4AF37] font-montserrat-bold text-sm tracking-widest uppercase">
-                Aceptar Viaje
-              </Text>
-            </View>
-
-            {/* Animated Liquid Gold Filling Layer: Drains organically from right to left */}
-            <Animated.View
-              style={[
-                liquidFillStyle,
-                {
-                  position: 'absolute',
-                  top: 0,
-                  bottom: 0,
-                  left: 0,
-                  backgroundColor: THEME_COLORS.gold,
-                  overflow: 'hidden',
-                  justifyContent: 'center',
-                },
-              ]}
-            >
-              {/* Liquid Meniscus & Amber Glow on the leading wave edge */}
-              <Animated.View
-                style={[
-                  liquidMeniscusStyle,
-                  {
-                    position: 'absolute',
-                    right: 0,
-                    top: 0,
-                    bottom: 0,
-                    width: 12,
-                    backgroundColor: '#FFF7D1',
-                    zIndex: 20,
-                  },
-                ]}
-              />
-
-              {/* Inverted Text Mask Layer: Matches exact container width for seamless typography */}
-              <View
-                style={{ width: buttonWidth || '100%' }}
-                className="flex-row items-center justify-center absolute left-0"
-              >
-                {isAccepting ? (
-                  <ActivityIndicator color="#0A0A0C" size="small" />
-                ) : (
-                  <>
-                    <Ionicons name="flash" size={17} color="#0A0A0C" style={{ marginRight: 8 }} />
-                    <Text className="text-[#0A0A0C] font-montserrat-bold text-sm tracking-widest uppercase">
-                      Aceptar Viaje
-                    </Text>
-                  </>
-                )}
+            {isAccepting ? (
+              <ActivityIndicator color="#0A0A0C" size="small" />
+            ) : (
+              <View className="flex-row items-center justify-center">
+                <Ionicons name="checkmark-circle" size={20} color="#0A0A0C" style={{ marginRight: 8 }} />
+                <Text className="text-[#0A0A0C] font-montserrat-bold text-base tracking-wider uppercase">
+                  Aceptar Viaje
+                </Text>
               </View>
-            </Animated.View>
-
-            {/* Glass Specular Meniscus Reflection across the top lip */}
-            <View className="absolute top-0 left-4 right-4 h-[1px] bg-white/40 z-30 pointer-events-none" />
-            <View className="absolute bottom-0 left-6 right-6 h-[1px] bg-[#D4AF37]/20 z-30 pointer-events-none" />
+            )}
           </TouchableOpacity>
 
-          {/* Secondary action: hide the offer. Local only — the dispatch module exposes
-              no reject endpoint, so the offer stays pending on the backend until it expires. */}
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={handleReject}
             disabled={isAccepting}
             accessibilityRole="button"
             accessibilityLabel="Descartar la oferta de viaje"
-            className="w-full h-12 mt-2.5 rounded-2xl items-center justify-center border border-white/10 bg-white/[0.04]"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            className="w-full h-12 mt-2.5 rounded-2xl items-center justify-center border border-white/10 bg-white/5 active:bg-white/10"
           >
             <Text className="text-zinc-400 font-montserrat-semibold text-xs uppercase tracking-widest">
-              Descartar
+              Rechazar
             </Text>
           </TouchableOpacity>
         </View>
@@ -515,25 +484,38 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
     <View
       onLayout={(e) => onHeightChange?.(e.nativeEvent.layout.height)}
       key="connection-bottom-bar"
-      className="absolute bottom-0 left-0 right-0 w-full bg-[#0D0D12] rounded-t-[32px] border-t border-[#23232D] shadow-2xl shadow-black z-50 overflow-hidden"
-      style={{ paddingBottom: Math.max(insets.bottom, 14) }}
+      className="absolute bottom-0 left-0 right-0 w-full bg-[#0A0B10]/95 rounded-t-[32px] border-t border-white/15 shadow-2xl shadow-black z-50 overflow-hidden"
+      style={{ paddingBottom: Math.max(insets.bottom, 16) }}
     >
-      <View style={{ width: 40, height: 4, backgroundColor: 'rgba(255, 255, 255, 0.2)', borderRadius: 2, alignSelf: 'center', marginTop: 10, marginBottom: 4 }} />
-      <View className="w-full px-6 py-2.5">
+      {/* Top Specular Edge Glass Highlight */}
+      <View className="absolute top-0 left-8 right-8 h-[1px] bg-white/25 pointer-events-none" />
+
+      {/* Ambient Glow Flare */}
+      <View
+        className="absolute -top-14 -left-14 w-36 h-36 rounded-full pointer-events-none"
+        style={{
+          backgroundColor: isAvailable ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.06)',
+        }}
+      />
+
+      {/* Drag Indicator Pill */}
+      <View style={{ width: 44, height: 4, backgroundColor: 'rgba(255, 255, 255, 0.22)', borderRadius: 2, alignSelf: 'center', marginTop: 10, marginBottom: 6 }} />
+
+      <View className="w-full px-5 py-2">
         <View className="w-full flex-row items-center justify-between">
           {/* Left: Status with Radar Beacon */}
-          <View className="flex-row items-center flex-1">
+          <View className="flex-row items-center flex-1 pr-3">
             {isAvailable ? (
-              <View key="radar-active" className="w-11 h-11 items-center justify-center mr-3 relative">
+              <View key="radar-active" className="w-12 h-12 items-center justify-center mr-3 relative">
                 <Animated.View
                   style={[
                     radarWave1Style,
                     {
                       position: 'absolute',
-                      width: 28,
-                      height: 28,
-                      borderRadius: 14,
-                      backgroundColor: 'rgba(16, 185, 129, 0.3)',
+                      width: 32,
+                      height: 32,
+                      borderRadius: 16,
+                      backgroundColor: 'rgba(16, 185, 129, 0.35)',
                     },
                   ]}
                 />
@@ -542,18 +524,18 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
                     radarWave2Style,
                     {
                       position: 'absolute',
-                      width: 28,
-                      height: 28,
-                      borderRadius: 14,
-                      backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                      width: 32,
+                      height: 32,
+                      borderRadius: 16,
+                      backgroundColor: 'rgba(16, 185, 129, 0.22)',
                     },
                   ]}
                 />
-                <View className="w-3.5 h-3.5 rounded-full bg-emerald-400 shadow-md shadow-emerald-400" />
+                <View className="w-4 h-4 rounded-full bg-emerald-400 shadow-md shadow-emerald-400" />
               </View>
             ) : (
-              <View key="radar-inactive" className="w-11 h-11 items-center justify-center mr-3">
-                <View className="w-3 h-3 rounded-full bg-red-500/80 shadow-md shadow-red-500/50" />
+              <View key="radar-inactive" className="w-12 h-12 items-center justify-center mr-3">
+                <View className="w-3.5 h-3.5 rounded-full bg-red-500/80 shadow-md shadow-red-500/50" />
               </View>
             )}
 
@@ -561,33 +543,39 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
               <Text className="text-white font-montserrat-bold text-base tracking-wide">
                 {isAvailable ? 'EN LÍNEA' : 'DESCONECTADO'}
               </Text>
-              <Text className="text-ash font-montserrat text-xs mt-0.5">
-                {isAvailable ? 'Esperando viajes en tu zona...' : 'Tocá para comenzar tu jornada'}
+              <Text className="text-ash font-montserrat text-xs mt-0.5" numberOfLines={1}>
+                {isAvailable ? 'Buscando viajes en tu zona...' : 'Tocá para comenzar tu jornada'}
               </Text>
             </View>
           </View>
 
-          {/* Right: Connect / Disconnect Action Button */}
+          {/* Right: Connect / Disconnect Action Button (48px Touch Target for Driving) */}
           <TouchableOpacity
-            activeOpacity={0.8}
+            activeOpacity={0.82}
+            accessibilityRole="button"
+            accessibilityLabel={isAvailable ? 'Desconectarse del servicio' : 'Conectarse para recibir viajes'}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
               onToggleAvailability(!isAvailable);
             }}
-            className={`px-4 py-2 rounded-full border flex-row items-center ${isAvailable
-              ? 'bg-red-500/10 border-red-500/30'
-              : 'bg-emerald-500/10 border-emerald-500/40'
-              }`}
+            className={`h-12 px-5 rounded-2xl border flex-row items-center justify-center relative overflow-hidden shadow-lg ${
+              isAvailable
+                ? 'bg-red-500/15 border-red-500/40'
+                : 'bg-emerald-500/15 border-emerald-500/45'
+            }`}
           >
+            <View className="absolute top-0 left-2 right-2 h-[1px] bg-white/30 pointer-events-none" />
             <Ionicons
               name="power"
-              size={14}
-              color={isAvailable ? '#EF4444' : '#10B981'}
-              style={{ marginRight: 6 }}
+              size={17}
+              color={isAvailable ? '#F87171' : '#34D399'}
+              style={{ marginRight: 8 }}
             />
             <Text
-              className={`font-montserrat-bold text-xs tracking-wider uppercase ${isAvailable ? 'text-red-400' : 'text-emerald-400'
-                }`}
+              className={`font-montserrat-bold text-xs tracking-wider uppercase ${
+                isAvailable ? 'text-red-400' : 'text-emerald-400'
+              }`}
             >
               {isAvailable ? 'Desconectar' : 'Conectar'}
             </Text>

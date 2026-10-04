@@ -13,12 +13,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Trip } from '../../../core/trip/interface/trip.interface';
+import * as Haptics from 'expo-haptics';
+import { Trip, getPaymentMethodInfo } from '../../../core/trip/interface/trip.interface';
 import { THEME_COLORS } from '../../../core/constants/theme';
 import { useDriverTripStore } from '../../trip/store/useDriverTripStore';
 import { useWalletStore } from '../../wallet/store/useWalletStore';
 import { ratePassenger } from '../../../core/trip/actions/trip.actions';
 import { router } from 'expo-router';
+import { LiquidGlassContainer } from '../ui/LiquidGlassContainer';
 
 interface TripReceiptModalProps {
   trip: Trip;
@@ -37,6 +39,10 @@ export const TripReceiptModal = ({ trip, visible }: TripReceiptModalProps) => {
     ? `Viaja: ${rawThirdPartyName} (Tercero)`
     : (trip?.passenger?.fullName || 'Pasajero');
 
+  // Payment method info & Cash verification
+  const paymentInfo = getPaymentMethodInfo(trip?.payment_method);
+  const isCash = paymentInfo.isCash;
+
   // Calculate fees safely
   const finalFare = Number(trip?.final_fare || trip?.estimated_fare || 0);
   const commissionPercent = 0.20; // Default 20% platform fee
@@ -49,7 +55,13 @@ export const TripReceiptModal = ({ trip, visible }: TripReceiptModalProps) => {
     router.replace('/' as any);
   };
 
+  const handleRatingChange = (newRating: number) => {
+    Haptics.selectionAsync();
+    setRating(newRating);
+  };
+
   const handleConfirm = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setSubmitError(null);
     if (!trip?.id) {
       finishAndClose();
@@ -63,6 +75,7 @@ export const TripReceiptModal = ({ trip, visible }: TripReceiptModalProps) => {
         ...(comment.trim() ? { comment: comment.trim() } : {}),
       });
 
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       finishAndClose();
     } catch (err: any) {
       const msg = err.message || 'Error al calificar al pasajero';
@@ -72,6 +85,7 @@ export const TripReceiptModal = ({ trip, visible }: TripReceiptModalProps) => {
         return;
       }
 
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       setSubmitError(msg);
       Alert.alert(
         'No se pudo enviar la calificación',
@@ -94,73 +108,146 @@ export const TripReceiptModal = ({ trip, visible }: TripReceiptModalProps) => {
           className="flex-1"
         >
           <ScrollView
-            contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingVertical: 20 }}
+            contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingVertical: 16 }}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            {/* Header - Success Icon */}
-            <View className="items-center mb-6 mt-4">
-              <View className="w-16 h-16 rounded-full border border-gold items-center justify-center mb-3">
-                <Ionicons name="checkmark" size={32} color={THEME_COLORS.gold} />
-              </View>
-              <Text className="text-white font-montserrat-bold text-2xl tracking-wide">
+            {/* Header - Success Icon with Glow */}
+            <View className="items-center mb-5 mt-2">
+              <LiquidGlassContainer
+                variant="gold"
+                className="w-16 h-16 rounded-full items-center justify-center mb-3"
+              >
+                <Ionicons name="checkmark-circle" size={36} color={THEME_COLORS.gold} />
+              </LiquidGlassContainer>
+              <Text className="text-white font-montserrat-bold text-2xl tracking-tight">
                 Viaje Completado
+              </Text>
+              <Text className="text-ash font-montserrat text-xs mt-0.5">
+                Resumen de cobro y calificación
               </Text>
             </View>
 
-            {/* Receipt Card */}
-            <View className="w-full flex-col items-center justify-center bg-[#1A1A1C] border border-[#2C2C2E] rounded-[24px] p-6 mb-6 shadow-xl">
-              <Text className="text-zinc-400 font-montserrat-bold text-[10px] tracking-widest uppercase mb-1">
-                GANANCIA NETA
-              </Text>
-              <Text className="text-[#D4AF37] font-montserrat-bold text-4xl mb-5">
-                ${netEarnings.toFixed(2)}
-              </Text>
+            {/* In-Cabin Cash / Payment Instruction Banner */}
+            {isCash ? (
+              <LiquidGlassContainer
+                variant="success"
+                className="w-full rounded-2xl p-4 mb-4 flex-row items-center border border-emerald-500/40"
+              >
+                <View className="w-12 h-12 rounded-xl bg-emerald-500/20 items-center justify-center mr-3 border border-emerald-500/40">
+                  <Ionicons name="cash" size={26} color="#10B981" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-emerald-400 font-montserrat-bold text-xs uppercase tracking-wider">
+                    Cobrar en efectivo al pasajero
+                  </Text>
+                  <Text
+                    className="text-white font-montserrat-bold text-2xl mt-0.5"
+                    style={{ fontVariant: ['tabular-nums'] }}
+                  >
+                    ${finalFare.toFixed(2)}
+                  </Text>
+                  <Text className="text-emerald-300/80 font-montserrat text-[11px]">
+                    Cobrá el total antes de que el pasajero descienda
+                  </Text>
+                </View>
+              </LiquidGlassContainer>
+            ) : (
+              <LiquidGlassContainer
+                variant="default"
+                className="w-full rounded-2xl p-3.5 mb-4 flex-row items-center border border-white/10"
+              >
+                <View className="w-10 h-10 rounded-xl bg-white/10 items-center justify-center mr-3">
+                  <Ionicons name="card-outline" size={22} color={THEME_COLORS.platinum} />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-platinum font-montserrat-bold text-xs uppercase tracking-wider">
+                    Pago Electrónico Acreditado
+                  </Text>
+                  <Text className="text-ash font-montserrat text-[11px] mt-0.5">
+                    No cobrar al pasajero. Acreditado en tu Bóveda.
+                  </Text>
+                </View>
+              </LiquidGlassContainer>
+            )}
+
+            {/* Liquid Glass Receipt Card */}
+            <LiquidGlassContainer
+              variant="gold"
+              className="w-full rounded-[24px] p-5 mb-5 shadow-2xl"
+            >
+              <View className="items-center mb-4">
+                <Text className="text-ash font-montserrat-bold text-[10px] tracking-widest uppercase mb-1">
+                  GANANCIA NETA ESTIMADA
+                </Text>
+                <Text
+                  className="text-gold font-montserrat-bold text-4xl"
+                  style={{ fontVariant: ['tabular-nums'] }}
+                >
+                  ${netEarnings.toFixed(2)}
+                </Text>
+              </View>
+
+              {/* Line items divider */}
+              <View className="h-[1px] bg-white/10 w-full mb-3" />
 
               {/* Line items */}
-              <View className="w-full">
-                <View className="flex-row justify-between items-center mb-2.5">
-                  <Text className="text-zinc-400 font-montserrat-medium text-xs">Tarifa recalculada</Text>
-                  <Text className="text-white font-montserrat-semibold text-xs">
+              <View className="w-full gap-2">
+                <View className="flex-row justify-between items-center">
+                  <Text className="text-ash font-montserrat-medium text-xs">Tarifa del viaje</Text>
+                  <Text
+                    className="text-white font-montserrat-semibold text-xs"
+                    style={{ fontVariant: ['tabular-nums'] }}
+                  >
                     ${finalFare.toFixed(2)}
                   </Text>
                 </View>
-                <View className="flex-row justify-between items-center mb-2.5">
-                  <Text className="text-zinc-400 font-montserrat-medium text-xs">Comisión plataforma</Text>
-                  <Text className="text-red-500 font-montserrat-semibold text-xs">
+                <View className="flex-row justify-between items-center">
+                  <Text className="text-ash font-montserrat-medium text-xs">Comisión de plataforma (20%)</Text>
+                  <Text
+                    className="text-red-400 font-montserrat-semibold text-xs"
+                    style={{ fontVariant: ['tabular-nums'] }}
+                  >
                     - ${commission.toFixed(2)}
                   </Text>
                 </View>
                 <View className="flex-row justify-between items-center">
-                  <Text className="text-zinc-400 font-montserrat-medium text-xs">Tiempo de espera</Text>
-                  <Text className="text-white font-montserrat-semibold text-xs">
-                    $0.00
+                  <Text className="text-ash font-montserrat-medium text-xs">Método de pago</Text>
+                  <Text className="text-gold font-montserrat-semibold text-xs capitalize">
+                    {paymentInfo.label}
                   </Text>
                 </View>
               </View>
-            </View>
+            </LiquidGlassContainer>
 
             {/* Rating Section */}
-            <View className="items-center mb-6 bg-white/[0.02] border border-white/[0.06] rounded-[24px] p-5">
-              <View className="w-11 h-11 rounded-full bg-charcoal items-center justify-center mb-2.5 border border-charcoal">
-                <Ionicons name="person" size={22} color={THEME_COLORS.platinum} />
+            <LiquidGlassContainer
+              variant="default"
+              className="w-full rounded-[24px] p-5 mb-5"
+            >
+              <View className="items-center mb-3">
+                <View className="w-12 h-12 rounded-full bg-charcoal items-center justify-center mb-2 border border-white/10">
+                  <Ionicons name="person" size={24} color={THEME_COLORS.platinum} />
+                </View>
+                <Text className="text-white font-montserrat-semibold text-sm text-center">
+                  Calificá a {passengerName}
+                </Text>
               </View>
-              <Text className="text-white font-montserrat-semibold text-sm mb-3 text-center">
-                Calificá a {passengerName}
-              </Text>
 
-              <View className="flex-row items-center gap-3 mb-4">
+              {/* Ergonomic 48x48 Star Rating */}
+              <View className="flex-row items-center justify-center gap-2 mb-4">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <TouchableOpacity
                     key={star}
-                    onPress={() => setRating(star)}
-                    className="p-1"
+                    onPress={() => handleRatingChange(star)}
+                    className="w-12 h-12 items-center justify-center active:scale-110"
                     accessibilityRole="button"
                     accessibilityLabel={`${star} estrellas`}
+                    hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
                   >
                     <Ionicons
                       name={rating >= star ? 'star' : 'star-outline'}
-                      size={34}
+                      size={36}
                       color={THEME_COLORS.gold}
                     />
                   </TouchableOpacity>
@@ -172,11 +259,11 @@ export const TripReceiptModal = ({ trip, visible }: TripReceiptModalProps) => {
                 <TextInput
                   value={comment}
                   onChangeText={setComment}
-                  placeholder="Comentario sobre el pasajero (opcional)..."
+                  placeholder="Comentario sobre el viaje (opcional)..."
                   placeholderTextColor="#71717A"
                   multiline
                   maxLength={500}
-                  className="w-full bg-[#141416] border border-[#2C2C2E] rounded-xl p-3 text-white font-montserrat text-xs min-h-[70px] text-top"
+                  className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white font-montserrat text-xs min-h-[70px]"
                   textAlignVertical="top"
                 />
                 <View className="flex-row justify-end mt-1">
@@ -195,21 +282,26 @@ export const TripReceiptModal = ({ trip, visible }: TripReceiptModalProps) => {
                   </Text>
                 </View>
               )}
-            </View>
+            </LiquidGlassContainer>
 
-            {/* Footer Button */}
+            {/* Footer 56px Ergonomic Button */}
             <View className="w-full mt-auto pb-6">
               <TouchableOpacity
                 onPress={handleConfirm}
                 disabled={isSubmitting}
-                className="w-full py-4 rounded-full items-center justify-center bg-gold active:opacity-90"
+                className="w-full h-14 rounded-2xl items-center justify-center bg-gold active:opacity-90 shadow-lg shadow-gold/20"
+                accessibilityRole="button"
+                accessibilityLabel="Confirmar y continuar"
               >
                 {isSubmitting ? (
                   <ActivityIndicator color={THEME_COLORS.obsidian} />
                 ) : (
-                  <Text className="font-montserrat-bold text-base text-obsidian tracking-wide">
-                    Confirmar y Continuar
-                  </Text>
+                  <View className="flex-row items-center gap-2">
+                    <Text className="font-montserrat-bold text-base text-obsidian tracking-wide">
+                      Confirmar y Continuar
+                    </Text>
+                    <Ionicons name="arrow-forward" size={18} color={THEME_COLORS.obsidian} />
+                  </View>
                 )}
               </TouchableOpacity>
             </View>
@@ -219,3 +311,4 @@ export const TripReceiptModal = ({ trip, visible }: TripReceiptModalProps) => {
     </Modal>
   );
 };
+

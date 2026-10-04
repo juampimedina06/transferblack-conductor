@@ -10,10 +10,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useQuery } from '@tanstack/react-query';
 import { getTripById } from '../../../core/trip/actions/trip.actions';
 import { THEME_COLORS } from '../../../core/constants/theme';
 import { SkeletonBox } from '@/presentation/components/ui/SkeletonBox';
+import { LiquidGlassContainer } from '../ui/LiquidGlassContainer';
 
 interface ScheduledTripDetailModalProps {
   tripId: string | null;
@@ -82,6 +84,7 @@ export const ScheduledTripDetailModal = ({
   };
 
   const handleCall = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (passengerPhone) {
       Linking.openURL(`tel:${passengerPhone}`);
     } else {
@@ -89,35 +92,40 @@ export const ScheduledTripDetailModal = ({
     }
   };
 
+  const handleClose = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onClose();
+  };
+
   return (
-    <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={onClose}>
+    <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={handleClose}>
       <SafeAreaView className="flex-1 bg-obsidian">
         {/* Top Header Bar */}
-        <View className="flex-row items-center justify-between px-5 py-3 border-b border-white/[0.08]">
+        <View className="flex-row items-center justify-between px-4 py-3 border-b border-white/10">
           <View className="flex-row items-center flex-1 mr-3">
             <TouchableOpacity
-              onPress={onClose}
+              onPress={handleClose}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               accessibilityRole="button"
               accessibilityLabel="Cerrar detalle"
-              className="w-9 h-9 rounded-full bg-charcoal items-center justify-center border border-charcoal mr-3"
+              className="w-11 h-11 rounded-full bg-white/5 border border-white/10 items-center justify-center mr-3 active:scale-95"
             >
-              <Ionicons name="close" size={20} color={THEME_COLORS.platinum} />
+              <Ionicons name="close" size={22} color={THEME_COLORS.gold} />
             </TouchableOpacity>
             <View>
               <Text className="text-white font-montserrat-bold text-base">
                 Detalle de Reserva
               </Text>
               {tripDetail?.public_code && (
-                <Text className="text-zinc-400 font-montserrat text-[11px]">
+                <Text className="text-ash font-montserrat text-xs">
                   Código: {tripDetail.public_code}
                 </Text>
               )}
             </View>
           </View>
 
-          <View className="bg-[#D4AF37]/15 border border-[#D4AF37]/35 px-3 py-1 rounded-full">
-            <Text className="text-[#D4AF37] font-montserrat-semibold text-[11px] uppercase tracking-wider">
+          <View className="bg-gold/15 border border-gold/40 px-3 py-1 rounded-full">
+            <Text className="text-gold font-montserrat-semibold text-[11px] uppercase tracking-wider">
               Programado
             </Text>
           </View>
@@ -125,7 +133,7 @@ export const ScheduledTripDetailModal = ({
 
         {/* Content Body */}
         {isLoading ? (
-          <ScrollView className="flex-1 p-5" showsVerticalScrollIndicator={false}>
+          <ScrollView className="flex-1 p-4" showsVerticalScrollIndicator={false}>
             <SkeletonBox className="w-full h-16 rounded-2xl mb-4" />
             <SkeletonBox className="w-full h-24 rounded-2xl mb-4" />
             <SkeletonBox className="w-full h-36 rounded-2xl mb-4" />
@@ -139,13 +147,16 @@ export const ScheduledTripDetailModal = ({
             <Text className="text-white font-montserrat-bold text-lg mb-2 text-center">
               No se pudo cargar el viaje
             </Text>
-            <Text className="text-zinc-400 font-montserrat text-xs text-center mb-6 leading-5">
+            <Text className="text-ash font-montserrat text-xs text-center mb-6 leading-5">
               {errorMessage}
             </Text>
             {tripId && (
               <TouchableOpacity
-                onPress={() => refetch()}
-                className="bg-gold px-6 py-3 rounded-full active:opacity-80"
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  refetch();
+                }}
+                className="bg-gold px-6 py-3.5 rounded-2xl active:opacity-90 shadow-md shadow-gold/20"
               >
                 <Text className="text-obsidian font-montserrat-bold text-xs tracking-wider uppercase">
                   Reintentar
@@ -154,32 +165,32 @@ export const ScheduledTripDetailModal = ({
             )}
           </View>
         ) : tripDetail ? (
-          <ScrollView className="flex-1 p-5" showsVerticalScrollIndicator={false}>
-            {/* Scheduled Date Banner */}
-            <View className="bg-[#141417] border border-white/[0.08] rounded-2xl p-4 mb-4 flex-row items-center">
-              <View className="w-10 h-10 rounded-full bg-[#D4AF37]/15 border border-[#D4AF37]/35 items-center justify-center mr-3">
-                <Ionicons name="time" size={20} color={THEME_COLORS.gold} />
+          <ScrollView className="flex-1 p-4" showsVerticalScrollIndicator={false}>
+            {/* Unified Trip Canvas */}
+            <LiquidGlassContainer
+              variant="default"
+              className="rounded-3xl p-5 mb-5 border border-white/10"
+            >
+              {/* Scheduled Date Section */}
+              <View className="flex-row items-center pb-4 mb-4 border-b border-white/10">
+                <View className="w-11 h-11 rounded-2xl bg-gold/15 border border-gold/30 items-center justify-center mr-3.5">
+                  <Ionicons name="time" size={22} color={THEME_COLORS.gold} />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-ash font-montserrat text-[10px] uppercase tracking-wider mb-0.5">
+                    Fecha y Hora programada
+                  </Text>
+                  <Text className="text-white font-montserrat-bold text-base">
+                    {formatScheduledDate(tripDetail.confirmed_at || tripDetail.assigned_at)}
+                  </Text>
+                </View>
               </View>
-              <View className="flex-1">
-                <Text className="text-zinc-400 font-montserrat text-[10px] uppercase tracking-wider mb-0.5">
-                  Fecha y Hora programada
-                </Text>
-                <Text className="text-white font-montserrat-bold text-sm">
-                  {formatScheduledDate(tripDetail.confirmed_at || tripDetail.assigned_at)}
-                </Text>
-              </View>
-            </View>
 
-            {/* Passenger / Third Party Card */}
-            <View className="bg-[#141417] border border-white/[0.08] rounded-2xl p-4 mb-4">
-              <Text className="text-zinc-400 font-montserrat-semibold text-[10px] uppercase tracking-wider mb-3">
-                Información del Pasajero
-              </Text>
-
-              <View className="flex-row items-center justify-between">
+              {/* Passenger / Third Party Row */}
+              <View className="flex-row items-center justify-between pb-4 mb-4 border-b border-white/10">
                 <View className="flex-row items-center flex-1 mr-3">
-                  <View className="w-11 h-11 rounded-full bg-[#D4AF37]/15 border border-[#D4AF37]/35 items-center justify-center mr-3">
-                    <Text className="text-[#D4AF37] font-montserrat-bold text-base">
+                  <View className="w-11 h-11 rounded-2xl bg-white/5 border border-white/10 items-center justify-center mr-3.5">
+                    <Text className="text-gold font-montserrat-bold text-base">
                       {(rawThirdPartyName || tripDetail.passenger?.fullName || 'P')
                         .charAt(0)
                         .toUpperCase()}
@@ -189,11 +200,11 @@ export const ScheduledTripDetailModal = ({
                     <Text className="text-white font-montserrat-bold text-sm" numberOfLines={1}>
                       {passengerName}
                     </Text>
-                    <Text className="text-[#D4AF37] font-montserrat-medium text-[11px] mt-0.5">
+                    <Text className="text-gold font-montserrat-medium text-[11px] mt-0.5">
                       {isThirdParty ? 'Viaje para tercero' : 'TransferBlack VIP'}
                     </Text>
                     {passengerPhone ? (
-                      <Text className="text-zinc-400 font-montserrat text-xs mt-0.5">
+                      <Text className="text-ash font-montserrat text-xs mt-0.5">
                         {passengerPhone}
                       </Text>
                     ) : null}
@@ -205,83 +216,89 @@ export const ScheduledTripDetailModal = ({
                     onPress={handleCall}
                     accessibilityRole="button"
                     accessibilityLabel={`Llamar a ${passengerName}`}
-                    className="w-10 h-10 rounded-full bg-[#1E1E24] border border-zinc-700/80 items-center justify-center active:opacity-70"
+                    className="w-11 h-11 rounded-2xl bg-white/5 border border-white/10 items-center justify-center active:scale-95"
                   >
-                    <Ionicons name="call" size={17} color={THEME_COLORS.platinum} />
+                    <Ionicons name="call" size={18} color={THEME_COLORS.gold} />
                   </TouchableOpacity>
                 ) : null}
               </View>
-            </View>
 
-            {/* Route Trajectory & Stops */}
-            <View className="bg-[#141417] border border-white/[0.08] rounded-2xl p-4 mb-4">
-              <Text className="text-zinc-400 font-montserrat-semibold text-[10px] uppercase tracking-wider mb-3">
-                Itinerario del Viaje
-              </Text>
-
-              {/* Pickup Point */}
-              <View className="flex-row items-start mb-3">
-                <View className="items-center mr-3 mt-1">
-                  <View className="w-3 h-3 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400" />
-                  <View className="w-0.5 h-8 bg-zinc-700 my-1" />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-emerald-400 font-montserrat-semibold text-[10px] uppercase tracking-wider mb-0.5">
-                    Punto de Partida
-                  </Text>
-                  <Text className="text-white font-montserrat-medium text-xs leading-4">
-                    {tripDetail.pickup?.address || 'Ubicación de recogida'}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Dropoff Point */}
-              <View className="flex-row items-start">
-                <View className="items-center mr-3 mt-1">
-                  <View className="w-3 h-3 rounded-full bg-red-400 shadow-sm shadow-red-400" />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-red-400 font-montserrat-semibold text-[10px] uppercase tracking-wider mb-0.5">
-                    Destino Final
-                  </Text>
-                  <Text className="text-white font-montserrat-medium text-xs leading-4">
-                    {tripDetail.dropoff?.address || 'Ubicación de destino'}
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Financial Summary */}
-            <View className="bg-[#141417] border border-white/[0.08] rounded-2xl p-4 mb-4">
-              <Text className="text-zinc-400 font-montserrat-semibold text-[10px] uppercase tracking-wider mb-3">
-                Compensación Estimada
-              </Text>
-
-              <View className="flex-row items-center justify-between mb-2">
-                <Text className="text-zinc-400 font-montserrat text-xs">Tarifa total calculada</Text>
-                <Text className="text-white font-montserrat-semibold text-xs">
-                  ${Number(tripDetail.final_fare || tripDetail.estimated_fare || 0).toLocaleString('es-AR')} {tripDetail.currency || 'ARS'}
+              {/* Route Trajectory */}
+              <View className="pb-4 mb-4 border-b border-white/10">
+                <Text className="text-ash font-montserrat text-[10px] uppercase tracking-wider mb-3">
+                  Itinerario del Viaje
                 </Text>
+
+                {/* Pickup Point */}
+                <View className="flex-row items-start mb-3">
+                  <View className="items-center mr-3 mt-1">
+                    <View className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+                    <View className="w-0.5 h-6 bg-white/15 my-0.5" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-ash font-montserrat text-[10px] uppercase tracking-wider mb-0.5">
+                      Punto de Partida
+                    </Text>
+                    <Text className="text-white font-montserrat-medium text-xs leading-4">
+                      {tripDetail.pickup?.address || 'Ubicación de recogida'}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Dropoff Point */}
+                <View className="flex-row items-start">
+                  <View className="items-center mr-3 mt-1">
+                    <View className="w-2.5 h-2.5 rounded-full bg-red-400" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-ash font-montserrat text-[10px] uppercase tracking-wider mb-0.5">
+                      Destino Final
+                    </Text>
+                    <Text className="text-white font-montserrat-medium text-xs leading-4">
+                      {tripDetail.dropoff?.address || 'Ubicación de destino'}
+                    </Text>
+                  </View>
+                </View>
               </View>
 
-              <View className="flex-row items-center justify-between pt-2 border-t border-white/[0.06]">
-                <Text className="text-zinc-300 font-montserrat-bold text-xs uppercase tracking-wider">
-                  Tu ganancia neta estimada
+              {/* Financial Summary */}
+              <View>
+                <Text className="text-ash font-montserrat text-[10px] uppercase tracking-wider mb-2.5">
+                  Compensación Estimada
                 </Text>
-                <Text className="text-[#D4AF37] font-montserrat-bold text-base">
-                  ${Number(tripDetail.driver_earnings || tripDetail.fare_details?.netEarnings || Math.round(Number(tripDetail.estimated_fare || 0) * 0.8)).toLocaleString('es-AR')} {tripDetail.currency || 'ARS'}
-                </Text>
-              </View>
-            </View>
 
-            {/* Operational Warning Callout */}
-            <View className="bg-amber-400/10 border border-amber-400/25 rounded-2xl p-4 mb-6 flex-row items-start">
-              <Ionicons name="information-circle" size={20} color="#EAB308" className="mr-3" />
-              <View className="flex-1 ml-2.5">
+                <View className="flex-row items-center justify-between mb-2">
+                  <Text className="text-ash font-montserrat text-xs">Tarifa total calculada</Text>
+                  <Text
+                    className="text-white font-montserrat-medium text-xs"
+                    style={{ fontVariant: ['tabular-nums'] }}
+                  >
+                    ${Number(tripDetail.final_fare || tripDetail.estimated_fare || 0).toLocaleString('es-AR')} {tripDetail.currency || 'ARS'}
+                  </Text>
+                </View>
+
+                <View className="flex-row items-center justify-between pt-2.5 border-t border-white/10">
+                  <Text className="text-platinum font-montserrat-bold text-xs uppercase tracking-wider">
+                    Tu ganancia neta
+                  </Text>
+                  <Text
+                    className="text-gold font-montserrat-bold text-xl"
+                    style={{ fontVariant: ['tabular-nums'] }}
+                  >
+                    ${Number(tripDetail.driver_earnings || tripDetail.fare_details?.netEarnings || Math.round(Number(tripDetail.estimated_fare || 0) * 0.8)).toLocaleString('es-AR')} {tripDetail.currency || 'ARS'}
+                  </Text>
+                </View>
+              </View>
+            </LiquidGlassContainer>
+
+            {/* Operational Advisory Pill */}
+            <View className="rounded-2xl p-4 mb-6 flex-row items-start bg-amber-500/10 border border-amber-500/25">
+              <Ionicons name="information-circle-outline" size={18} color="#EAB308" className="mt-0.5 mr-2.5" />
+              <View className="flex-1 ml-2">
                 <Text className="text-amber-400 font-montserrat-semibold text-xs mb-1">
                   Activación de la Reserva
                 </Text>
-                <Text className="text-zinc-300 font-montserrat text-[11px] leading-4">
+                <Text className="text-ash font-montserrat text-xs leading-relaxed">
                   El sistema confirmará automáticamente tu asignación 20 minutos antes de la hora programada. Conéctate y mantente disponible para no perder la reserva.
                 </Text>
               </View>
@@ -289,8 +306,10 @@ export const ScheduledTripDetailModal = ({
 
             {/* Close Button */}
             <TouchableOpacity
-              onPress={onClose}
-              className="w-full py-4 rounded-full items-center justify-center bg-white/[0.08] border border-white/10 active:opacity-70 mb-6"
+              onPress={handleClose}
+              className="w-full h-14 rounded-2xl items-center justify-center bg-white/10 border border-white/15 active:bg-white/20 mb-6"
+              accessibilityRole="button"
+              accessibilityLabel="Cerrar detalle"
             >
               <Text className="font-montserrat-bold text-sm text-white tracking-wider uppercase">
                 Cerrar
@@ -302,3 +321,4 @@ export const ScheduledTripDetailModal = ({
     </Modal>
   );
 };
+

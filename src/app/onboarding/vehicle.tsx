@@ -152,7 +152,7 @@ export default function VehicleScreen() {
         {/* Back Button */}
         <TouchableOpacity 
           onPress={handleBack}
-          className="w-10 h-10 rounded-full bg-charcoal items-center justify-center mb-6"
+          className="w-11 h-11 rounded-2xl bg-white/5 border border-white/10 items-center justify-center mb-6 active:scale-95"
           activeOpacity={0.7}
           accessibilityLabel="Volver al paso anterior"
         >

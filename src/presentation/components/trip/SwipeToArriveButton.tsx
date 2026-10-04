@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, LayoutChangeEvent } from 'react-native';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Animated, { 
   useAnimatedStyle, 
@@ -15,15 +15,16 @@ interface SwipeToArriveButtonProps {
   isLoading?: boolean;
 }
 
-const BUTTON_WIDTH = 300;
-const BUTTON_HEIGHT = 56;
-const SWIPEABLE_WIDTH = BUTTON_HEIGHT;
-const MAX_TRANSLATE = BUTTON_WIDTH - SWIPEABLE_WIDTH;
+const BUTTON_HEIGHT = 60;
+const SWIPEABLE_WIDTH = BUTTON_HEIGHT - 6;
 
 export const SwipeToArriveButton = ({ onArrive, isLoading = false }: SwipeToArriveButtonProps) => {
+  const [containerWidth, setContainerWidth] = useState<number>(320);
   const translateX = useSharedValue(0);
   const contextX = useSharedValue(0);
   const [isCompleted, setIsCompleted] = useState(false);
+
+  const maxTranslate = Math.max(0, containerWidth - SWIPEABLE_WIDTH - 6);
 
   const handleComplete = () => {
     setIsCompleted(true);
@@ -41,15 +42,15 @@ export const SwipeToArriveButton = ({ onArrive, isLoading = false }: SwipeToArri
       let nextTranslate = contextX.value + event.translationX;
       if (nextTranslate < 0) {
         nextTranslate = 0;
-      } else if (nextTranslate > MAX_TRANSLATE) {
-        nextTranslate = MAX_TRANSLATE;
+      } else if (nextTranslate > maxTranslate) {
+        nextTranslate = maxTranslate;
       }
       translateX.value = nextTranslate;
     })
     .onEnd(() => {
       if (isCompleted || isLoading) return;
-      if (translateX.value > MAX_TRANSLATE * 0.8) {
-        translateX.value = withSpring(MAX_TRANSLATE);
+      if (translateX.value > maxTranslate * 0.75) {
+        translateX.value = withSpring(maxTranslate);
         runOnJS(handleComplete)();
       } else {
         translateX.value = withSpring(0);
@@ -62,15 +63,29 @@ export const SwipeToArriveButton = ({ onArrive, isLoading = false }: SwipeToArri
     };
   });
 
+  const onLayout = (e: LayoutChangeEvent) => {
+    setContainerWidth(e.nativeEvent.layout.width);
+  };
+
   return (
-    <View style={styles.container} className="bg-obsidian border border-charcoal rounded-full justify-center shadow-lg shadow-black mx-4 my-2">
-      <Text className="absolute self-center text-ash font-montserrat-bold text-sm tracking-widest">
-        {isLoading ? 'NOTIFICANDO...' : 'DESLIZAR AL LLEGAR >>'}
+    <View 
+      onLayout={onLayout}
+      style={styles.container} 
+      className="bg-[#0F1016]/95 border border-[#D4AF37]/35 rounded-full justify-center shadow-xl shadow-black w-full relative overflow-hidden my-2"
+    >
+      {/* Specular Top Edge Light Refraction */}
+      <View className="absolute top-0 left-6 right-6 h-[1px] bg-white/20 pointer-events-none" />
+
+      <Text className="absolute self-center text-platinum font-montserrat-bold text-xs tracking-widest uppercase">
+        {isLoading ? 'NOTIFICANDO LLEGADA...' : 'DESLIZAR AL LLEGAR >>'}
       </Text>
       
       <GestureDetector gesture={panGesture}>
-        <Animated.View style={[styles.swipeable, animatedStyle]} className="bg-gold rounded-full items-center justify-center">
-          <Ionicons name="chevron-forward" size={24} color={THEME_COLORS.obsidian} />
+        <Animated.View 
+          style={[styles.swipeable, animatedStyle]} 
+          className="bg-gold rounded-full items-center justify-center shadow-lg shadow-black"
+        >
+          <Ionicons name="chevron-forward" size={26} color={THEME_COLORS.obsidian} />
         </Animated.View>
       </GestureDetector>
     </View>
@@ -79,17 +94,16 @@ export const SwipeToArriveButton = ({ onArrive, isLoading = false }: SwipeToArri
 
 const styles = StyleSheet.create({
   container: {
-    width: '100%',
     height: BUTTON_HEIGHT,
-    maxWidth: BUTTON_WIDTH,
-    alignSelf: 'center',
     overflow: 'hidden',
+    paddingHorizontal: 3,
   },
   swipeable: {
     width: SWIPEABLE_WIDTH,
     height: SWIPEABLE_WIDTH,
     position: 'absolute',
-    left: 0,
+    left: 3,
+    top: 3,
     zIndex: 10,
   }
 });

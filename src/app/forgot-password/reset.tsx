@@ -1,3 +1,4 @@
+import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { router } from 'expo-router';
@@ -30,7 +31,7 @@ interface RequirementItemProps {
 }
 
 const RequirementItem = ({ label, isMet }: RequirementItemProps): React.JSX.Element => (
-  <View className="flex-row items-center mb-1.5">
+  <View className="flex-row items-center mb-2">
     <Ionicons
       name={isMet ? 'checkmark-circle' : 'ellipse-outline'}
       size={16}
@@ -39,7 +40,7 @@ const RequirementItem = ({ label, isMet }: RequirementItemProps): React.JSX.Elem
     />
     <Text
       className={`font-montserrat text-xs ${
-        isMet ? 'text-neutral-200' : 'text-ash'
+        isMet ? 'text-white font-montserrat-medium' : 'text-ash'
       }`}
     >
       {label}
@@ -92,6 +93,7 @@ export default function ForgotPasswordResetScreen(): React.JSX.Element {
   }, [resetToken]);
 
   const handleBack = (): void => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.replace('/forgot-password' as any);
   };
 
@@ -107,10 +109,12 @@ export default function ForgotPasswordResetScreen(): React.JSX.Element {
 
     try {
       setIsLoading(true);
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       await authActions.resetPassword(resetToken, data.password);
 
       // Limpiar el estado del flujo en memoria
       clearStore();
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
       Alert.alert(
         'Contraseña restablecida',
@@ -125,6 +129,7 @@ export default function ForgotPasswordResetScreen(): React.JSX.Element {
         ]
       );
     } catch (error: unknown) {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       if (error instanceof AuthError) {
         if (error.code === 'RESET_TOKEN_INVALID' || error.status === 400) {
           Alert.alert(
@@ -155,6 +160,11 @@ export default function ForgotPasswordResetScreen(): React.JSX.Element {
 
   return (
     <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-obsidian">
+      {/* Ambient background glow */}
+      <View
+        pointerEvents="none"
+        className="absolute -top-24 -left-24 w-80 h-80 rounded-full bg-[#D4AF37]/10 blur-3xl"
+      />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         className="flex-1"
@@ -171,16 +181,16 @@ export default function ForgotPasswordResetScreen(): React.JSX.Element {
               accessibilityRole="button"
               accessibilityLabel="Volver al inicio"
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              className="w-10 h-10 items-center justify-center rounded-full"
+              className="w-11 h-11 items-center justify-center rounded-2xl bg-white/5 border border-white/10 active:scale-95"
             >
-              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+              <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
 
           {/* Header */}
           <View className="items-center mt-2 mb-6">
-            <View className="w-20 h-20 rounded-full bg-[#151518] border border-gold/30 items-center justify-center mb-6">
-              <Ionicons name="lock-open" size={40} color={THEME_COLORS.gold} />
+            <View className="w-20 h-20 rounded-3xl bg-[#D4AF37]/10 border border-[#D4AF37]/30 items-center justify-center mb-6 shadow-lg shadow-black/40">
+              <Ionicons name="lock-open" size={38} color={THEME_COLORS.gold} />
             </View>
             <Text className="text-3xl font-montserrat-bold text-white text-center mb-3">
               Nueva contraseña
@@ -225,7 +235,7 @@ export default function ForgotPasswordResetScreen(): React.JSX.Element {
             />
 
             {/* Real-time requirements checklist */}
-            <View className="bg-[#151518] p-4 rounded-xl border border-[#262629] mb-6">
+            <View className="bg-[#12131A]/90 p-4 rounded-2xl border border-white/10 mb-6">
               <Text className="text-platinum font-montserrat-semibold text-xs mb-3 uppercase tracking-wider">
                 Requisitos de la contraseña:
               </Text>

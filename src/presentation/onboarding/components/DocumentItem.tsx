@@ -359,8 +359,8 @@ export const DocumentItem: React.FC<DocumentItemProps> = ({
         <View
           className="p-3.5 mb-3 rounded-2xl border flex-row items-center justify-between"
           style={{
-            backgroundColor: isMetadataMissing ? 'rgba(69, 26, 3, 0.4)' : 'rgba(44, 44, 46, 0.85)',
-            borderColor: isMetadataMissing ? 'rgba(245, 158, 11, 0.6)' : 'rgba(52, 211, 153, 0.35)',
+            backgroundColor: isMetadataMissing ? 'rgba(69, 26, 3, 0.35)' : 'rgba(15, 16, 22, 0.85)',
+            borderColor: isMetadataMissing ? 'rgba(245, 158, 11, 0.5)' : 'rgba(52, 211, 153, 0.3)',
           }}
         >
           <TouchableOpacity
@@ -478,10 +478,10 @@ export const DocumentItem: React.FC<DocumentItemProps> = ({
 
   return (
     <View
-      className="p-4 mb-4 rounded-2xl border bg-charcoal"
+      className="p-4 mb-4 rounded-2xl border relative overflow-hidden"
       style={{
-        borderColor: isUploaded ? 'rgba(212, 175, 55, 0.4)' : '#2C2C2E',
-        backgroundColor: isUploaded ? 'rgba(44, 44, 46, 0.95)' : '#2C2C2E',
+        borderColor: isUploaded ? 'rgba(212, 175, 55, 0.4)' : 'rgba(255, 255, 255, 0.1)',
+        backgroundColor: isUploaded ? 'rgba(18, 19, 26, 0.92)' : 'rgba(14, 15, 20, 0.88)',
       }}
     >
       {/* Header card with status badge and collapse button if uploaded */}
@@ -628,7 +628,7 @@ export const DocumentItem: React.FC<DocumentItemProps> = ({
       {/* Metadata Inputs (Required for all) */}
       <View
         className="rounded-xl p-3 gap-2 border"
-        style={{ backgroundColor: 'rgba(10, 10, 12, 0.8)', borderColor: 'rgba(44, 44, 46, 0.9)' }}
+        style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)', borderColor: 'rgba(255, 255, 255, 0.08)' }}
       >
         <Text className="text-ash font-montserrat text-xs uppercase tracking-wider mb-1">
           Fechas y Datos del Documento
@@ -648,7 +648,7 @@ export const DocumentItem: React.FC<DocumentItemProps> = ({
             });
           }}
           onBlur={updateMetadata}
-          className="h-10 bg-charcoal text-white font-montserrat text-xs px-3 rounded-lg border border-charcoal"
+          className="h-10 bg-white/5 text-white font-montserrat text-xs px-3 rounded-lg border border-white/10"
         />
         <View className="flex-row gap-2">
           <View className="flex-1">
