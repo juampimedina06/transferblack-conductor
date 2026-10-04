@@ -166,6 +166,7 @@ Docs: https://docs.expo.dev/eas/index.md
 ## Git / commits
 - Commits atómicos con mensaje claro (convención tipo `feat:`, `fix:`, `refactor:`).
 - No mezclar cambios de estilo/formato masivo con cambios de lógica en el mismo commit.
+- **Pull Requests (PR):** Entregar SIEMPRE las descripciones de PR en formato GitHub Markdown dentro de un bloque de código markdown listo para copiar y pegar, estructurado con: Título convencional, Resumen, Motivación, Cambios por módulo, Checklist de QA/verificación y Archivos afectados.
 
 ## Estructura de carpetas
 - Separación clara por feature o por capa (components/, hooks/, screens/, services/, types/) y mantenerla consistente en todo el proyecto.
