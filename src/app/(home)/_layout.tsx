@@ -102,6 +102,7 @@ export default function HomeLayout() {
       <Stack.Screen name="wallet/payout-history" />
       <Stack.Screen name="scheduled-trips/index" />
       <Stack.Screen name="chat/index" options={{ headerShown: false }} />
+      <Stack.Screen name="profile/index" />
     </Stack>
   );
 }
