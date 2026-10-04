@@ -143,6 +143,8 @@ Todos se ejecutan con `node scripts/<nombre>.mjs` desde la raíz del proyecto.
 | `dispatch_voucher.mjs` | `node scripts/dispatch_voucher.mjs` | Despacha un viaje corporativo con pago por voucher (`DEMO-OPS-2026`) como pasajero "Carla". El viaje acredita como ganancia digital en la bóveda del chofer. |
 | `request-test-trip.mjs` | `node scripts/request-test-trip.mjs` | Lee la URL de la API desde `.env`, cotiza y confirma un viaje como "Ana" (no dispara el despacho, solo crea el viaje en estado `searching`). |
 | `create_scheduled_trips.mjs` | `node scripts/create_scheduled_trips.mjs` | **Crea viajes reservados/programados con pasajeros demo (Bruno, Ana, Carla) y los asigna al conductor (`prueba2@gmail.com` por defecto)** vía admin (`POST /api/v1/admin/scheduled-trips`). Flags opcionales: `--driver <id-o-email>`. |
+| `create_weekly_scheduled_trips.mjs` | `node scripts/create_weekly_scheduled_trips.mjs` | **Genera el cronograma de reservas para toda la semana** (Lunes a Domingo) con distintas instancias de pasajeros (Bruno, Ana, Carla), variedad de turnos (mañana, mediodía, tarde, noche) y trayectos en Córdoba. Flags: `--driver <email|id>`, `--days <1..14>`, `--per-day <1..4>`, `--clean`, `--start <today|monday>`. |
+| `dispatch_concurrent_trips.mjs` | `node scripts/dispatch_concurrent_trips.mjs` | **Dispara solicitudes de viajes concurrentes en simultáneo** desde múltiples instancias de pasajeros (Bruno, Ana, Carla y/o pasajeros dinámicos para N > 3) con orígenes distribuidos o agrupados (`--cluster-origin`). Admite flags: `--instances <n>`, `--clean`, `--no-watch`, `--watch-seconds <seg>`, `--stagger-ms <ms>`. |
 
 > ⚠️ Para que el viaje te llegue en la app, tenés que estar **conectado** (switch "Disponible" en verde) antes de correr el script.
 
