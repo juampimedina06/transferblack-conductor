@@ -1,9 +1,12 @@
 import React from 'react';
-import { View, Text, Pressable } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { getRoleLabel } from '@/core/chat/mapper/chat.mapper';
 import { Trip } from '@/core/trip/interface/trip.interface';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { THEME_COLORS } from '@/core/constants/theme';
+import { LiquidGlassContainer } from '@/presentation/components/ui/LiquidGlassContainer';
 
 interface ChatHeaderProps {
   trip: Trip;
@@ -11,39 +14,47 @@ interface ChatHeaderProps {
 
 export const ChatHeader: React.FC<ChatHeaderProps> = ({ trip }) => {
   const chat = trip.chat;
-  const name = chat?.coordinator_name ?? 'Usuario';
+  const name = chat?.coordinator_name ?? (trip.passenger?.fullName || 'Pasajero');
   const role = chat?.coordinator_role;
-  const roleLabel = role ? getRoleLabel(role) : 'Interlocutor';
+  const roleLabel = role ? getRoleLabel(role) : 'Pasajero';
 
   return (
-    <View
-      className="flex-row items-center px-4 py-3 bg-[#0F0F11] border-b border-[#1C1C1E]"
+    <LiquidGlassContainer
+      variant="default"
+      className="flex-row items-center px-4 py-3 border-b border-white/10"
       accessibilityRole="header"
     >
-      <Pressable
-        onPress={() => router.back()}
+      <TouchableOpacity
+        onPress={() => {
+          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          router.back();
+        }}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        className="mr-3"
+        className="w-11 h-11 rounded-2xl items-center justify-center bg-white/5 border border-white/10 mr-3 active:scale-95"
         accessibilityLabel="Volver"
         accessibilityRole="button"
       >
-        <Ionicons name="chevron-back" size={24} color="#D4AF37" />
-      </Pressable>
+        <Ionicons name="chevron-back" size={22} color={THEME_COLORS.gold} />
+      </TouchableOpacity>
 
-      <View className="w-10 h-10 rounded-full bg-[#2C2C2E] items-center justify-center mr-3">
-        <Ionicons name="person-outline" size={18} color="#D4AF37" />
+      <View className="w-11 h-11 rounded-2xl bg-white/5 items-center justify-center mr-3 border border-white/10">
+        <Ionicons name="person" size={20} color={THEME_COLORS.platinum} />
       </View>
 
       <View className="flex-1">
         <Text
-          className="text-[#E4E4E5] font-semibold text-[15px]"
+          className="text-white font-montserrat-semibold text-[15px]"
           numberOfLines={1}
           accessibilityLabel={`Conversación con ${name}`}
         >
           {name}
         </Text>
-        <Text className="text-[#D4AF37] text-xs mt-0.5">{roleLabel}</Text>
+        <View className="flex-row items-center gap-1.5 mt-0.5">
+          <View className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+          <Text className="text-gold font-montserrat text-xs capitalize">{roleLabel}</Text>
+        </View>
       </View>
-    </View>
+    </LiquidGlassContainer>
   );
 };
+

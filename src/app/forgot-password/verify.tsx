@@ -1,3 +1,4 @@
+import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { router } from 'expo-router';
@@ -66,16 +67,20 @@ export default function ForgotPasswordVerifyScreen(): React.JSX.Element {
   };
 
   const handleBack = (): void => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.replace('/forgot-password' as any);
   };
 
   const onSubmit = async (data: VerifyPinFormData): Promise<void> => {
     try {
       setIsLoading(true);
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       const response = await authActions.verifyResetPasswordCode(email, data.code);
       setResetToken(response.data.reset_token, response.data.expires_in);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.push('/forgot-password/reset' as any);
     } catch (error: unknown) {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       if (error instanceof AuthError) {
         if (error.code === 'VERIFICATION_CODE_LOCKED' || error.status === 429) {
           Alert.alert(
@@ -118,6 +123,7 @@ export default function ForgotPasswordVerifyScreen(): React.JSX.Element {
     if (cooldown > 0 || isLoading) return;
     try {
       setIsLoading(true);
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       await authActions.forgotPassword(email);
       setCooldown(60);
       setValue('code', '');
@@ -132,6 +138,11 @@ export default function ForgotPasswordVerifyScreen(): React.JSX.Element {
 
   return (
     <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-obsidian">
+      {/* Ambient background glow */}
+      <View
+        pointerEvents="none"
+        className="absolute -top-24 -left-24 w-80 h-80 rounded-full bg-[#D4AF37]/10 blur-3xl"
+      />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         className="flex-1"
@@ -148,16 +159,16 @@ export default function ForgotPasswordVerifyScreen(): React.JSX.Element {
               accessibilityRole="button"
               accessibilityLabel="Volver al paso anterior"
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              className="w-10 h-10 items-center justify-center rounded-full"
+              className="w-11 h-11 items-center justify-center rounded-2xl bg-white/5 border border-white/10 active:scale-95"
             >
-              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+              <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
 
           {/* Header */}
           <View className="items-center mt-2 mb-8">
-            <View className="w-20 h-20 rounded-full bg-[#151518] border border-gold/30 items-center justify-center mb-6">
-              <Ionicons name="shield-checkmark" size={40} color={THEME_COLORS.gold} />
+            <View className="w-20 h-20 rounded-3xl bg-[#D4AF37]/10 border border-[#D4AF37]/30 items-center justify-center mb-6 shadow-lg shadow-black/40">
+              <Ionicons name="shield-checkmark" size={38} color={THEME_COLORS.gold} />
             </View>
             <Text className="text-3xl font-montserrat-bold text-white text-center mb-3">
               Ingresá el código
@@ -185,16 +196,22 @@ export default function ForgotPasswordVerifyScreen(): React.JSX.Element {
                       <TouchableOpacity
                         key={index}
                         activeOpacity={1}
-                        onPress={() => inputRef.current?.focus()}
-                        className={`w-12 h-16 rounded-2xl items-center justify-center bg-[#151518] border ${
+                        onPress={() => {
+                          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          inputRef.current?.focus();
+                        }}
+                        className={`w-12 h-16 rounded-2xl items-center justify-center bg-[#12131A]/90 border ${
                           isCurrent
-                            ? 'border-gold'
+                            ? 'border-gold bg-gold/5 shadow-sm shadow-gold/20'
                             : digit
-                            ? 'border-neutral-600'
-                            : 'border-[#262629]'
+                            ? 'border-white/30 bg-white/5'
+                            : 'border-white/10'
                         }`}
                       >
-                        <Text className="text-2xl font-montserrat-bold text-white">
+                        <Text
+                          className="text-2xl font-montserrat-bold text-white"
+                          style={{ fontVariant: ['tabular-nums'] }}
+                        >
                           {digit}
                         </Text>
                       </TouchableOpacity>

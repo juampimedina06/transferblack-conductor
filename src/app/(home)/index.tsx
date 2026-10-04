@@ -165,9 +165,13 @@ export default function DriverDashboardScreen() {
         <View className="px-4 py-3 flex-row items-center justify-between" pointerEvents="box-none">
           <TouchableOpacity
             onPress={handleLogout}
-            className="w-10 h-10 rounded-full bg-obsidian/80 items-center justify-center border border-charcoal shadow-sm shadow-black"
+            accessibilityRole="button"
+            accessibilityLabel="Cerrar sesión"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            className="w-12 h-12 rounded-2xl bg-[#0F1016]/90 items-center justify-center border border-white/10 shadow-lg shadow-black relative overflow-hidden"
           >
-            <Ionicons name="log-out-outline" size={20} color={THEME_COLORS.platinum} />
+            <View className="absolute top-0 left-2 right-2 h-[1px] bg-white/20 pointer-events-none" />
+            <Ionicons name="log-out-outline" size={22} color={THEME_COLORS.platinum} />
           </TouchableOpacity>
 
           {/* Central Toggle Pill */}
@@ -184,28 +188,37 @@ export default function DriverDashboardScreen() {
                   onPress={() => router.push('/wallet' as any)}
                   accessibilityRole="button"
                   accessibilityLabel="Ir a la Bóveda"
-                  className="w-10 h-10 rounded-full bg-obsidian/90 items-center justify-center border border-charcoal shadow-sm shadow-black"
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  className="w-12 h-12 rounded-2xl bg-[#0F1016]/90 items-center justify-center border border-white/10 shadow-lg shadow-black relative overflow-hidden"
                 >
-                  <Ionicons name="card-outline" size={20} color={THEME_COLORS.gold} />
+                  <View className="absolute top-0 left-2 right-2 h-[1px] bg-white/20 pointer-events-none" />
+                  <Ionicons name="card-outline" size={21} color={THEME_COLORS.gold} />
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   activeOpacity={0.8}
                   onPress={() => setIsStatsExpanded(!isStatsExpanded)}
-                  className={`flex-row items-center px-4 py-2 rounded-full shadow-md shadow-black border ${
+                  accessibilityRole="button"
+                  accessibilityLabel="Desplegar estadísticas de hoy"
+                  hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+                  className={`h-12 flex-row items-center px-4 rounded-2xl shadow-xl shadow-black border relative overflow-hidden ${
                     isNegative 
-                      ? 'bg-red-950/80 border-red-500/60' 
-                      : 'bg-obsidian/90 border-charcoal'
+                      ? 'bg-red-950/85 border-red-500/50' 
+                      : 'bg-[#0F1016]/90 border-white/15'
                   }`}
                 >
+                  <View className="absolute top-0 left-3 right-3 h-[1px] bg-white/25 pointer-events-none" />
                   <Ionicons 
                     name={isNegative ? 'warning-outline' : 'cash-outline'} 
-                    size={16} 
+                    size={17} 
                     color={isNegative ? '#F87171' : THEME_COLORS.gold} 
                   />
-                  <Text className={`font-montserrat-bold text-sm ml-2 mr-1.5 ${
-                    isNegative ? 'text-red-400' : 'text-platinum'
-                  }`}>
+                  <Text 
+                    style={{ fontVariant: ['tabular-nums'] }}
+                    className={`font-montserrat-bold text-sm ml-2 mr-1.5 ${
+                      isNegative ? 'text-red-400' : 'text-platinum'
+                    }`}
+                  >
                     {formattedAmount}
                   </Text>
                   <Ionicons
@@ -219,9 +232,11 @@ export default function DriverDashboardScreen() {
                   onPress={() => router.push('/(home)/scheduled-trips' as any)}
                   accessibilityRole="button"
                   accessibilityLabel="Ver mis reservas programadas"
-                  className="w-10 h-10 rounded-full bg-obsidian/90 items-center justify-center border border-charcoal shadow-sm shadow-black"
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  className="w-12 h-12 rounded-2xl bg-[#0F1016]/90 items-center justify-center border border-white/10 shadow-lg shadow-black relative overflow-hidden"
                 >
-                  <Ionicons name="calendar-outline" size={19} color={THEME_COLORS.gold} />
+                  <View className="absolute top-0 left-2 right-2 h-[1px] bg-white/20 pointer-events-none" />
+                  <Ionicons name="calendar-outline" size={20} color={THEME_COLORS.gold} />
                 </TouchableOpacity>
               </View>
             );
@@ -232,10 +247,14 @@ export default function DriverDashboardScreen() {
           )}
 
           <TouchableOpacity
-            onPress={() => router.push('/profile' as any)}
-            className="w-10 h-10 rounded-full bg-obsidian/80 items-center justify-center border border-charcoal shadow-sm shadow-black"
+            onPress={() => setIsProgressModalVisible(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Ver perfil y rendimiento del conductor"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            className="w-12 h-12 rounded-2xl bg-[#0F1016]/90 items-center justify-center border border-white/10 shadow-lg shadow-black relative overflow-hidden"
           >
-            <Ionicons name="person-outline" size={20} color={THEME_COLORS.platinum} />
+            <View className="absolute top-0 left-2 right-2 h-[1px] bg-white/20 pointer-events-none" />
+            <Ionicons name="person-outline" size={21} color={THEME_COLORS.platinum} />
           </TouchableOpacity>
         </View>
 

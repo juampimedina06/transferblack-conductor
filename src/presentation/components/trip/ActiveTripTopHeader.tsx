@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text } from 'react-native';
 import { Trip } from '../../../core/trip/interface/trip.interface';
 import { useCourtesyTimer } from '../../trip/hooks/useCourtesyTimer';
+import { LiquidGlassContainer } from '../ui/LiquidGlassContainer';
 
 interface ActiveTripTopHeaderProps {
   trip: Trip;
@@ -39,15 +40,15 @@ export const ActiveTripTopHeader = ({ trip }: ActiveTripTopHeaderProps) => {
     badgeValue = formattedTime;
     badgeValueColor = 'text-[#EAB308]';
   } else if (trip.status === 'in_progress') {
-    statusDotColor = 'bg-blue-400';
-    statusTextColor = 'text-blue-400';
+    statusDotColor = 'bg-sky-400';
+    statusTextColor = 'text-sky-400';
     statusLabel = 'VIAJE EN CURSO';
     locationTitle = trip.dropoff?.subtitle 
       ? `${trip.dropoff.subtitle} • ${trip.dropoff.address}` 
       : (trip.dropoff?.address || 'Destino final');
     badgeLabel = 'Destino';
     badgeValue = trip.dropoff?.durationMinutes ? `~${trip.dropoff.durationMinutes} min` : 'En curso';
-    badgeValueColor = 'text-[#EAB308]';
+    badgeValueColor = 'text-gold';
   } else if (trip.status === 'completed') {
     statusDotColor = 'bg-emerald-400';
     statusTextColor = 'text-emerald-400';
@@ -59,7 +60,10 @@ export const ActiveTripTopHeader = ({ trip }: ActiveTripTopHeaderProps) => {
   }
 
   return (
-    <View className="flex-1 mx-2 bg-[#121214]/95 border border-[#27272A] px-3.5 py-2 rounded-2xl flex-row items-center justify-between shadow-lg shadow-black">
+    <LiquidGlassContainer
+      variant="default"
+      className="flex-1 mx-2 px-3.5 py-2 rounded-2xl flex-row items-center justify-between border border-white/10 shadow-lg shadow-black"
+    >
       <View className="flex-1 mr-2">
         <View className="flex-row items-center mb-0.5">
           <View className={`w-2 h-2 rounded-full ${statusDotColor} mr-1.5`} />
@@ -72,14 +76,18 @@ export const ActiveTripTopHeader = ({ trip }: ActiveTripTopHeaderProps) => {
         </Text>
       </View>
 
-      <View className="bg-[#1C1C1E] border border-[#2C2C2E] px-2.5 py-1.5 rounded-xl flex-row items-center">
-        <Text className="text-zinc-400 font-montserrat text-[11px] mr-1">
+      <View className="bg-white/5 px-2.5 py-1 rounded-xl flex-row items-center">
+        <Text className="text-ash font-montserrat text-[11px] mr-1">
           {badgeLabel}
         </Text>
-        <Text className={`${badgeValueColor} font-montserrat-bold text-xs`}>
+        <Text
+          className={`${badgeValueColor} font-montserrat-bold text-xs`}
+          style={{ fontVariant: ['tabular-nums'] }}
+        >
           {badgeValue}
         </Text>
       </View>
-    </View>
+    </LiquidGlassContainer>
   );
 };
+

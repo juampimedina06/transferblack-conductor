@@ -15,6 +15,8 @@ import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { THEME_COLORS } from '../../../core/constants/theme';
 import { useWalletStore } from '../../../presentation/wallet/store/useWalletStore';
+import * as Haptics from 'expo-haptics';
+import { LiquidGlassContainer } from '../../../presentation/components/ui/LiquidGlassContainer';
 import type {
   PayoutRequestItem,
   PayoutRequestStatus,
@@ -133,7 +135,10 @@ export default function PayoutHistoryScreen() {
       const formattedAmount = parseFloat(item.amount).toFixed(2);
 
       return (
-        <View className="bg-charcoal/30 border border-charcoal/60 rounded-2xl p-5 mb-4 shadow-sm">
+        <LiquidGlassContainer
+          variant="default"
+          className="rounded-2xl p-5 mb-4 border border-white/10"
+        >
           {/* Header Card: Fecha y Status */}
           <View className="flex-row justify-between items-center mb-3">
             <Text className="text-ash font-montserrat text-xs">
@@ -164,15 +169,20 @@ export default function PayoutHistoryScreen() {
           </View>
 
           {/* Monto */}
-          <Text className="text-platinum font-montserrat-bold text-3xl mb-3">
+          <Text
+            className="text-white font-montserrat-bold text-3xl mb-3"
+            style={{ fontVariant: ['tabular-nums'] }}
+          >
             ${formattedAmount}{' '}
             <Text className="text-ash text-sm font-montserrat">{item.currency || 'ARS'}</Text>
           </Text>
 
           {/* Destino */}
-          <View className="bg-obsidian/40 rounded-xl p-3 mb-2">
-            <Text className="text-ash text-xs font-montserrat mb-0.5">Destino</Text>
-            <Text className="text-platinum font-montserrat-medium text-xs">
+          <View className="pt-2 mb-2">
+            <Text className="text-ash font-montserrat text-[10px] uppercase tracking-wider mb-0.5">
+              Destino
+            </Text>
+            <Text className="text-white font-montserrat-medium text-xs">
               {item.account_holder_name ? `${item.account_holder_name} • ` : ''}
               {item.destination_alias ? `Alias: ${item.destination_alias}` : item.destination_cbu_cvu || 'Cuenta Bancaria'}
             </Text>
@@ -185,7 +195,7 @@ export default function PayoutHistoryScreen() {
 
           {/* Motivo de rechazo */}
           {item.status === 'rejected' && item.rejection_reason && (
-            <View className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 mt-2 flex-row items-start">
+            <View className="bg-red-500/10 border border-red-500/30 rounded-2xl p-3 mt-2 flex-row items-start">
               <Ionicons name="alert-circle-outline" size={18} color="#EF4444" className="mt-0.5" />
               <View className="ml-2 flex-1">
                 <Text className="text-red-400 font-montserrat-semibold text-xs mb-0.5">
@@ -200,11 +210,11 @@ export default function PayoutHistoryScreen() {
 
           {/* Referencia de transferencia y comprobante */}
           {item.status === 'paid' && (
-            <View className="mt-2 pt-2 border-t border-charcoal/40">
+            <View className="mt-2 pt-2 border-t border-white/10">
               {item.transfer_reference && (
                 <View className="flex-row items-center justify-between mb-1">
                   <Text className="text-ash text-xs font-montserrat">Referencia bancaria:</Text>
-                  <Text className="text-platinum font-montserrat-semibold text-xs">
+                  <Text className="text-white font-montserrat-semibold text-xs">
                     {item.transfer_reference}
                   </Text>
                 </View>
@@ -212,9 +222,9 @@ export default function PayoutHistoryScreen() {
 
               {item.receipt_url && (
                 <TouchableOpacity
-                  activeOpacity={0.8}
+                  activeOpacity={0.85}
                   onPress={() => handleOpenReceipt(item.receipt_url)}
-                  className="flex-row items-center justify-center bg-gold/15 border border-gold/30 rounded-xl py-2 mt-2"
+                  className="flex-row items-center justify-center bg-gold/15 border border-gold/30 rounded-2xl py-2.5 mt-2 active:bg-gold/25"
                 >
                   <Ionicons name="document-text-outline" size={16} color={THEME_COLORS.gold} />
                   <Text className="text-gold font-montserrat-semibold text-xs ml-2">
@@ -224,7 +234,7 @@ export default function PayoutHistoryScreen() {
               )}
             </View>
           )}
-        </View>
+        </LiquidGlassContainer>
       );
     },
     []
@@ -235,16 +245,19 @@ export default function PayoutHistoryScreen() {
       <StatusBar style="light" />
 
       {/* Header */}
-      <View className="px-4 py-3 flex-row items-center border-b border-charcoal/50">
+      <View className="px-4 py-3 flex-row items-center border-b border-white/10">
         <TouchableOpacity
           accessibilityRole="button"
           accessibilityLabel="Volver a la billetera"
-          onPress={() => router.back()}
-          className="w-10 h-10 rounded-full bg-charcoal/30 items-center justify-center"
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.back();
+          }}
+          className="w-11 h-11 rounded-2xl bg-white/5 border border-white/10 items-center justify-center active:scale-95"
         >
-          <Ionicons name="arrow-back" size={24} color={THEME_COLORS.platinum} />
+          <Ionicons name="arrow-back" size={22} color={THEME_COLORS.gold} />
         </TouchableOpacity>
-        <Text className="text-platinum font-montserrat-bold text-lg ml-4">
+        <Text className="text-white font-montserrat-bold text-lg ml-3">
           Historial de Retiros
         </Text>
       </View>
