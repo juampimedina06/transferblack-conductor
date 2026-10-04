@@ -109,19 +109,22 @@ export const ActiveTripOverlay = ({ trip, onHeightChange }: ActiveTripOverlayPro
 
   const paymentInfo = getPaymentMethodInfo(trip.payment_method);
   const isCash = paymentInfo.isCash;
+  const rawThirdPartyName = trip.thirdPartyName || trip.third_party?.name || trip.chat?.third_party?.name || null;
+  const rawThirdPartyPhone = trip.thirdPartyPhone || trip.third_party?.phone_e164 || trip.chat?.third_party?.phone_e164 || null;
   const isThirdParty = Boolean(
     trip.chat?.is_third_party_trip ||
-    trip.third_party?.name
+    rawThirdPartyName
   );
-  const passengerName =
-    trip.third_party?.name ||
-    trip.chat?.third_party?.name ||
-    trip.passenger?.fullName ||
-    'Pasajero';
-  const passengerPhone =
-    trip.third_party?.phone_e164 ||
-    trip.chat?.third_party?.phone_e164 ||
-    '';
+
+  const rawPassengerName = trip.passenger?.fullName || 'Pasajero';
+  const passengerName = isThirdParty && rawThirdPartyName
+    ? `Viaja: ${rawThirdPartyName} (Tercero)`
+    : rawPassengerName;
+  const avatarLetter = (rawThirdPartyName || rawPassengerName || 'P').charAt(0).toUpperCase();
+
+  const passengerPhone = isThirdParty && rawThirdPartyPhone
+    ? rawThirdPartyPhone
+    : (trip.passenger?.phone || '');
   const coordinatorName = trip.chat?.coordinator_name || '';
   const preferences = trip.passenger?.preferences || [];
   const currentPin = pinDigits.join('');
@@ -470,7 +473,7 @@ export const ActiveTripOverlay = ({ trip, onHeightChange }: ActiveTripOverlayPro
               <View className="flex-row items-center flex-1 mr-2">
                 <View className="w-11 h-11 rounded-full bg-[#D4AF37]/15 border border-[#D4AF37]/35 items-center justify-center mr-3">
                   <Text className="text-[#D4AF37] font-montserrat-bold text-base">
-                    {passengerName.charAt(0).toUpperCase()}
+                    {avatarLetter}
                   </Text>
                 </View>
 

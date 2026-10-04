@@ -142,6 +142,7 @@ Todos se ejecutan con `node scripts/<nombre>.mjs` desde la raíz del proyecto.
 | `dispatch_ride.mjs` | `node scripts/dispatch_ride.mjs` | Igual que el anterior pero usa como pasajero a "Bruno Díaz" y parte desde Barrio Deán Funes Horizonte. |
 | `dispatch_voucher.mjs` | `node scripts/dispatch_voucher.mjs` | Despacha un viaje corporativo con pago por voucher (`DEMO-OPS-2026`) como pasajero "Carla". El viaje acredita como ganancia digital en la bóveda del chofer. |
 | `request-test-trip.mjs` | `node scripts/request-test-trip.mjs` | Lee la URL de la API desde `.env`, cotiza y confirma un viaje como "Ana" (no dispara el despacho, solo crea el viaje en estado `searching`). |
+| `create_scheduled_trips.mjs` | `node scripts/create_scheduled_trips.mjs` | **Crea viajes reservados/programados con pasajeros demo (Bruno, Ana, Carla) y los asigna al conductor (`prueba2@gmail.com` por defecto)** vía admin (`POST /api/v1/admin/scheduled-trips`). Flags opcionales: `--driver <id-o-email>`. |
 
 > ⚠️ Para que el viaje te llegue en la app, tenés que estar **conectado** (switch "Disponible" en verde) antes de correr el script.
 

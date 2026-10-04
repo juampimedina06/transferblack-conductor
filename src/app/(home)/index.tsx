@@ -182,6 +182,8 @@ export default function DriverDashboardScreen() {
               <View className="flex-row items-center space-x-2">
                 <TouchableOpacity
                   onPress={() => router.push('/wallet' as any)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Ir a la Bóveda"
                   className="w-10 h-10 rounded-full bg-obsidian/90 items-center justify-center border border-charcoal shadow-sm shadow-black"
                 >
                   <Ionicons name="card-outline" size={20} color={THEME_COLORS.gold} />
@@ -211,6 +213,15 @@ export default function DriverDashboardScreen() {
                     size={16}
                     color={isNegative ? '#FCA5A5' : THEME_COLORS.ash}
                   />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => router.push('/(home)/scheduled-trips' as any)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Ver mis reservas programadas"
+                  className="w-10 h-10 rounded-full bg-obsidian/90 items-center justify-center border border-charcoal shadow-sm shadow-black"
+                >
+                  <Ionicons name="calendar-outline" size={19} color={THEME_COLORS.gold} />
                 </TouchableOpacity>
               </View>
             );

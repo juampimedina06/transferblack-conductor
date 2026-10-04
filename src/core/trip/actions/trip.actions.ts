@@ -8,8 +8,18 @@ import {
   TripRequestError,
   ActiveTripSummary,
   ActiveTripResponse,
+  DriverScheduledTrip,
+  DriverScheduledTripsResponse,
 } from '../interface/trip.interface';
-export type { AcceptOfferInput, AcceptOfferResponse, Trip, ActiveTripSummary, ActiveTripResponse };
+export type {
+  AcceptOfferInput,
+  AcceptOfferResponse,
+  Trip,
+  ActiveTripSummary,
+  ActiveTripResponse,
+  DriverScheduledTrip,
+  DriverScheduledTripsResponse,
+};
 export { TripRequestError };
 
 /**
@@ -164,3 +174,31 @@ export const getActiveTrip = async (): Promise<ActiveTripSummary | null> => {
     );
   }
 };
+
+export const getDriverScheduledTrips = async (): Promise<DriverScheduledTrip[]> => {
+  try {
+    const response = await transferApi.get<DriverScheduledTripsResponse>('/driver/me/scheduled-trips');
+    return response.data?.data?.trips ?? [];
+  } catch (error: any) {
+    const apiError = error.response?.data as ApiErrorResponse | undefined;
+    const status = error.response?.status;
+    let fallbackMessage = 'Error al consultar viajes programados';
+    if (status === 404) {
+      fallbackMessage = 'El servicio de viajes programados no está disponible en este momento.';
+    } else if (status === 401 || status === 403) {
+      fallbackMessage = 'No tenés permisos para ver las reservas programadas.';
+    } else if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+      fallbackMessage = 'El servidor tardó demasiado en responder. Por favor, reintentá.';
+    }
+
+    const rawMessage = apiError?.error?.message;
+    const isGenericNotFound = rawMessage && rawMessage.includes('The requested route does not exist');
+
+    throw new TripRequestError(
+      rawMessage && !isGenericNotFound ? rawMessage : fallbackMessage,
+      status,
+      apiError?.error?.code
+    );
+  }
+};
+

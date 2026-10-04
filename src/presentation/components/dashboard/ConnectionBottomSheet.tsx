@@ -318,33 +318,57 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
           </View>
 
           {/* Passenger Identity Glass Strip */}
-          <View className="flex-row items-center justify-between bg-white/[0.03] border border-white/[0.08] rounded-2xl px-3.5 py-2.5 mb-3.5">
-            <View className="flex-row items-center flex-1 mr-2">
-              <View className="w-8 h-8 rounded-full bg-[#D4AF37]/15 border border-[#D4AF37]/35 items-center justify-center mr-2.5">
-                <Text className="text-[#D4AF37] font-montserrat-bold text-xs">
-                  {(currentOffer.passenger?.fullName || 'P').charAt(0).toUpperCase()}
-                </Text>
-              </View>
-              <View className="flex-1">
-                <View className="flex-row items-center">
-                  <Text className="text-white font-montserrat-semibold text-xs mr-1.5" numberOfLines={1}>
-                    {currentOffer.passenger?.fullName || 'Identidad verificada'}
-                  </Text>
-                  <Ionicons name="shield-checkmark" size={13} color="#38BDF8" />
-                </View>
-              </View>
-            </View>
+          {(() => {
+            const isThirdPartyOffer = Boolean(currentOffer.third_party?.name);
+            const passengerDisplayName = isThirdPartyOffer
+              ? `Viaja: ${currentOffer.third_party?.name} (Tercero)`
+              : (currentOffer.passenger?.fullName || 'Identidad verificada');
+            const avatarInitial = (isThirdPartyOffer ? currentOffer.third_party?.name : (currentOffer.passenger?.fullName || 'P'))
+              ?.charAt(0)
+              ?.toUpperCase() || 'P';
 
-            <View className="flex-row items-center bg-white/[0.04] px-2.5 py-1 rounded-lg border border-white/[0.08]">
-              <Ionicons name="star" size={12} color="#F59E0B" />
-              <Text className="text-white font-montserrat-bold text-xs ml-1">
-                {currentOffer.passenger?.rating != null ? Number(currentOffer.passenger.rating).toFixed(1) : '5.0'}
-              </Text>
-              <Text className="text-zinc-400 font-montserrat text-[11px] ml-1">
-                ({currentOffer.passenger?.completedTrips ?? 0})
-              </Text>
-            </View>
-          </View>
+            const ratingCount = currentOffer.passengerRating?.count ?? currentOffer.passenger?.completedTrips ?? 0;
+            const ratingAvg = currentOffer.passengerRating?.average ?? currentOffer.passenger?.rating;
+            const isNewPassenger = !ratingCount || ratingCount === 0 || ratingAvg == null;
+
+            return (
+              <View className="flex-row items-center justify-between bg-white/[0.03] border border-white/[0.08] rounded-2xl px-3.5 py-2.5 mb-3.5">
+                <View className="flex-row items-center flex-1 mr-2">
+                  <View className="w-8 h-8 rounded-full bg-[#D4AF37]/15 border border-[#D4AF37]/35 items-center justify-center mr-2.5">
+                    <Text className="text-[#D4AF37] font-montserrat-bold text-xs">
+                      {avatarInitial}
+                    </Text>
+                  </View>
+                  <View className="flex-1">
+                    <View className="flex-row items-center">
+                      <Text className="text-white font-montserrat-semibold text-xs mr-1.5" numberOfLines={1}>
+                        {passengerDisplayName}
+                      </Text>
+                      <Ionicons name="shield-checkmark" size={13} color="#38BDF8" />
+                    </View>
+                  </View>
+                </View>
+
+                {isNewPassenger ? (
+                  <View className="flex-row items-center bg-white/[0.04] px-2.5 py-1 rounded-lg border border-white/[0.08]">
+                    <Text className="text-zinc-300 font-montserrat-medium text-xs">
+                      Pasajero nuevo
+                    </Text>
+                  </View>
+                ) : (
+                  <View className="flex-row items-center bg-white/[0.04] px-2.5 py-1 rounded-lg border border-white/[0.08]">
+                    <Ionicons name="star" size={12} color="#F59E0B" />
+                    <Text className="text-white font-montserrat-bold text-xs ml-1">
+                      {Number(ratingAvg).toFixed(2)}
+                    </Text>
+                    <Text className="text-zinc-400 font-montserrat text-[11px] ml-1">
+                      · {ratingCount} {ratingCount === 1 ? 'viaje' : 'viajes'}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            );
+          })()}
 
           {/* Route Trajectory (Liquid Neon Glass) */}
           <View className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-3.5 mb-4">

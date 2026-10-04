@@ -24,6 +24,10 @@ export interface TripDropoffDetails {
 
 export interface TripPassengerDetails {
   fullName?: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string | null;
+  phone_e164?: string | null;
   rating: number;
   completedTrips?: number;
   category: string;
@@ -56,6 +60,46 @@ export interface TripOfferPayload {
       name: string;
       phone_e164: string;
     } | null;
+  };
+  passengerRating?: {
+    average: number;
+    count: number;
+  };
+}
+
+export interface DriverScheduledTripPoint {
+  address: string;
+  latitude: number | null;
+  longitude: number | null;
+}
+
+export interface DriverScheduledTripPassenger {
+  id: string | null;
+  firstName: string | null;
+  phone: string | null;
+}
+
+export interface DriverScheduledTrip {
+  id: string;
+  code: string;
+  status: string;
+  bookingType: string;
+  scheduledAt: string;
+  origin: DriverScheduledTripPoint | null;
+  destination: DriverScheduledTripPoint | null;
+  passenger: DriverScheduledTripPassenger | null;
+  thirdPartyName?: string | null;
+  thirdPartyPhone?: string | null;
+  fare: number;
+  netEarnings: number;
+  currency: string;
+  isRecurring: boolean;
+}
+
+export interface DriverScheduledTripsResponse {
+  status: string;
+  data: {
+    trips: DriverScheduledTrip[];
   };
 }
 
@@ -112,6 +156,12 @@ export interface Trip {
   dropoff?: TripDropoffDetails;
   routeGeometry?: any;
   passenger?: TripPassengerDetails;
+  thirdPartyName?: string | null;
+  thirdPartyPhone?: string | null;
+  passengerRating?: {
+    average: number;
+    count: number;
+  };
 }
 
 export interface DriverLocationInput {
