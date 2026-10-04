@@ -8,13 +8,16 @@ import { DocumentItem } from '../../presentation/onboarding/components/DocumentI
 import { documentMetadataSchema } from '../../presentation/onboarding/schemas/onboarding.schema';
 import { Button } from '../../presentation/components/ui/Button';
 
-const allDocumentTypes: DocumentType[] = [
+const personalDocumentTypes: DocumentType[] = [
   'dni',
   'license_d1',
   'insurance_policy',
   'criminal_record_national',
   'criminal_record_provincial',
   'sex_offenses_registry',
+];
+
+const vehicleDocumentTypes: DocumentType[] = [
   'vehicle_title',
   'itv',
 ];
@@ -43,46 +46,47 @@ export default function DocumentsScreen() {
     }
   };
 
-  // Validate if we can submit
-  const getMissingDocuments = (): string[] => {
-    const missing: string[] = [];
-    
-    for (const type of allDocumentTypes) {
-      const state = documents[type];
-      const docName = documentLabels[type] || type;
-      
-      if (state.uploadStatus !== 'uploaded' || !state.filePath) {
-        missing.push(docName);
-        continue;
-      }
+  const checkDocMissing = (type: DocumentType): string | null => {
+    const state = documents[type];
+    const docName = documentLabels[type] || type;
 
-      // Metadata validation for ALL documents: both dates are required, and the
-      // schema additionally rejects malformed dates or an expiry before issuance.
-      const hasDates = !!state.metadata?.issuedAt && !!state.metadata?.expiresAt;
-
-      if (!hasDates) {
-        missing.push(`${docName} (Fechas de vigencia)`);
-        continue;
-      }
-      
-      const isVehicleDoc = type === 'vehicle_title' || type === 'itv';
-      if (isVehicleDoc && (!state.metadata?.documentNumber || state.metadata.documentNumber.trim() === '')) {
-        missing.push(`${docName} (Número de documento/trámite obligatorio)`);
-        continue;
-      }
-
-      const parsedMetadata = documentMetadataSchema.safeParse(state.metadata);
-      if (!parsedMetadata.success) {
-        missing.push(`${docName} (Revisá los datos ingresados)`);
-      }
+    if (!state || state.uploadStatus !== 'uploaded' || !state.filePath) {
+      return docName;
     }
-    
+
+    const hasDates = !!state.metadata?.issuedAt && !!state.metadata?.expiresAt;
+    if (!hasDates) {
+      return `${docName} (Fechas de vigencia)`;
+    }
+
+    const isVehicleDoc = type === 'vehicle_title' || type === 'itv';
+    if (isVehicleDoc && (!state.metadata?.documentNumber || state.metadata.documentNumber.trim() === '')) {
+      return `${docName} (Número de trámite obligatorio)`;
+    }
+
+    const parsedMetadata = documentMetadataSchema.safeParse(state.metadata);
+    if (!parsedMetadata.success) {
+      return `${docName} (Revisá los datos ingresados)`;
+    }
+
+    return null;
+  };
+
+  const getMissingList = (types: DocumentType[]): string[] => {
+    const missing: string[] = [];
+    for (const t of types) {
+      const err = checkDocMissing(t);
+      if (err) missing.push(err);
+    }
     return missing;
   };
 
-  const missingDocs = getMissingDocuments();
-  const uploadedCount = allDocumentTypes.length - missingDocs.length;
-  const canSubmit = missingDocs.length === 0 && vehicleData !== null;
+  const missingPersonalDocs = getMissingList(personalDocumentTypes);
+  const missingVehicleDocs = getMissingList(vehicleDocumentTypes);
+  const totalMissing = missingPersonalDocs.length + missingVehicleDocs.length;
+
+  const personalUploadedCount = personalDocumentTypes.length - missingPersonalDocs.length;
+  const canSubmit = totalMissing === 0 && vehicleData !== null;
 
   const handleSubmit = () => {
     if (!vehicleData) {
@@ -90,8 +94,20 @@ export default function DocumentsScreen() {
       return;
     }
 
-    if (missingDocs.length > 0) {
-      Alert.alert('Documentación incompleta', `Por favor subí todos los documentos obligatorios antes de continuar.`);
+    if (missingVehicleDocs.length > 0) {
+      Alert.alert(
+        'Documentación del vehículo pendiente',
+        `Faltan completar documentos del vehículo:\n• ${missingVehicleDocs.join('\n• ')}\n\nPor favor volvé al paso 2 para cargarlos.`,
+        [
+          { text: 'Ir al vehículo', onPress: () => router.replace('/onboarding/vehicle' as any) },
+          { text: 'Cancelar', style: 'cancel' }
+        ]
+      );
+      return;
+    }
+
+    if (missingPersonalDocs.length > 0) {
+      Alert.alert('Documentación incompleta', 'Por favor subí todos los documentos obligatorios antes de continuar.');
       return;
     }
 
@@ -144,7 +160,7 @@ export default function DocumentsScreen() {
               Paso 3 de 3
             </Text>
             <Text className="text-platinum font-montserrat-medium text-xs">
-              {uploadedCount} de {allDocumentTypes.length} completados
+              {personalUploadedCount} de {personalDocumentTypes.length} completados
             </Text>
           </View>
           <View className="flex-row gap-2 h-1.5 w-full">
@@ -157,15 +173,38 @@ export default function DocumentsScreen() {
         {/* Header Title */}
         <View className="mb-6">
           <Text className="text-2xl font-montserrat-bold text-platinum mb-1.5">
-            Gestor Documental
+            Documentación Personal
           </Text>
           <Text className="text-ash font-montserrat text-sm leading-5">
-            Cargá los 8 documentos requeridos en formato legible o PDF. Todos exigen fechas de vigencia (emisión y vencimiento).
+            Cargá los 6 documentos requeridos en formato legible o PDF. Todos exigen fechas de vigencia (emisión y vencimiento).
           </Text>
         </View>
 
+        {/* Vehicle Docs Warning Banner (si faltara alguno del paso anterior) */}
+        {missingVehicleDocs.length > 0 && (
+          <TouchableOpacity
+            onPress={() => router.replace('/onboarding/vehicle' as any)}
+            activeOpacity={0.8}
+            className="rounded-2xl p-4 mb-4 border flex-row items-center justify-between"
+            style={{ backgroundColor: 'rgba(239, 68, 68, 0.15)', borderColor: 'rgba(239, 68, 68, 0.4)' }}
+          >
+            <View className="flex-1 pr-3">
+              <View className="flex-row items-center mb-1">
+                <Ionicons name="car-outline" size={18} color="#F87171" style={{ marginRight: 6 }} />
+                <Text className="text-red-400 font-montserrat-semibold text-sm">
+                  Documentación del Vehículo Pendiente
+                </Text>
+              </View>
+              <Text className="text-ash font-montserrat text-xs leading-4">
+                Faltan: {missingVehicleDocs.join(', ')}. Tocá acá para volver al paso 2 y completarlos.
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#F87171" />
+          </TouchableOpacity>
+        )}
+
         {/* Status Callout Banner */}
-        {missingDocs.length > 0 ? (
+        {missingPersonalDocs.length > 0 ? (
           <View
             className="rounded-2xl p-4 mb-6 border"
             style={{ backgroundColor: 'rgba(69, 26, 3, 0.25)', borderColor: 'rgba(212, 175, 55, 0.35)' }}
@@ -173,11 +212,11 @@ export default function DocumentsScreen() {
             <View className="flex-row items-center mb-1">
               <Ionicons name="information-circle-outline" size={18} color="#D4AF37" style={{ marginRight: 6 }} />
               <Text className="text-gold font-montserrat-semibold text-sm">
-                Documentación Pendiente ({missingDocs.length})
+                Documentación Personal Pendiente ({missingPersonalDocs.length})
               </Text>
             </View>
             <Text className="text-ash font-montserrat text-xs leading-4">
-              Te falta completar: {missingDocs.join(', ')}. Una vez cargados todos los archivos habilitarás el envío para la revisión.
+              Te falta completar: {missingPersonalDocs.join(', ')}. Una vez cargados todos los archivos habilitarás el envío para la revisión.
             </Text>
           </View>
         ) : (
@@ -198,12 +237,12 @@ export default function DocumentsScreen() {
         )}
 
         {/* Document Items List */}
-        {allDocumentTypes.map((type, index) => (
+        {personalDocumentTypes.map((type, index) => (
           <DocumentItem
             key={type}
             type={type}
             stepIndex={index + 1}
-            totalSteps={allDocumentTypes.length}
+            totalSteps={personalDocumentTypes.length}
           />
         ))}
 
@@ -218,8 +257,8 @@ export default function DocumentsScreen() {
           />
           {!canSubmit && !submitApplication.isPending && (
             <Text className="text-ash font-montserrat text-xs text-center mt-2.5">
-              {missingDocs.length > 0 
-                ? `Completá los ${missingDocs.length} ${missingDocs.length === 1 ? 'documento pendiente' : 'documentos pendientes'} para habilitar el envío.`
+              {totalMissing > 0 
+                ? `Completá los ${totalMissing} ${totalMissing === 1 ? 'documento pendiente' : 'documentos pendientes'} para habilitar el envío.`
                 : 'Completá los datos del vehículo en el paso anterior para continuar.'}
             </Text>
           )}
@@ -228,4 +267,5 @@ export default function DocumentsScreen() {
     </View>
   );
 }
+
 

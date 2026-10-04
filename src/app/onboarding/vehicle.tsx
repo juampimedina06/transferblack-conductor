@@ -1,12 +1,14 @@
 import React from 'react';
-import { View, Text, ScrollView, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, KeyboardAvoidingView, Platform, TouchableOpacity, Alert, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { router } from 'expo-router';
-import { vehicleSchema, VehicleFormData } from '../../presentation/onboarding/schemas/onboarding.schema';
+import { vehicleSchema, VehicleFormData, documentMetadataSchema } from '../../presentation/onboarding/schemas/onboarding.schema';
 import { z } from 'zod';
-import { useOnboardingStore } from '../../presentation/onboarding/store/useOnboardingStore';
+import { DocumentType, useOnboardingStore } from '../../presentation/onboarding/store/useOnboardingStore';
+import { useDraftDocuments } from '../../presentation/onboarding/hooks/useOnboardingMutations';
+import { DocumentItem } from '../../presentation/onboarding/components/DocumentItem';
 import { Input } from '../../presentation/components/ui/Input';
 import { Button } from '../../presentation/components/ui/Button';
 import { Select, SelectOption } from '../../presentation/components/ui/Select';
@@ -45,7 +47,8 @@ const VEHICLE_TYPE_OPTIONS: SelectOption[] = [
 ];
 
 export default function VehicleScreen() {
-  const { vehicleData, setVehicleData, setCurrentStep } = useOnboardingStore();
+  const { vehicleData, setVehicleData, setCurrentStep, documents } = useOnboardingStore();
+  const { isFetching: isFetchingDrafts, refetch: refetchDrafts } = useDraftDocuments();
 
   const brandRef = React.useRef<any>(null);
   const modelRef = React.useRef<any>(null);
@@ -75,7 +78,50 @@ export default function VehicleScreen() {
     }
   };
 
+  const getMissingVehicleDocuments = (): string[] => {
+    const missing: string[] = [];
+    const vehicleDocTypes: { type: DocumentType; label: string }[] = [
+      { type: 'vehicle_title', label: 'Título del Vehículo' },
+      { type: 'itv', label: 'ITV / RTO' },
+    ];
+
+    for (const { type, label } of vehicleDocTypes) {
+      const state = documents[type];
+      if (!state || state.uploadStatus !== 'uploaded' || !state.filePath) {
+        missing.push(label);
+        continue;
+      }
+
+      const hasDates = !!state.metadata?.issuedAt && !!state.metadata?.expiresAt;
+      if (!hasDates) {
+        missing.push(`${label} (fechas de vigencia)`);
+        continue;
+      }
+
+      if (!state.metadata?.documentNumber || state.metadata.documentNumber.trim() === '') {
+        missing.push(`${label} (número de documento/trámite)`);
+        continue;
+      }
+
+      const parsed = documentMetadataSchema.safeParse(state.metadata);
+      if (!parsed.success) {
+        missing.push(`${label} (revisá los datos ingresados)`);
+      }
+    }
+
+    return missing;
+  };
+
   const onSubmit = (data: VehicleFormData) => {
+    const missingDocs = getMissingVehicleDocuments();
+    if (missingDocs.length > 0) {
+      Alert.alert(
+        'Documentación del vehículo incompleta',
+        `Por favor completá los documentos obligatorios de la unidad antes de continuar:\n\n• ${missingDocs.join('\n• ')}`
+      );
+      return;
+    }
+
     setVehicleData(data);
     setCurrentStep(3);
     router.push('/onboarding/documents' as any);
@@ -94,6 +140,14 @@ export default function VehicleScreen() {
         }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={isFetchingDrafts}
+            onRefresh={refetchDrafts}
+            tintColor="#C5A059"
+            colors={['#C5A059']}
+          />
+        }
       >
         {/* Back Button */}
         <TouchableOpacity 
@@ -317,10 +371,32 @@ export default function VehicleScreen() {
           )}
         />
 
+        {/* Seccion: Documentos del Vehículo */}
+        <View className="mt-6 mb-3">
+          <Text className="text-xs font-montserrat-semibold text-gold uppercase tracking-widest mb-1">
+            Documentación del Vehículo
+          </Text>
+          <Text className="text-ash font-montserrat text-xs leading-4">
+            Subí el título de propiedad y la constancia de ITV/RTO obligatorios de tu unidad.
+          </Text>
+        </View>
+
+        <DocumentItem
+          type="vehicle_title"
+          stepIndex={1}
+          totalSteps={2}
+        />
+
+        <DocumentItem
+          type="itv"
+          stepIndex={2}
+          totalSteps={2}
+        />
+
         {/* Action Button */}
         <View className="mt-4 mb-8">
           <Button
-            label="Continuar a Documentación"
+            label="Continuar a Documentación Personal"
             variant="primary"
             onPress={handleSubmit(onSubmit)}
           />
