@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Alert } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { router } from 'expo-router';
 import { socket } from '../../../core/socket/socket';
 import { useDriverTripStore } from '../store/useDriverTripStore';
 import { TripOfferPayload } from '../../../core/trip/interface/trip.interface';
@@ -12,7 +13,7 @@ export const useTripSocket = () => {
   const setActiveTrip = useDriverTripStore((state) => state.setActiveTrip);
   const updateTripStatus = useDriverTripStore((state) => state.updateTripStatus);
 
-  // Escucha de ofertas entrantes (trip:offer)
+  // Escucha de ofertas entrantes (trip:offer) y eventos globales del conductor
   useEffect(() => {
     const handleConnect = () => {
       console.log('⚡ [Socket] Conectado exitosamente con id:', socket.id);
@@ -26,9 +27,36 @@ export const useTripSocket = () => {
       enqueueOffer(payload);
     };
 
+    const handleScheduledReminder = (payload: {
+      tripId: string;
+      scheduledAt?: string | null;
+      pickupAddress?: string | null;
+      dropoffAddress?: string | null;
+    }) => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      const timeStr = payload.scheduledAt
+        ? new Date(payload.scheduledAt).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
+        : '';
+      const textMsg = timeStr
+        ? `Tenés un viaje programado para las ${timeStr}. Recordá conectarte antes de los 20 min previos para confirmar tu disponibilidad.`
+        : 'Tenés un viaje programado próximo. Recordá conectarte para confirmar tu disponibilidad.';
+
+      Alert.alert('Recordatorio de Reserva', textMsg, [
+        { text: 'Ver reservas', onPress: () => router.push('/(home)/scheduled-trips' as any) },
+        { text: 'Entendido', style: 'cancel' },
+      ]);
+    };
+
+    const handleTripAssigned = async (_payload: { tripId: string; chat?: any }) => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      await syncActiveTripState();
+    };
+
     socket.on('connect', handleConnect);
     socket.on('connect_error', handleConnectError);
     socket.on('trip:offer', handleNewOffer);
+    socket.on('trip:scheduled_reminder', handleScheduledReminder);
+    socket.on('trip:assigned', handleTripAssigned);
 
     if (socket.connected) {
       console.log('⚡ [Socket] Ya estaba conectado con id:', socket.id);
@@ -38,6 +66,8 @@ export const useTripSocket = () => {
       socket.off('connect', handleConnect);
       socket.off('connect_error', handleConnectError);
       socket.off('trip:offer', handleNewOffer);
+      socket.off('trip:scheduled_reminder', handleScheduledReminder);
+      socket.off('trip:assigned', handleTripAssigned);
     };
   }, [enqueueOffer]);
 
