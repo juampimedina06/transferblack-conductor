@@ -1,7 +1,11 @@
 import React, { useEffect } from 'react';
 import { TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 
 interface EmergencyFABProps {
   onPress: () => void;
@@ -32,7 +36,10 @@ export const EmergencyFAB = ({ onPress, bottomOffset }: EmergencyFABProps) => {
     >
       <TouchableOpacity 
         onPress={onPress}
+        activeOpacity={0.85}
         className="w-14 h-14 rounded-full bg-[#1A73E8] items-center justify-center shadow-lg shadow-black/50 border border-blue-400/30"
+        accessibilityRole="button"
+        accessibilityLabel="Abrir funciones de seguridad"
       >
         <Ionicons name="shield" size={28} color="white" />
       </TouchableOpacity>

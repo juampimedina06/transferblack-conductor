@@ -1,5 +1,7 @@
 import React from 'react';
 import { View, ViewProps, StyleSheet, Platform } from 'react-native';
+import { cssInterop } from 'nativewind';
+import { AmbientGlow } from './AmbientGlow';
 
 export type GlassVariant = 'default' | 'elevated' | 'gold' | 'danger' | 'success';
 
@@ -18,7 +20,6 @@ export const LiquidGlassContainer: React.FC<LiquidGlassContainerProps> = ({
   glow = true,
   highlight = true,
   style,
-  className,
   ...props
 }) => {
   const getVariantStyles = () => {
@@ -49,23 +50,33 @@ export const LiquidGlassContainer: React.FC<LiquidGlassContainerProps> = ({
     }
   };
 
-  const getGlowColor = () => {
+  const getGlowColorHex = () => {
     switch (variant) {
       case 'gold':
-        return 'rgba(212, 175, 55, 0.12)';
+        return '#D4AF37';
       case 'danger':
-        return 'rgba(239, 68, 68, 0.12)';
+        return '#EF4444';
       case 'success':
-        return 'rgba(16, 185, 129, 0.12)';
+        return '#10B981';
       default:
-        return 'rgba(255, 255, 255, 0.05)';
+        return '#FFFFFF';
+    }
+  };
+
+  const getGlowOpacity = () => {
+    switch (variant) {
+      case 'gold':
+      case 'danger':
+      case 'success':
+        return 0.16;
+      default:
+        return 0.07;
     }
   };
 
   return (
     <View
       style={[styles.container, getVariantStyles(), style]}
-      className={className}
       {...props}
     >
       {/* Specular Top Edge Light Refraction */}
@@ -79,14 +90,13 @@ export const LiquidGlassContainer: React.FC<LiquidGlassContainerProps> = ({
         />
       )}
 
-      {/* Ambient Radial Depth Flare */}
+      {/* Ambient Depth Flare with smooth radial gradient */}
       {glow && (
-        <View
-          style={[
-            styles.glowFlare,
-            { backgroundColor: getGlowColor() },
-          ]}
-          pointerEvents="none"
+        <AmbientGlow
+          position="top-right"
+          height={140}
+          color={getGlowColorHex()}
+          opacity={getGlowOpacity()}
         />
       )}
 
@@ -94,6 +104,10 @@ export const LiquidGlassContainer: React.FC<LiquidGlassContainerProps> = ({
     </View>
   );
 };
+
+cssInterop(LiquidGlassContainer, {
+  className: 'style',
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -109,7 +123,7 @@ const styles = StyleSheet.create({
         shadowRadius: 18,
       },
       android: {
-        elevation: 8,
+        elevation: 4,
       },
     }),
   },
@@ -140,14 +154,5 @@ const styles = StyleSheet.create({
     right: 20,
     height: 1,
     zIndex: 10,
-  },
-  glowFlare: {
-    position: 'absolute',
-    top: -40,
-    right: -40,
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    zIndex: 1,
   },
 });

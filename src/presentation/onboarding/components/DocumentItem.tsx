@@ -534,103 +534,12 @@ export const DocumentItem: React.FC<DocumentItemProps> = ({
         </View>
       </TouchableOpacity>
 
-      {/* Preview Card si ya hay archivo cargado */}
-      {previewUri && (
-        <View className="mb-3 rounded-xl overflow-hidden border border-charcoal bg-obsidian">
-          {isImage ? (
-            <TouchableOpacity
-              activeOpacity={0.9}
-              onPress={() => setIsViewerOpen(true)}
-              className="relative w-full h-44 bg-black items-center justify-center"
-            >
-              <Image
-                source={{ uri: previewUri }}
-                style={{ width: '100%', height: '100%' }}
-                contentFit="cover"
-                transition={200}
-              />
-              <View
-                className="absolute bottom-2 right-2 flex-row items-center px-3 py-1.5 rounded-full border"
-                style={{ backgroundColor: 'rgba(10, 10, 12, 0.85)', borderColor: 'rgba(212, 175, 55, 0.4)' }}
-              >
-                <Ionicons name="eye-outline" size={14} color={THEME_COLORS.gold} />
-                <Text className="text-gold font-montserrat-medium text-xs ml-1.5">
-                  Ver foto completa
-                </Text>
-              </View>
-              <View
-                className="absolute top-2 left-2 px-2.5 py-1 rounded-md flex-row items-center border"
-                style={{ backgroundColor: 'rgba(10, 10, 12, 0.85)', borderColor: 'rgba(52, 211, 153, 0.4)' }}
-              >
-                <Ionicons name="checkmark-circle" size={13} color="#34D399" />
-                <Text className="text-emerald-400 font-montserrat-medium text-[11px] ml-1">
-                  {isUploaded ? 'Documento verificado' : 'Vista previa local'}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          ) : isPdf ? (
-            <View className="p-3.5 flex-row items-center">
-              <View
-                className="w-11 h-11 rounded-lg border items-center justify-center mr-3"
-                style={{ backgroundColor: 'rgba(69, 26, 3, 0.5)', borderColor: 'rgba(245, 158, 11, 0.4)' }}
-              >
-                <Ionicons name="document-text" size={24} color="#F59E0B" />
-              </View>
-              <View className="flex-1">
-                <Text className="text-platinum font-montserrat-medium text-xs">
-                  Documento PDF cargado
-                </Text>
-                <Text className="text-ash font-montserrat text-[11px] mt-0.5">
-                  Archivo listo para verificación
-                </Text>
-              </View>
-            </View>
-          ) : null}
-        </View>
-      )}
-
-      {/* Action Buttons */}
-      <View className="flex-row gap-3 mb-4">
-        <TouchableOpacity
-          onPress={() => {
-            if (isMetadataMissing) {
-              Alert.alert('Faltan datos', isVehicleDoc ? 'Por favor ingresá el número de documento y las fechas de vigencia antes de cargar.' : 'Por favor ingresá la fecha de emisión y vencimiento antes de cargar el documento.');
-              return;
-            }
-            setIsScannerOpen(true);
-          }}
-          activeOpacity={0.8}
-          className="flex-1 flex-row items-center justify-center rounded-xl py-3"
-          style={{ backgroundColor: 'rgba(212, 175, 55, 0.15)', borderWidth: 1, borderColor: 'rgba(212, 175, 55, 0.5)' }}
-        >
-          <Ionicons name="camera-outline" size={18} color={THEME_COLORS.gold} />
-          <Text className="text-gold font-montserrat-bold text-sm ml-2">
-            {isUploaded ? 'Reemplazar Foto' : 'Tomar Foto'}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => {
-            if (isMetadataMissing) {
-              Alert.alert('Faltan datos', isVehicleDoc ? 'Por favor ingresá el número de documento y las fechas de vigencia antes de cargar.' : 'Por favor ingresá la fecha de emisión y vencimiento antes de cargar el documento.');
-              return;
-            }
-            handlePickDocument();
-          }}
-          activeOpacity={0.8}
-          className="flex-row items-center justify-center bg-obsidian border border-charcoal rounded-xl px-5"
-        >
-          <Ionicons name="document-text-outline" size={18} color={THEME_COLORS.platinum} />
-          <Text className="text-platinum font-montserrat-semibold text-sm ml-2">PDF</Text>
-        </TouchableOpacity>
-      </View>
-
       {/* Metadata Inputs (Required for all) */}
       <View
-        className="rounded-xl p-3 gap-2 border"
+        className="rounded-xl p-3.5 gap-2.5 border mb-3"
         style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)', borderColor: 'rgba(255, 255, 255, 0.08)' }}
       >
-        <Text className="text-ash font-montserrat text-xs uppercase tracking-wider mb-1">
+        <Text className="text-ash font-montserrat text-xs uppercase tracking-wider mb-0.5">
           Fechas y Datos del Documento
         </Text>
         <TextInput
@@ -694,10 +603,107 @@ export const DocumentItem: React.FC<DocumentItemProps> = ({
         </View>
       </View>
 
+      {/* Action Buttons */}
+      <View className="flex-row gap-3 mb-3">
+        <TouchableOpacity
+          onPress={() => {
+            if (isMetadataMissing) {
+              Alert.alert('Faltan datos', isVehicleDoc ? 'Por favor ingresá el número de documento y las fechas de vigencia antes de cargar.' : 'Por favor ingresá la fecha de emisión y vencimiento antes de cargar el documento.');
+              return;
+            }
+            setIsScannerOpen(true);
+          }}
+          activeOpacity={0.8}
+          className="flex-1 flex-row items-center justify-center rounded-xl py-3 active:scale-98"
+          style={{ backgroundColor: 'rgba(212, 175, 55, 0.15)', borderWidth: 1, borderColor: 'rgba(212, 175, 55, 0.5)' }}
+        >
+          <Ionicons name="camera-outline" size={18} color={THEME_COLORS.gold} />
+          <Text className="text-gold font-montserrat-bold text-sm ml-2">
+            {isUploaded ? 'Reemplazar Foto' : 'Tomar Foto'}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => {
+            if (isMetadataMissing) {
+              Alert.alert('Faltan datos', isVehicleDoc ? 'Por favor ingresá el número de documento y las fechas de vigencia antes de cargar.' : 'Por favor ingresá la fecha de emisión y vencimiento antes de cargar el documento.');
+              return;
+            }
+            handlePickDocument();
+          }}
+          activeOpacity={0.8}
+          className="flex-row items-center justify-center bg-obsidian border border-charcoal rounded-xl px-5 active:scale-98"
+        >
+          <Ionicons name="document-text-outline" size={18} color={THEME_COLORS.platinum} />
+          <Text className="text-platinum font-montserrat-semibold text-sm ml-2">PDF</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Preview Card en la parte inferior (La foto abajo) */}
+      {previewUri && (
+        <View className="mb-3 rounded-2xl overflow-hidden border border-white/15 bg-black/60 shadow-lg shadow-black">
+          <View className="px-3.5 py-2 bg-white/5 border-b border-white/10 flex-row items-center justify-between">
+            <View className="flex-row items-center gap-1.5">
+              <Ionicons name="image-outline" size={14} color={THEME_COLORS.gold} />
+              <Text className="text-platinum font-montserrat-semibold text-xs">
+                Fotografía del Documento
+              </Text>
+            </View>
+            <View className="flex-row items-center bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-500/40">
+              <Ionicons name="checkmark-circle" size={12} color="#34D399" />
+              <Text className="text-emerald-400 font-montserrat-medium text-[10px] ml-1">
+                {isUploaded ? 'Subido y verificado' : 'Listo para enviar'}
+              </Text>
+            </View>
+          </View>
+
+          {isImage ? (
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => setIsViewerOpen(true)}
+              className="relative w-full h-44 bg-black items-center justify-center"
+            >
+              <Image
+                source={{ uri: previewUri }}
+                style={{ width: '100%', height: '100%' }}
+                contentFit="contain"
+                transition={200}
+              />
+              <View
+                className="absolute bottom-2.5 right-2.5 flex-row items-center px-3 py-1.5 rounded-full border shadow-md shadow-black"
+                style={{ backgroundColor: 'rgba(10, 10, 12, 0.88)', borderColor: 'rgba(212, 175, 55, 0.5)' }}
+              >
+                <Ionicons name="eye-outline" size={14} color={THEME_COLORS.gold} />
+                <Text className="text-gold font-montserrat-medium text-xs ml-1.5">
+                  Ver foto completa
+                </Text>
+              </View>
+            </TouchableOpacity>
+          ) : isPdf ? (
+            <View className="p-4 flex-row items-center">
+              <View
+                className="w-12 h-12 rounded-xl border items-center justify-center mr-3"
+                style={{ backgroundColor: 'rgba(69, 26, 3, 0.5)', borderColor: 'rgba(245, 158, 11, 0.4)' }}
+              >
+                <Ionicons name="document-text" size={26} color="#F59E0B" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-platinum font-montserrat-medium text-xs">
+                  Documento PDF cargado
+                </Text>
+                <Text className="text-ash font-montserrat text-[11px] mt-0.5">
+                  Archivo listo para verificación
+                </Text>
+              </View>
+            </View>
+          ) : null}
+        </View>
+      )}
+
       {/* Footer controls when uploaded */}
       {isUploaded && (
         <View
-          className="flex-row items-center justify-between mt-3 pt-3 border-t"
+          className="flex-row items-center justify-between mt-2 pt-3 border-t"
           style={{ borderTopColor: 'rgba(44, 44, 46, 0.7)' }}
         >
           <TouchableOpacity
@@ -730,7 +736,7 @@ export const DocumentItem: React.FC<DocumentItemProps> = ({
 
       {renderViewerModal()}
 
-      {/* VIP Scanner Modal */}
+      {/* VIP Scanner Modal con revisión interactiva (Tick y X) */}
       <DocumentScannerModal
         visible={isScannerOpen}
         docType={type}
@@ -738,10 +744,6 @@ export const DocumentItem: React.FC<DocumentItemProps> = ({
         totalSteps={totalSteps}
         onClose={() => setIsScannerOpen(false)}
         onPhotoCaptured={(uri, mimeType) => handleUpload(uri, mimeType)}
-        onPickFromGallery={() => {
-          setIsScannerOpen(false);
-          setTimeout(() => handlePickImage(false), 400);
-        }}
       />
     </View>
   );

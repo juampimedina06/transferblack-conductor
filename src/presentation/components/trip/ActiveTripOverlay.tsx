@@ -23,12 +23,17 @@ import {
   driverCancelTrip,
   startTrip,
 } from '../../../core/trip/actions/trip.actions';
-import { Trip, getPaymentMethodInfo } from '../../../core/trip/interface/trip.interface';
+import {
+  Trip,
+  getPaymentMethodInfo,
+  calculateTripDistanceKm,
+} from '../../../core/trip/interface/trip.interface';
 import { useDriverLocation } from '../../maps/hooks/useDriverLocation';
 import { useDriverTripStore } from '../../trip/store/useDriverTripStore';
 import { useCourtesyTimer } from '../../trip/hooks/useCourtesyTimer';
 import { SwipeToArriveButton } from './SwipeToArriveButton';
 import { SwipeToFinishButton } from './SwipeToFinishButton';
+import { AmbientGlow } from '../ui/AmbientGlow';
 
 const getPreferenceIcon = (pref: string): keyof typeof Ionicons.glyphMap => {
   const lower = pref.toLowerCase();
@@ -98,17 +103,20 @@ export const ActiveTripOverlay = ({ trip, onHeightChange }: ActiveTripOverlayPro
     };
   }, []);
 
-  // Net earnings vs Total fare calculation
+  // Passenger payment details (net earnings are strictly shown on the rating/receipt modal)
   const totalFare = Number(trip.final_fare || trip.estimated_fare || 0);
-  const netEarnings =
-    trip.driver_earnings != null
-      ? Number(trip.driver_earnings)
-      : trip.fare_details?.netEarnings != null
-        ? Number(trip.fare_details.netEarnings)
-        : Math.round(totalFare * 0.8);
-
   const paymentInfo = getPaymentMethodInfo(trip.payment_method);
   const isCash = paymentInfo.isCash;
+
+  const durationMin = trip.dropoff?.durationMinutes || 12;
+  const tripDistanceKm = calculateTripDistanceKm(
+    trip.pickup?.latitude,
+    trip.pickup?.longitude,
+    trip.dropoff?.latitude,
+    trip.dropoff?.longitude,
+    durationMin
+  );
+
   const rawThirdPartyName = trip.thirdPartyName || trip.third_party?.name || trip.chat?.third_party?.name || null;
   const rawThirdPartyPhone = trip.thirdPartyPhone || trip.third_party?.phone_e164 || trip.chat?.third_party?.phone_e164 || null;
   const isThirdParty = Boolean(
@@ -125,7 +133,6 @@ export const ActiveTripOverlay = ({ trip, onHeightChange }: ActiveTripOverlayPro
   const passengerPhone = isThirdParty && rawThirdPartyPhone
     ? rawThirdPartyPhone
     : (trip.passenger?.phone || '');
-  const coordinatorName = trip.chat?.coordinator_name || '';
   const preferences = trip.passenger?.preferences || [];
   const currentPin = pinDigits.join('');
   const isStartEnabled = !trip.require_pin || currentPin.length === 4;
@@ -331,11 +338,11 @@ export const ActiveTripOverlay = ({ trip, onHeightChange }: ActiveTripOverlayPro
     switch (trip.status) {
       case 'driver_arriving':
         return {
-          title: isThirdParty ? 'En camino a recoger al invitado' : 'En camino al pasajero',
+          title: isThirdParty ? 'En camino por el invitado' : 'En camino al pasajero',
           subtitle: `Llegada estimada en ~${trip.pickup?.etaMinutes || 2} min`,
           dotBg: 'bg-amber-400',
           textColor: 'text-amber-400',
-          minimizedTag: `A ${trip.pickup?.etaMinutes || 2} min`,
+          minimizedTag: `A ~${trip.pickup?.etaMinutes || 2} min`,
           targetAddress: trip.pickup?.address || 'Punto de encuentro',
         };
       case 'driver_arrived':
@@ -350,10 +357,10 @@ export const ActiveTripOverlay = ({ trip, onHeightChange }: ActiveTripOverlayPro
       case 'in_progress':
         return {
           title: 'Viaje en curso al destino',
-          subtitle: `Llegada estimada en ~${trip.dropoff?.durationMinutes || 10} min`,
+          subtitle: `${tripDistanceKm} • ~${durationMin} min`,
           dotBg: 'bg-sky-400',
           textColor: 'text-sky-400',
-          minimizedTag: 'En viaje',
+          minimizedTag: `En viaje (${tripDistanceKm})`,
           targetAddress: trip.dropoff?.address || 'Destino final',
         };
       default:
@@ -366,7 +373,7 @@ export const ActiveTripOverlay = ({ trip, onHeightChange }: ActiveTripOverlayPro
           targetAddress: trip.pickup?.address || '',
         };
     }
-  }, [trip.status, trip.pickup, trip.dropoff, formattedTime, isThirdParty]);
+  }, [trip.status, trip.pickup, trip.dropoff, formattedTime, isThirdParty, tripDistanceKm, durationMin]);
 
   return (
     <BottomSheet
@@ -379,18 +386,17 @@ export const ActiveTripOverlay = ({ trip, onHeightChange }: ActiveTripOverlayPro
       keyboardBlurBehavior="restore"
       android_keyboardInputMode="adjustResize"
       handleIndicatorStyle={{
-        backgroundColor: THEME_COLORS.gold,
+        backgroundColor: 'rgba(255, 255, 255, 0.28)',
         width: 44,
         height: 4,
         borderRadius: 2,
-        opacity: 0.8,
       }}
       backgroundStyle={{
-        backgroundColor: '#0A0B10',
-        borderTopLeftRadius: 32,
-        borderTopRightRadius: 32,
-        borderWidth: 1,
-        borderColor: 'rgba(212, 175, 55, 0.28)',
+        backgroundColor: 'rgba(10, 11, 16, 0.82)',
+        borderTopLeftRadius: 36,
+        borderTopRightRadius: 36,
+        borderTopWidth: 1.5,
+        borderColor: 'rgba(212, 175, 55, 0.4)',
       }}
       handleStyle={{
         backgroundColor: 'transparent',
@@ -398,6 +404,14 @@ export const ActiveTripOverlay = ({ trip, onHeightChange }: ActiveTripOverlayPro
         paddingBottom: 6,
       }}
     >
+      {/* Top Specular Edge Glass Highlight */}
+      <View className="absolute top-0 left-8 right-8 h-[1px] bg-white/25 pointer-events-none z-50" />
+
+      {/* Subtle Ambient Gold Depth Flare */}
+      <View className="absolute -top-12 -right-12 pointer-events-none z-0" style={{ width: 180, height: 180 }}>
+        <AmbientGlow position="top-right" height={180} opacity={0.16} color="#D4AF37" />
+      </View>
+
       {snapIndex === 0 ? (
         // ================= MINIMIZED STATE =================
         <TouchableOpacity
@@ -426,24 +440,30 @@ export const ActiveTripOverlay = ({ trip, onHeightChange }: ActiveTripOverlayPro
             </View>
           </View>
 
-          {/* Earnings & Drag Handle Indicator */}
+          {/* Passenger Collection Indicator (Efectivo vs Digital) */}
           <View className="items-end">
-            <Text className="text-ash font-montserrat text-[9px] uppercase tracking-wider">
-              Tu ganancia
+            <Text
+              className={`font-montserrat text-[9px] uppercase tracking-wider ${
+                isCash ? 'text-emerald-400 font-montserrat-bold' : 'text-ash'
+              }`}
+            >
+              {isCash ? 'Cobro efectivo' : 'Pago digital'}
             </Text>
             <View className="flex-row items-center">
               <Text
-                className="text-gold font-montserrat-bold text-base mr-1.5"
+                className={`font-montserrat-bold text-base mr-1.5 ${
+                  isCash ? 'text-emerald-400' : 'text-zinc-300'
+                }`}
                 style={{ fontVariant: ['tabular-nums'] }}
               >
-                ${netEarnings.toLocaleString('es-AR')}
+                {isCash ? `$${totalFare.toLocaleString('es-AR')}` : '$0 (Acreditado)'}
               </Text>
               <Ionicons name="chevron-up" size={16} color={THEME_COLORS.gold} />
             </View>
           </View>
         </TouchableOpacity>
       ) : (
-        // ================= EXPANDED / PARTIAL STATE (CLEAN UNIFIED SHEET) =================
+        // ================= EXPANDED COCKPIT (CLEAN SINGLE-SURFACE GLASS UX) =================
         <BottomSheetScrollView
           contentContainerStyle={{
             paddingHorizontal: 20,
@@ -452,301 +472,300 @@ export const ActiveTripOverlay = ({ trip, onHeightChange }: ActiveTripOverlayPro
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* SECCIÓN 1: CABINA & PASAJERO */}
-          <View className="pt-1 pb-4">
-            <View className="flex-row items-center justify-between">
-              <View className="flex-row items-center flex-1 mr-3">
-                {/* Avatar */}
-                <View className="w-12 h-12 rounded-2xl bg-gold/15 border border-gold/40 items-center justify-center mr-3 shadow-md shadow-black">
-                  <Text className="text-gold font-montserrat-bold text-lg">
-                    {avatarLetter}
-                  </Text>
-                </View>
-
-                {/* Info Pasajero */}
-                <View className="flex-1">
-                  <View className="flex-row items-center">
-                    <Text className="text-white font-montserrat-bold text-base mr-1.5" numberOfLines={1}>
-                      {passengerName}
-                    </Text>
-                    <Ionicons name="shield-checkmark" size={14} color="#38BDF8" />
-                  </View>
-
-                  <View className="flex-row items-center mt-0.5">
-                    <Ionicons name="star" size={12} color={THEME_COLORS.gold} />
-                    <Text
-                      className="text-white font-montserrat-semibold text-xs ml-1 mr-2"
-                      style={{ fontVariant: ['tabular-nums'] }}
-                    >
-                      {trip.passenger?.rating ? Number(trip.passenger.rating).toFixed(1) : '5.0'}
-                    </Text>
-                    <Text className="text-gold/90 font-montserrat-medium text-[10px] tracking-wider uppercase">
-                      {isThirdParty
-                        ? coordinatorName
-                          ? `Invitado • ${coordinatorName}`
-                          : 'Invitado VIP'
-                        : 'TransferBlack VIP'}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-
-              {/* Botones de Comunicación (Llamar y Chat) */}
-              <View className="flex-row items-center gap-2">
-                <TouchableOpacity
-                  onPress={handleCallPassenger}
-                  accessibilityLabel="Llamar al pasajero"
-                  accessibilityRole="button"
-                  hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
-                  className="w-12 h-12 rounded-2xl bg-white/5 border border-white/15 items-center justify-center active:scale-95"
-                >
-                  <Ionicons name="call" size={19} color={THEME_COLORS.platinum} />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    router.push('/(home)/chat');
-                  }}
-                  accessibilityLabel="Chatear con el pasajero"
-                  accessibilityRole="button"
-                  hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
-                  className="w-12 h-12 rounded-2xl bg-gold/15 border border-gold/35 items-center justify-center active:scale-95"
-                >
-                  <Ionicons name="chatbubble-ellipses" size={19} color={THEME_COLORS.gold} />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Estado del Viaje y Ganancia */}
-            <View className="flex-row items-center justify-between mt-3.5 pt-3 border-t border-white/10">
-              <View className="flex-row items-center flex-1 mr-2">
-                <View className={`w-2.5 h-2.5 rounded-full ${statusInfo.dotBg} mr-2 shadow-sm`} />
-                <View className="flex-1">
-                  <Text className={`${statusInfo.textColor} font-montserrat-bold text-xs uppercase tracking-wider`}>
-                    {statusInfo.title}
-                  </Text>
-                  <Text className="text-ash font-montserrat text-xs mt-0.5" numberOfLines={1}>
-                    {statusInfo.subtitle}
-                  </Text>
-                </View>
-              </View>
-
-              <View className="items-end">
-                <Text className="text-ash font-montserrat text-[9px] uppercase tracking-wider">
-                  Tu ganancia
-                </Text>
-                <Text
-                  style={{ fontVariant: ['tabular-nums'] }}
-                  className="text-gold font-montserrat-bold text-lg"
-                >
-                  ${netEarnings.toLocaleString('es-AR')}
+          {/* HEADER: PASAJERO Y ACCESOS RÁPIDOS DIRECTOS (Llamar, Chat, GPS) */}
+          <View className="flex-row items-center justify-between mt-1 mb-3">
+            <View className="flex-row items-center flex-1 mr-2">
+              <View className="w-12 h-12 rounded-2xl bg-gold/15 border border-gold/30 items-center justify-center mr-3">
+                <Text className="text-gold font-montserrat-bold text-lg">
+                  {avatarLetter}
                 </Text>
               </View>
-            </View>
-
-            {/* Control Primario de Conducción */}
-            <View className="mt-3.5">
-              {trip.status === 'driver_arriving' && (
-                <SwipeToArriveButton onArrive={handleArrive} isLoading={isLoading} />
-              )}
-
-              {trip.status === 'driver_arrived' && (
-                <View className="w-full">
-                  {/* Cronómetro */}
-                  <View className="flex-row items-center justify-between bg-amber-500/10 border border-amber-500/30 rounded-xl px-3.5 py-2.5 mb-3">
-                    <View className="flex-row items-center">
-                      <Ionicons name="time" size={17} color="#F59E0B" />
-                      <View className="ml-2.5">
-                        <Text className="text-white font-montserrat-semibold text-xs">
-                          Tiempo de cortesía
-                        </Text>
-                        <Text className="text-ash font-montserrat text-[10px]">
-                          Pasajero avisado de tu llegada
-                        </Text>
-                      </View>
-                    </View>
-                    <Text
-                      className="text-amber-400 font-montserrat-bold text-base"
-                      style={{ fontVariant: ['tabular-nums'] }}
-                    >
-                      {formattedTime}
-                    </Text>
-                  </View>
-
-                  {/* PIN */}
-                  {trip.require_pin && (
-                    <View className="w-full mb-3">
-                      <View className="flex-row justify-between items-center mb-2">
-                        <Text className="text-white font-montserrat-semibold text-xs uppercase tracking-wider">
-                          PIN de abordaje (pedir al pasajero)
-                        </Text>
-                        {isKeyboardVisible && (
-                          <TouchableOpacity
-                            onPress={Keyboard.dismiss}
-                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                            className="px-2.5 py-1 bg-white/10 rounded-md"
-                          >
-                            <Text className="text-gold font-montserrat-semibold text-[11px]">
-                              Listo
-                            </Text>
-                          </TouchableOpacity>
-                        )}
-                      </View>
-
-                      <View className="flex-row items-center justify-center gap-3">
-                        {pinDigits.map((digit, index) => (
-                          <TextInput
-                            key={index}
-                            ref={(ref) => {
-                              if (ref) pinInputRefs.current[index] = ref;
-                            }}
-                            className={`w-14 h-14 text-center font-montserrat-bold text-2xl text-white rounded-2xl bg-black/60 border ${
-                              pinError
-                                ? 'border-red-500'
-                                : digit
-                                  ? 'border-gold shadow-sm shadow-gold/30'
-                                  : 'border-white/15'
-                            }`}
-                            keyboardType="number-pad"
-                            returnKeyType="done"
-                            maxLength={1}
-                            value={digit}
-                            onChangeText={(text) => handlePinDigitChange(text, index)}
-                            onKeyPress={(e) => handlePinKeyPress(e, index)}
-                            selectTextOnFocus
-                          />
-                        ))}
-                      </View>
-                    </View>
-                  )}
-
-                  {/* Iniciar Viaje */}
-                  <TouchableOpacity
-                    onPress={handleStartTrip}
-                    disabled={isLoading || !isStartEnabled}
-                    className={`w-full h-14 rounded-2xl items-center justify-center active:scale-98 ${
-                      isStartEnabled
-                        ? 'bg-gold shadow-lg shadow-gold/20'
-                        : 'bg-charcoal/60 border border-white/5 opacity-50'
-                    }`}
-                    accessibilityRole="button"
-                    accessibilityLabel="Iniciar viaje"
+              <View className="flex-1">
+                <View className="flex-row items-center">
+                  <Text className="text-white font-montserrat-bold text-base mr-1.5" numberOfLines={1}>
+                    {passengerName}
+                  </Text>
+                  <Ionicons name="shield-checkmark" size={14} color="#38BDF8" />
+                </View>
+                <View className="flex-row items-center mt-0.5">
+                  <Ionicons name="star" size={12} color={THEME_COLORS.gold} />
+                  <Text
+                    className="text-white font-montserrat-semibold text-xs ml-1 mr-2"
+                    style={{ fontVariant: ['tabular-nums'] }}
                   >
-                    {isLoading ? (
-                      <ActivityIndicator color={THEME_COLORS.obsidian} />
-                    ) : (
-                      <Text className="text-obsidian font-montserrat-bold text-base tracking-wider uppercase">
-                        Iniciar Viaje
-                      </Text>
-                    )}
-                  </TouchableOpacity>
+                    {trip.passenger?.rating ? Number(trip.passenger.rating).toFixed(1) : '5.0'}
+                  </Text>
+                  <Text className="text-gold/90 font-montserrat-medium text-[10px] tracking-wider uppercase">
+                    {isThirdParty ? 'Invitado VIP' : 'TransferBlack VIP'}
+                  </Text>
                 </View>
-              )}
+              </View>
+            </View>
 
-              {trip.status === 'in_progress' && (
-                <SwipeToFinishButton onFinish={handleFinishTrip} isLoading={isLoading} />
-              )}
+            {/* Quick Actions: Call, Chat & Open GPS Navigation */}
+            <View className="flex-row items-center gap-2">
+              <TouchableOpacity
+                onPress={handleCallPassenger}
+                accessibilityLabel="Llamar al pasajero"
+                accessibilityRole="button"
+                hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 items-center justify-center active:scale-95"
+              >
+                <Ionicons name="call" size={17} color={THEME_COLORS.platinum} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  router.push('/(home)/chat');
+                }}
+                accessibilityLabel="Chatear con el pasajero"
+                accessibilityRole="button"
+                hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                className="w-10 h-10 rounded-xl bg-gold/15 border border-gold/30 items-center justify-center active:scale-95"
+              >
+                <Ionicons name="chatbubble-ellipses" size={17} color={THEME_COLORS.gold} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleOpenExternalGps}
+                accessibilityLabel="Abrir navegación externa con Google Maps o Waze"
+                accessibilityRole="button"
+                hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                className="w-10 h-10 rounded-xl bg-sky-500/15 border border-sky-500/30 items-center justify-center active:scale-95"
+              >
+                <Ionicons name="navigate" size={17} color="#38BDF8" />
+              </TouchableOpacity>
             </View>
           </View>
 
-          {/* DIVIDER SUAVE */}
-          <View className="h-[1px] bg-white/10 my-1" />
-
-          {/* SECCIÓN 2: HOJA DE RUTA Y NAVEGACIÓN */}
-          <View className="py-4">
-            {/* Botón Navegación GPS a 1 Toque */}
-            <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={handleOpenExternalGps}
-              className="w-full py-3.5 px-4 mb-4 rounded-2xl bg-gold/15 border border-gold/35 flex-row items-center justify-between active:scale-98"
-              accessibilityRole="button"
-              accessibilityLabel="Iniciar navegación en Google Maps o Waze"
-            >
-              <View className="flex-row items-center flex-1 mr-2">
-                <View className="w-8 h-8 rounded-xl bg-gold/20 items-center justify-center mr-2.5">
-                  <Ionicons name="navigate" size={17} color={THEME_COLORS.gold} />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-white font-montserrat-bold text-xs uppercase tracking-wider">
-                    Navegar con Google Maps / Waze
-                  </Text>
-                  <Text className="text-ash font-montserrat text-[10px]">
-                    {trip.status === 'in_progress' ? 'Ruta hacia destino' : 'Ruta hacia punto de encuentro'}
-                  </Text>
-                </View>
+          {/* ESTADO DEL VIAJE EN PÍLDORA ELEGANTE */}
+          <View className="flex-row items-center justify-between bg-white/[0.04] border border-white/10 rounded-2xl px-3.5 py-2.5 mb-3">
+            <View className="flex-row items-center flex-1 mr-2">
+              <View className={`w-2.5 h-2.5 rounded-full ${statusInfo.dotBg} mr-2.5 shadow-sm`} />
+              <View className="flex-1">
+                <Text className={`${statusInfo.textColor} font-montserrat-bold text-xs uppercase tracking-wider`}>
+                  {statusInfo.title}
+                </Text>
+                <Text className="text-ash font-montserrat text-xs mt-0.5" numberOfLines={1}>
+                  {statusInfo.subtitle}
+                </Text>
               </View>
-              <Ionicons name="open-outline" size={16} color={THEME_COLORS.gold} />
-            </TouchableOpacity>
+            </View>
 
-            {/* Timeline Limpio de Direcciones */}
-            <View className="px-1">
+            <TouchableOpacity
+              onPress={handleOpenExternalGps}
+              className="flex-row items-center bg-white/5 border border-white/10 px-2.5 py-1 rounded-lg"
+            >
+              <Ionicons name="map-outline" size={13} color={THEME_COLORS.gold} />
+              <Text className="text-zinc-200 font-montserrat-medium text-[11px] ml-1.5">
+                GPS
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* BANNER CLARO DE COBRO AL PASAJERO (Solo cobro, sin comisiones ni ganancia neta acá) */}
+          {isCash ? (
+            <View className="bg-emerald-500/10 border border-emerald-500/35 rounded-2xl p-4 mb-3.5 flex-row items-center">
+              <View className="w-11 h-11 rounded-xl bg-emerald-500/20 items-center justify-center mr-3.5 border border-emerald-500/30">
+                <Ionicons name="cash" size={24} color="#10B981" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-emerald-400 font-montserrat-bold text-[11px] uppercase tracking-wider">
+                  Cobrar en Efectivo al Pasajero
+                </Text>
+                <Text
+                  style={{ fontVariant: ['tabular-nums'] }}
+                  className="text-white font-montserrat-bold text-2xl leading-tight mt-0.5"
+                >
+                  ${totalFare.toLocaleString('es-AR')}
+                </Text>
+                <Text className="text-emerald-300/80 font-montserrat text-[11px] mt-0.5">
+                  Cobrá este importe exacto al finalizar el viaje.
+                </Text>
+              </View>
+            </View>
+          ) : (
+            <View className="bg-white/[0.04] border border-white/10 rounded-2xl p-3.5 mb-3.5 flex-row items-center">
+              <View className="w-10 h-10 rounded-xl bg-white/10 items-center justify-center mr-3">
+                <Ionicons name={paymentInfo.icon} size={20} color={THEME_COLORS.gold} />
+              </View>
+              <View className="flex-1">
+                <Text className="text-white font-montserrat-bold text-[10px] uppercase tracking-wider">
+                  Pago Digital ({paymentInfo.label})
+                </Text>
+                <Text className="text-gold font-montserrat-bold text-sm mt-0.5">
+                  Acreditado • No solicitar dinero en efectivo ($0)
+                </Text>
+                <Text className="text-ash font-montserrat text-[11px] mt-0.5">
+                  El viaje se liquida automáticamente en tu Bóveda.
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {/* CONTROL PRIMARIO DE CONDUCCIÓN (SwipeToArrive / PIN / SwipeToFinish) */}
+          <View className="mb-3.5">
+            {trip.status === 'driver_arriving' && (
+              <SwipeToArriveButton onArrive={handleArrive} isLoading={isLoading} />
+            )}
+
+            {trip.status === 'driver_arrived' && (
+              <View className="w-full">
+                {/* Cronómetro de Cortesía */}
+                <View className="flex-row items-center justify-between bg-amber-500/10 border border-amber-500/30 rounded-2xl px-4 py-3 mb-3">
+                  <View className="flex-row items-center">
+                    <Ionicons name="time" size={18} color="#F59E0B" />
+                    <View className="ml-2.5">
+                      <Text className="text-white font-montserrat-semibold text-xs">
+                        Tiempo de cortesía en espera
+                      </Text>
+                      <Text className="text-ash font-montserrat text-[10px]">
+                        Pasajero avisado de tu llegada
+                      </Text>
+                    </View>
+                  </View>
+                  <Text
+                    className="text-amber-400 font-montserrat-bold text-base"
+                    style={{ fontVariant: ['tabular-nums'] }}
+                  >
+                    {formattedTime}
+                  </Text>
+                </View>
+
+                {/* PIN de Abordaje (si lo requiere el viaje) */}
+                {trip.require_pin && (
+                  <View className="w-full mb-3 bg-white/[0.03] border border-white/10 rounded-2xl p-3.5">
+                    <View className="flex-row justify-between items-center mb-2.5">
+                      <Text className="text-white font-montserrat-semibold text-xs uppercase tracking-wider">
+                        PIN de abordaje (pedir al pasajero)
+                      </Text>
+                      {isKeyboardVisible && (
+                        <TouchableOpacity
+                          onPress={Keyboard.dismiss}
+                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                          className="px-2.5 py-1 bg-white/10 rounded-md"
+                        >
+                          <Text className="text-gold font-montserrat-semibold text-[11px]">
+                            Listo
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+
+                    <View className="flex-row items-center justify-center gap-3">
+                      {pinDigits.map((digit, index) => (
+                        <TextInput
+                          key={index}
+                          ref={(ref) => {
+                            if (ref) pinInputRefs.current[index] = ref;
+                          }}
+                          className={`w-14 h-14 text-center font-montserrat-bold text-2xl text-white rounded-2xl bg-white/[0.04] border ${
+                            pinError
+                              ? 'border-red-500'
+                              : digit
+                                ? 'border-gold shadow-sm shadow-gold/30'
+                                : 'border-white/15'
+                          }`}
+                          keyboardType="number-pad"
+                          returnKeyType="done"
+                          maxLength={1}
+                          value={digit}
+                          onChangeText={(text) => handlePinDigitChange(text, index)}
+                          onKeyPress={(e) => handlePinKeyPress(e, index)}
+                          selectTextOnFocus
+                        />
+                      ))}
+                    </View>
+                  </View>
+                )}
+
+                {/* Botón Iniciar Viaje */}
+                <TouchableOpacity
+                  onPress={handleStartTrip}
+                  disabled={isLoading || !isStartEnabled}
+                  className={`w-full h-14 rounded-2xl items-center justify-center active:scale-98 ${
+                    isStartEnabled
+                      ? 'bg-gold shadow-lg shadow-gold/20'
+                      : 'bg-charcoal/60 border border-white/5 opacity-50'
+                  }`}
+                  accessibilityRole="button"
+                  accessibilityLabel="Iniciar viaje"
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color={THEME_COLORS.obsidian} />
+                  ) : (
+                    <Text className="text-obsidian font-montserrat-bold text-base tracking-wider uppercase">
+                      Iniciar Viaje
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {trip.status === 'in_progress' && (
+              <SwipeToFinishButton onFinish={handleFinishTrip} isLoading={isLoading} />
+            )}
+          </View>
+
+          {/* HOJA DE RUTA UNIFICADA (Limpia, con km y sin duplicar tiempos) */}
+          <View className="border-t border-white/10 pt-3 mb-3">
+            <View className="flex-row items-center justify-between mb-2">
+              <Text className="text-ash font-montserrat-bold text-[10px] uppercase tracking-wider">
+                Recorrido del Viaje
+              </Text>
+              <View className="flex-row items-center bg-white/5 border border-white/10 px-2.5 py-1 rounded-full">
+                <Ionicons name="speedometer-outline" size={12} color={THEME_COLORS.gold} />
+                <Text className="text-gold font-montserrat-semibold text-[11px] ml-1.5">
+                  {tripDistanceKm} • ~{durationMin} min
+                </Text>
+              </View>
+            </View>
+
+            {/* Timeline Integrado */}
+            <View className="pl-1">
               {/* Pickup */}
-              <View className="flex-row items-start mb-3">
+              <View className="flex-row items-start mb-2.5">
                 <View className="items-center mr-3 mt-1">
-                  <View className="w-3.5 h-3.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400" />
-                  <View className="w-0.5 h-7 bg-white/20 my-1" />
+                  <View className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400" />
+                  <View className="w-0.5 h-5 bg-white/15 my-0.5" />
                 </View>
                 <View className="flex-1">
-                  <View className="flex-row items-center justify-between">
-                    <Text className="text-emerald-400 font-montserrat-semibold text-[10px] uppercase tracking-wider">
-                      Punto de Encuentro
-                    </Text>
-                    {trip.pickup?.etaMinutes && (
-                      <Text className="text-emerald-400 font-montserrat-semibold text-[10px]">
-                        ~{trip.pickup.etaMinutes} min
-                      </Text>
-                    )}
-                  </View>
+                  <Text className="text-emerald-400 font-montserrat-semibold text-[10px] uppercase tracking-wider">
+                    Punto de Encuentro
+                  </Text>
                   <Text className="text-white font-montserrat-medium text-xs leading-4 mt-0.5" numberOfLines={2}>
                     {trip.pickup?.address || 'Punto de recogida'}
                   </Text>
-                  {trip.pickup?.subtitle && (
-                    <Text className="text-ash font-montserrat text-[10px] mt-0.5" numberOfLines={1}>
-                      {trip.pickup.subtitle}
-                    </Text>
-                  )}
                 </View>
               </View>
 
               {/* Dropoff */}
               <View className="flex-row items-start">
                 <View className="items-center mr-3 mt-1">
-                  <View className="w-3.5 h-3.5 rounded-sm bg-gold rotate-45 shadow-sm shadow-gold" />
+                  <View className="w-2.5 h-2.5 rounded-sm bg-gold rotate-45 shadow-sm shadow-gold" />
                 </View>
                 <View className="flex-1">
-                  <View className="flex-row items-center justify-between">
-                    <Text className="text-gold font-montserrat-semibold text-[10px] uppercase tracking-wider">
-                      Destino Solicitado
-                    </Text>
-                    {trip.dropoff?.durationMinutes && (
-                      <Text className="text-gold font-montserrat-semibold text-[10px]">
-                        ~{trip.dropoff.durationMinutes} min
-                      </Text>
-                    )}
-                  </View>
+                  <Text className="text-gold font-montserrat-semibold text-[10px] uppercase tracking-wider">
+                    Destino Final
+                  </Text>
                   <Text className="text-white font-montserrat-medium text-xs leading-4 mt-0.5" numberOfLines={2}>
                     {trip.dropoff?.address || 'Destino solicitado'}
                   </Text>
-                  {trip.dropoff?.subtitle && (
-                    <Text className="text-ash font-montserrat text-[10px] mt-0.5" numberOfLines={1}>
-                      {trip.dropoff.subtitle}
-                    </Text>
-                  )}
                 </View>
               </View>
             </View>
 
             {/* Preferencias de Pasajero */}
             {preferences.length > 0 && (
-              <View className="mt-3.5 pt-3 border-t border-white/5 flex-row flex-wrap">
+              <View className="mt-3 flex-row flex-wrap">
                 {preferences.map((pref, idx) => (
                   <View
                     key={`${pref}-${idx}`}
-                    className="flex-row items-center bg-gold/10 border border-gold/25 px-2.5 py-1 rounded-full mr-1.5 mb-1.5"
+                    className="flex-row items-center bg-white/5 border border-white/10 px-2.5 py-1 rounded-full mr-1.5 mb-1"
                   >
-                    <Ionicons name={getPreferenceIcon(pref)} size={12} color={THEME_COLORS.gold} />
-                    <Text className="text-gold font-montserrat-medium text-xs ml-1.5">
+                    <Ionicons name={getPreferenceIcon(pref)} size={11} color={THEME_COLORS.gold} />
+                    <Text className="text-zinc-300 font-montserrat-medium text-[11px] ml-1.5">
                       {pref}
                     </Text>
                   </View>
@@ -755,134 +774,30 @@ export const ActiveTripOverlay = ({ trip, onHeightChange }: ActiveTripOverlayPro
             )}
           </View>
 
-          {/* DIVIDER SUAVE */}
-          <View className="h-[1px] bg-white/10 my-1" />
+          {/* PIE: ASISTENCIA S.O.S. Y CANCELACIÓN DISCRETA */}
+          <View className="border-t border-white/10 pt-3 flex-row items-center justify-between">
+            <TouchableOpacity
+              onPress={handleEmergencyCall}
+              className="flex-row items-center bg-red-500/15 border border-red-500/30 px-3.5 py-2 rounded-xl active:bg-red-500/25"
+              accessibilityRole="button"
+              accessibilityLabel="Pedir asistencia o emergencia"
+            >
+              <Ionicons name="shield-checkmark" size={15} color="#EF4444" />
+              <Text className="text-red-400 font-montserrat-bold text-xs uppercase tracking-wider ml-1.5">
+                S.O.S. Seguridad
+              </Text>
+            </TouchableOpacity>
 
-          {/* SECCIÓN 3: FINANZAS Y COBRO */}
-          <View className="py-4">
-            {/* Banner de Cobro */}
-            {isCash ? (
-              <View className="bg-emerald-500/15 border border-emerald-500/35 rounded-2xl p-3.5 mb-3 flex-row items-center">
-                <View className="w-10 h-10 rounded-xl bg-emerald-500/20 items-center justify-center mr-3">
-                  <Ionicons name="cash" size={20} color="#10B981" />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-emerald-400 font-montserrat-bold text-xs uppercase tracking-wider">
-                    Cobrar en Efectivo al Pasajero
-                  </Text>
-                  <Text
-                    style={{ fontVariant: ['tabular-nums'] }}
-                    className="text-white font-montserrat-bold text-xl leading-tight"
-                  >
-                    ${totalFare.toLocaleString('es-AR')}
-                  </Text>
-                  <Text className="text-zinc-300 font-montserrat text-[10px] mt-0.5">
-                    Cobrar al finalizar antes de que el pasajero descienda
-                  </Text>
-                </View>
-              </View>
-            ) : (
-              <View className="bg-white/5 border border-white/15 rounded-2xl p-3.5 mb-3 flex-row items-center">
-                <View className="w-10 h-10 rounded-xl bg-white/10 items-center justify-center mr-3">
-                  <Ionicons name={paymentInfo.icon} size={20} color={THEME_COLORS.platinum} />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-white font-montserrat-bold text-xs uppercase tracking-wider">
-                    Pago Electrónico ({paymentInfo.label})
-                  </Text>
-                  <Text className="text-zinc-300 font-montserrat text-xs mt-0.5">
-                    Acreditado en cuenta • No solicitar dinero en efectivo
-                  </Text>
-                </View>
-              </View>
-            )}
-
-            {/* Tabla Limpia de Cuentas */}
-            <View className="px-1 py-2">
-              <View className="flex-row justify-between items-center mb-1.5">
-                <Text className="text-ash font-montserrat text-xs">Tarifa del viaje</Text>
-                <Text
-                  className="text-white font-montserrat-semibold text-xs"
-                  style={{ fontVariant: ['tabular-nums'] }}
-                >
-                  ${totalFare.toFixed(2)}
-                </Text>
-              </View>
-
-              <View className="flex-row justify-between items-center mb-2">
-                <Text className="text-ash font-montserrat text-xs">Comisión TransferBlack (20%)</Text>
-                <Text
-                  className="text-red-400 font-montserrat-semibold text-xs"
-                  style={{ fontVariant: ['tabular-nums'] }}
-                >
-                  -${(totalFare * 0.2).toFixed(2)}
-                </Text>
-              </View>
-
-              <View className="h-[1px] bg-white/10 w-full my-1.5" />
-
-              <View className="flex-row justify-between items-center">
-                <View>
-                  <Text className="text-platinum font-montserrat-bold text-xs uppercase tracking-wider">
-                    Tu ganancia neta
-                  </Text>
-                  <Text className="text-ash/70 font-montserrat text-[10px]">
-                    Código: {trip.public_code || trip.id?.slice(0, 8)}
-                  </Text>
-                </View>
-                <Text
-                  className="text-gold font-montserrat-bold text-xl"
-                  style={{ fontVariant: ['tabular-nums'] }}
-                >
-                  ${netEarnings.toFixed(2)}
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          {/* DIVIDER SUAVE */}
-          <View className="h-[1px] bg-white/10 my-1" />
-
-          {/* SECCIÓN 4: ASISTENCIA S.O.S. Y CANCELACIÓN */}
-          <View className="pt-3 pb-2">
-            <View className="flex-row items-center justify-between">
-              <View className="flex-row items-center flex-1 mr-3">
-                <View className="w-10 h-10 rounded-xl bg-red-500/15 border border-red-500/30 items-center justify-center mr-3">
-                  <Ionicons name="shield-checkmark" size={20} color="#EF4444" />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-white font-montserrat-semibold text-xs">
-                    Seguridad en Ruta
-                  </Text>
-                  <Text className="text-ash font-montserrat text-[10px] mt-0.5">
-                    Asistencia 24/7 y monitoreo activo
-                  </Text>
-                </View>
-              </View>
-
-              <TouchableOpacity
-                onPress={handleEmergencyCall}
-                className="px-4 py-2.5 rounded-xl bg-red-500/20 border border-red-500/40 active:bg-red-500/30"
-                accessibilityRole="button"
-                accessibilityLabel="Pedir asistencia o emergencia"
-              >
-                <Text className="text-red-400 font-montserrat-bold text-xs uppercase tracking-wider">
-                  S.O.S.
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Cancelación */}
             {(trip.status === 'driver_arriving' || trip.status === 'driver_arrived') && (
               <TouchableOpacity
                 onPress={handleCancelTrip}
                 disabled={isLoading}
-                className="w-full py-3 mt-3 rounded-xl items-center justify-center bg-white/5 border border-white/10 active:bg-white/10"
+                className="px-3 py-2 rounded-xl active:bg-white/5"
                 accessibilityRole="button"
                 accessibilityLabel="Cancelar servicio"
               >
-                <Text className="text-red-400/90 font-montserrat-medium text-xs">
-                  Pasajero no se presentó • Cancelar servicio
+                <Text className="text-zinc-400 font-montserrat-medium text-xs">
+                  Pasajero no se presentó
                 </Text>
               </TouchableOpacity>
             )}

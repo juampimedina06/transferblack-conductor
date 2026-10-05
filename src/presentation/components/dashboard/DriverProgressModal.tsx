@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { THEME_COLORS } from '../../../core/constants/theme';
 import { LiquidGlassContainer } from '../ui/LiquidGlassContainer';
+import { AmbientGlow } from '../ui/AmbientGlow';
 import type { DashboardStats } from './DashboardCarousel';
 
 interface DriverProgressModalProps {
@@ -49,7 +50,7 @@ export const DriverProgressModal = ({
               <View className="absolute top-0 left-8 right-8 h-[1px] bg-white/25 pointer-events-none" />
 
               {/* Ambient Glow */}
-              <View className="absolute -top-16 -right-16 w-44 h-44 rounded-full bg-[#D4AF37]/10 blur-3xl pointer-events-none" />
+              <AmbientGlow position="top-right" height={220} opacity={0.2} color="#D4AF37" />
 
               {/* Drag Handle Indicator */}
               <View className="w-11 h-1 bg-white/25 rounded-full self-center mt-3 mb-1" />
@@ -163,10 +164,10 @@ export const DriverProgressModal = ({
                 </LiquidGlassContainer>
 
                 {/* Stats Grid: Trips & Earnings */}
-                <View className="flex-row space-x-3 mb-4">
+                <View className="flex-row gap-3 mb-4">
                   <LiquidGlassContainer
                     variant="default"
-                    className="flex-1 p-4 rounded-2xl mr-2"
+                    className="flex-1 p-4 rounded-2xl"
                   >
                     <View className="flex-row items-center mb-1">
                       <Ionicons name="car-outline" size={17} color={THEME_COLORS.gold} />
@@ -175,6 +176,8 @@ export const DriverProgressModal = ({
                     <Text 
                       style={{ fontVariant: ['tabular-nums'] }}
                       className="text-white font-montserrat-bold text-2xl"
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
                     >
                       {currentStats.completedTripsToday}
                     </Text>
@@ -183,7 +186,7 @@ export const DriverProgressModal = ({
 
                   <LiquidGlassContainer
                     variant={isNegative ? 'danger' : 'gold'}
-                    className="flex-1 p-4 rounded-2xl ml-2"
+                    className="flex-1 p-4 rounded-2xl"
                   >
                     <View className="flex-row items-center mb-1">
                       <Ionicons 
@@ -193,15 +196,17 @@ export const DriverProgressModal = ({
                       />
                       <Text className={`font-montserrat text-xs ml-1.5 uppercase ${
                         isNegative ? 'text-red-300' : 'text-ash'
-                      }`}>
+                      }`} numberOfLines={1}>
                         {isNegative ? 'Saldo Actual' : 'Ganancias Hoy'}
                       </Text>
                     </View>
                     <Text 
                       style={{ fontVariant: ['tabular-nums'] }}
-                      className={`font-montserrat-bold text-2xl ${
+                      className={`font-montserrat-bold text-xl ${
                         isNegative ? 'text-red-400' : 'text-white'
                       }`}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
                     >
                       {isNegative 
                         ? `-$${Math.abs(currentStats.balance).toLocaleString('es-AR', { minimumFractionDigits: 2 })}` 
@@ -209,7 +214,7 @@ export const DriverProgressModal = ({
                     </Text>
                     <Text className={`font-montserrat text-[11px] mt-1 ${
                       isNegative ? 'text-red-300/80' : 'text-ash/70'
-                    }`}>
+                    }`} numberOfLines={1}>
                       {isNegative ? 'Deuda comisiones' : 'Total turno'}
                     </Text>
                   </LiquidGlassContainer>

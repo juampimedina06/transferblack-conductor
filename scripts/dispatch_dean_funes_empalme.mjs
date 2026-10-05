@@ -33,8 +33,8 @@ const DEFAULT_PASSENGER = {
 const ORIGIN = {
   address_text: 'Barrio Deán Funes / Horizonte, Córdoba',
   place_id: 'barrio-dean-funes-horizonte-cordoba',
-  latitude: -31.4227223,
-  longitude: -64.1185098,
+  latitude: -31.443664,
+  longitude: -64.1170136,
 };
 
 const DESTINATION = {

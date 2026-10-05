@@ -9,6 +9,8 @@ import { socket } from '../../core/socket/socket';
 import { authStorage } from '../../presentation/auth/store/authStorage';
 import { useAuthStore } from '../../presentation/auth/store/useAuthStore';
 import { CustomMap } from '../../presentation/components/maps/CustomMap';
+import * as Haptics from 'expo-haptics';
+import { Image } from 'expo-image';
 import { useDriverLocation } from '../../presentation/maps/hooks/useDriverLocation';
 import { DashboardCarousel } from '../../presentation/components/dashboard/DashboardCarousel';
 import { EmergencyFAB } from '../../presentation/components/dashboard/EmergencyFAB';
@@ -25,6 +27,7 @@ import { TripReceiptModal } from '../../presentation/components/trip/TripReceipt
 import { useWalletStore } from '../../presentation/wallet/store/useWalletStore';
 
 export default function DriverDashboardScreen() {
+  const user = useAuthStore(state => state.user);
   const logout = useAuthStore(state => state.logout);
   const activeTrip = useDriverTripStore(state => state.activeTrip);
   const isAvailable = useDriverTripStore(state => state.isAvailable);
@@ -163,18 +166,22 @@ export default function DriverDashboardScreen() {
         )}
 
         <View className="px-4 py-3 flex-row items-center justify-between" pointerEvents="box-none">
+          {/* Logout Button */}
           <TouchableOpacity
-            onPress={handleLogout}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              handleLogout();
+            }}
             accessibilityRole="button"
             accessibilityLabel="Cerrar sesión"
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            className="w-12 h-12 rounded-2xl bg-[#0F1016]/90 items-center justify-center border border-white/10 shadow-lg shadow-black relative overflow-hidden"
+            className="w-12 h-12 rounded-2xl bg-[#13141E] items-center justify-center border border-white/25 shadow-xl shadow-black relative overflow-hidden active:scale-95"
           >
             <View className="absolute top-0 left-2 right-2 h-[1px] bg-white/20 pointer-events-none" />
-            <Ionicons name="log-out-outline" size={22} color={THEME_COLORS.platinum} />
+            <Ionicons name="log-out-outline" size={21} color={THEME_COLORS.ash} />
           </TouchableOpacity>
 
-          {/* Central Toggle Pill */}
+          {/* Central Toggle Pill & Navigation Controls */}
           {!activeTrip && (() => {
             const displayBalance = stats?.balance ?? 0;
             const isNegative = displayBalance < 0;
@@ -183,60 +190,81 @@ export default function DriverDashboardScreen() {
               : `$${(displayBalance > 0 ? displayBalance : (stats?.earningsToday ?? 0)).toFixed(2)}`;
 
             return (
-              <View className="flex-row items-center space-x-2">
+              <View className="flex-row items-center gap-2">
+                {/* Bóveda Financiera */}
                 <TouchableOpacity
-                  onPress={() => router.push('/wallet' as any)}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    router.push('/wallet' as any);
+                  }}
                   accessibilityRole="button"
                   accessibilityLabel="Ir a la Bóveda"
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  className="w-12 h-12 rounded-2xl bg-[#0F1016]/90 items-center justify-center border border-white/10 shadow-lg shadow-black relative overflow-hidden"
+                  hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                  className="w-12 h-12 rounded-2xl bg-[#13141E] items-center justify-center border border-gold/55 shadow-xl shadow-black relative overflow-hidden active:scale-95"
                 >
-                  <View className="absolute top-0 left-2 right-2 h-[1px] bg-white/20 pointer-events-none" />
-                  <Ionicons name="card-outline" size={21} color={THEME_COLORS.gold} />
+                  <View className="absolute top-0 left-2 right-2 h-[1px] bg-gold/50 pointer-events-none" />
+                  <View className="w-8 h-8 rounded-xl bg-gold/20 items-center justify-center">
+                    <Ionicons name="wallet" size={17} color={THEME_COLORS.gold} />
+                  </View>
+                  {summary?.pending_payout && (
+                    <View className="w-2.5 h-2.5 rounded-full bg-amber-400 absolute top-2 right-2 border border-[#13141E]" />
+                  )}
                 </TouchableOpacity>
 
+                {/* Pill Central: Ganancias / Saldo */}
                 <TouchableOpacity
                   activeOpacity={0.8}
-                  onPress={() => setIsStatsExpanded(!isStatsExpanded)}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setIsStatsExpanded(!isStatsExpanded);
+                  }}
                   accessibilityRole="button"
                   accessibilityLabel="Desplegar estadísticas de hoy"
                   hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-                  className={`h-12 flex-row items-center px-4 rounded-2xl shadow-xl shadow-black border relative overflow-hidden ${
+                  className={`h-12 flex-row items-center px-3.5 rounded-2xl shadow-xl shadow-black border relative overflow-hidden active:scale-98 ${
                     isNegative 
-                      ? 'bg-red-950/85 border-red-500/50' 
-                      : 'bg-[#0F1016]/90 border-white/15'
+                      ? 'bg-[#2A0F12] border-red-500/70' 
+                      : 'bg-[#13141E] border-gold/55'
                   }`}
                 >
-                  <View className="absolute top-0 left-3 right-3 h-[1px] bg-white/25 pointer-events-none" />
-                  <Ionicons 
-                    name={isNegative ? 'warning-outline' : 'cash-outline'} 
-                    size={17} 
-                    color={isNegative ? '#F87171' : THEME_COLORS.gold} 
-                  />
+                  <View className="absolute top-0 left-3 right-3 h-[1px] bg-white/20 pointer-events-none" />
+                  <View className={`w-7 h-7 rounded-lg items-center justify-center mr-2 ${isNegative ? 'bg-red-500/25' : 'bg-gold/20'}`}>
+                    <Ionicons 
+                      name={isNegative ? 'warning' : 'cash'} 
+                      size={15} 
+                      color={isNegative ? '#F87171' : THEME_COLORS.gold} 
+                    />
+                  </View>
                   <Text 
                     style={{ fontVariant: ['tabular-nums'] }}
-                    className={`font-montserrat-bold text-sm ml-2 mr-1.5 ${
-                      isNegative ? 'text-red-400' : 'text-platinum'
+                    className={`font-montserrat-bold text-sm mr-2 ${
+                      isNegative ? 'text-red-400' : 'text-white'
                     }`}
                   >
                     {formattedAmount}
                   </Text>
                   <Ionicons
                     name={isStatsExpanded ? 'chevron-up' : 'chevron-down'}
-                    size={16}
-                    color={isNegative ? '#FCA5A5' : THEME_COLORS.ash}
+                    size={15}
+                    color={isNegative ? '#FCA5A5' : THEME_COLORS.gold}
                   />
                 </TouchableOpacity>
 
+                {/* Reservas Programadas */}
                 <TouchableOpacity
-                  onPress={() => router.push('/(home)/scheduled-trips' as any)}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    router.push('/(home)/scheduled-trips' as any);
+                  }}
                   accessibilityRole="button"
                   accessibilityLabel="Ver mis reservas programadas"
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  className="w-12 h-12 rounded-2xl bg-[#0F1016]/90 items-center justify-center border border-white/10 shadow-lg shadow-black relative overflow-hidden"
+                  hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                  className="w-12 h-12 rounded-2xl bg-[#13141E] items-center justify-center border border-white/25 shadow-xl shadow-black relative overflow-hidden active:scale-95"
                 >
                   <View className="absolute top-0 left-2 right-2 h-[1px] bg-white/20 pointer-events-none" />
-                  <Ionicons name="calendar-outline" size={20} color={THEME_COLORS.gold} />
+                  <View className="w-8 h-8 rounded-xl bg-white/10 items-center justify-center">
+                    <Ionicons name="calendar" size={17} color={THEME_COLORS.gold} />
+                  </View>
                 </TouchableOpacity>
               </View>
             );
@@ -246,15 +274,33 @@ export default function DriverDashboardScreen() {
             <ActiveTripTopHeader trip={activeTrip} />
           )}
 
+          {/* Perfil del Conductor */}
           <TouchableOpacity
-            onPress={() => setIsProgressModalVisible(true)}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push('/(home)/profile' as any);
+            }}
             accessibilityRole="button"
-            accessibilityLabel="Ver perfil y rendimiento del conductor"
+            accessibilityLabel="Ver perfil del conductor"
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            className="w-12 h-12 rounded-2xl bg-[#0F1016]/90 items-center justify-center border border-white/10 shadow-lg shadow-black relative overflow-hidden"
+            className="w-12 h-12 rounded-2xl bg-[#13141E] items-center justify-center border border-gold/55 shadow-xl shadow-black relative overflow-hidden active:scale-95"
           >
-            <View className="absolute top-0 left-2 right-2 h-[1px] bg-white/20 pointer-events-none" />
-            <Ionicons name="person-outline" size={21} color={THEME_COLORS.platinum} />
+            <View className="absolute top-0 left-2 right-2 h-[1px] bg-gold/50 pointer-events-none" />
+            {user?.avatar_url ? (
+              <Image 
+                source={{ uri: user.avatar_url }} 
+                className="w-full h-full rounded-2xl" 
+                contentFit="cover"
+              />
+            ) : (
+              <View className="w-8 h-8 rounded-xl bg-gold/20 items-center justify-center">
+                <Text className="text-gold font-montserrat-bold text-sm">
+                  {user?.first_name?.charAt(0).toUpperCase() || 'C'}
+                </Text>
+              </View>
+            )}
+            {/* Status Online Micro-Badge */}
+            <View className="w-2.5 h-2.5 rounded-full bg-emerald-400 absolute bottom-1 right-1 border-2 border-[#13141E]" />
           </TouchableOpacity>
         </View>
 

@@ -16,6 +16,7 @@ import { PayoutModal } from '../../../presentation/components/wallet/PayoutModal
 import { useWalletStore } from '../../../presentation/wallet/store/useWalletStore';
 import * as Haptics from 'expo-haptics';
 import { LiquidGlassContainer } from '../../../presentation/components/ui/LiquidGlassContainer';
+import { AmbientGlow } from '../../../presentation/components/ui/AmbientGlow';
 
 const getTransactionMeta = (type: string, amount: number) => {
   switch (type) {
@@ -262,11 +263,34 @@ export default function WalletScreen() {
           </TouchableOpacity>
         )}
 
-        {/* Balance Card con Liquid Glass y disponible diferenciado */}
-        <LiquidGlassContainer
-          variant={isRestricted ? 'danger' : 'gold'}
-          className="rounded-[28px] p-6 mb-5 shadow-2xl"
+        {/* Balance Card con diseño obsidian y disponible diferenciado */}
+        <View
+          className={`rounded-3xl p-6 mb-5 border relative overflow-hidden ${
+            isRestricted
+              ? 'bg-red-950/40 border-red-500/40'
+              : 'bg-obsidian-card border-gold/30'
+          }`}
+          style={{
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 8 },
+            shadowOpacity: 0.45,
+            shadowRadius: 16,
+            elevation: 6,
+          }}
         >
+          {/* Top Specular Highlight */}
+          <View className="absolute top-0 left-6 right-6 h-[1px] bg-white/20 pointer-events-none" />
+
+          {/* Smooth Ambient Glow in top right */}
+          <View className="absolute -top-12 -right-12 pointer-events-none" style={{ width: 180, height: 180 }}>
+            <AmbientGlow
+              position="top-right"
+              height={180}
+              opacity={isRestricted ? 0.15 : 0.22}
+              color={isRestricted ? '#EF4444' : '#D4AF37'}
+            />
+          </View>
+
           <Text className="text-ash font-montserrat-bold text-[11px] mb-1.5 uppercase tracking-wider">
             Saldo Disponible para Retirar
           </Text>
@@ -277,7 +301,7 @@ export default function WalletScreen() {
             ${availableBalance.toFixed(2)}
           </Text>
 
-          <View className="bg-black/40 border border-white/10 rounded-2xl p-3.5 flex-row justify-between items-center">
+          <View className="bg-black/50 border border-white/10 rounded-2xl p-3.5 flex-row justify-between items-center">
             <View>
               <Text className="text-ash text-xs font-montserrat">Saldo total contable:</Text>
               <Text
@@ -297,7 +321,7 @@ export default function WalletScreen() {
               </Text>
             </View>
           </View>
-        </LiquidGlassContainer>
+        </View>
 
         {/* Accesos directos: Medio de Cobro e Historial */}
         <View className="flex-row gap-3 mb-5">
@@ -309,17 +333,26 @@ export default function WalletScreen() {
               router.push('/(home)/wallet/payout-method' as any);
             }}
             className="flex-1"
+            accessibilityRole="button"
+            accessibilityLabel="Configurar cuenta de cobro"
           >
             <LiquidGlassContainer
               variant="default"
-              className="rounded-2xl p-4 justify-between h-full border border-white/10"
+              glow={false}
+              className="rounded-2xl p-3.5 justify-between border border-white/10"
+              style={{ height: 110 }}
             >
-              <View className="flex-row items-center justify-between mb-2">
-                <View className="w-10 h-10 rounded-xl bg-gold/15 items-center justify-center border border-gold/30">
-                  <Ionicons name="card-outline" size={20} color={THEME_COLORS.gold} />
+              <View className="flex-row items-center justify-between">
+                <View className="w-9 h-9 rounded-xl bg-gold/15 items-center justify-center border border-gold/30">
+                  <Ionicons name="card-outline" size={19} color={THEME_COLORS.gold} />
                 </View>
-                {!payoutMethod && (
-                  <View className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+                {!payoutMethod ? (
+                  <View className="flex-row items-center bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-500/30">
+                    <View className="w-1.5 h-1.5 rounded-full bg-amber-400 mr-1" />
+                    <Text className="text-[10px] text-amber-400 font-montserrat-semibold">Pendiente</Text>
+                  </View>
+                ) : (
+                  <Ionicons name="chevron-forward" size={15} color={THEME_COLORS.ash} />
                 )}
               </View>
 
@@ -344,15 +377,20 @@ export default function WalletScreen() {
               router.push('/(home)/wallet/payout-history' as any);
             }}
             className="flex-1"
+            accessibilityRole="button"
+            accessibilityLabel="Ver historial de retiros"
           >
             <LiquidGlassContainer
               variant="default"
-              className="rounded-2xl p-4 justify-between h-full border border-white/10"
+              glow={false}
+              className="rounded-2xl p-3.5 justify-between border border-white/10"
+              style={{ height: 110 }}
             >
-              <View className="flex-row items-center justify-between mb-2">
-                <View className="w-10 h-10 rounded-xl bg-white/10 items-center justify-center border border-white/10">
-                  <Ionicons name="time-outline" size={20} color={THEME_COLORS.platinum} />
+              <View className="flex-row items-center justify-between">
+                <View className="w-9 h-9 rounded-xl bg-white/10 items-center justify-center border border-white/10">
+                  <Ionicons name="time-outline" size={19} color={THEME_COLORS.platinum} />
                 </View>
+                <Ionicons name="chevron-forward" size={15} color={THEME_COLORS.ash} />
               </View>
 
               <View>
@@ -542,33 +580,33 @@ export default function WalletScreen() {
           </ScrollView>
 
           {filteredTransactions.length === 0 && !isLoadingTransactions ? (
-            <LiquidGlassContainer
-              variant="default"
-              className="rounded-2xl p-6 items-center justify-center border border-white/10"
-            >
+            <View className="bg-obsidian-card border border-white/10 rounded-2xl p-8 items-center justify-center">
               <Ionicons name="receipt-outline" size={32} color={THEME_COLORS.ash} />
               <Text className="text-ash font-montserrat text-sm mt-2 text-center">
                 {transactions.length === 0
                   ? 'No hay movimientos registrados en tu billetera todavía.'
                   : 'No hay movimientos en esta categoría.'}
               </Text>
-            </LiquidGlassContainer>
+            </View>
           ) : (
-            <LiquidGlassContainer
-              variant="default"
-              className="rounded-2xl overflow-hidden border border-white/10 divide-y divide-white/10"
-            >
-              {filteredTransactions.map((tx) => {
+            <View className="bg-obsidian-card border border-white/10 rounded-2xl overflow-hidden">
+              {filteredTransactions.map((tx, index) => {
                 const numAmount = parseFloat(tx.amount);
                 const isPositive = numAmount > 0;
                 const meta = getTransactionMeta(tx.entry_type, numAmount);
+                const isLast = index === filteredTransactions.length - 1;
 
                 return (
-                  <View key={tx.id} className="p-4 flex-row items-center justify-between">
+                  <View
+                    key={tx.id}
+                    className={`p-4 flex-row items-center justify-between ${
+                      !isLast ? 'border-b border-white/5' : ''
+                    }`}
+                  >
                     <View className="flex-row items-center flex-1 mr-3">
                       <View
-                        style={{ backgroundColor: `${meta.color}20` }}
-                        className="w-10 h-10 rounded-full items-center justify-center mr-3"
+                        style={{ backgroundColor: `${meta.color}15` }}
+                        className="w-10 h-10 rounded-full items-center justify-center mr-3 border border-white/5"
                       >
                         <Ionicons name={meta.icon as any} size={20} color={meta.color} />
                       </View>
@@ -599,7 +637,7 @@ export default function WalletScreen() {
                   </View>
                 );
               })}
-            </LiquidGlassContainer>
+            </View>
           )}
         </View>
 

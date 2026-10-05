@@ -6,6 +6,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
 import * as z from 'zod';
 import { authActions } from '../../../core/auth/action/auth.actions';
+import { AmbientGlow } from '../../../presentation/components/ui/AmbientGlow';
 import { Button } from '../../../presentation/components/ui/Button';
 import { Input } from '../../../presentation/components/ui/Input';
 import { PhoneInput } from '../../../presentation/components/ui/PhoneInput';
@@ -65,7 +66,7 @@ export default function RegisterScreen(): React.JSX.Element {
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1 bg-obsidian relative overflow-hidden">
       {/* Champagne Ambient Glow Flare */}
-      <View className="absolute -top-20 self-center w-80 h-80 rounded-full bg-[#D4AF37]/10 blur-3xl pointer-events-none" />
+      <AmbientGlow position="top" height={380} opacity={0.25} />
 
       <ScrollView
         contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 40, paddingBottom: 260 }}

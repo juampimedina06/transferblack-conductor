@@ -1,11 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Platform, StyleSheet, View, ViewProps } from "react-native";
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
 import MapView, { PROVIDER_GOOGLE, Polyline, Marker } from "react-native-maps";
 import { Ionicons } from "@expo/vector-icons";
 import { THEME_COLORS } from "../../core/constants/theme";
 import { LatLng } from "../../core/location/interface/latLng.interface";
-import { FAB } from "../components/ui/FAB";
+import { MapControlsDock } from "../components/maps/MapControlsDock";
 import { useLocationStore } from "./store/useLocationStore";
 import { useDriverTripStore } from "../trip/store/useDriverTripStore";
 
@@ -99,20 +98,7 @@ export const CustomMap = ({
   const [isFollowingUser, setIsFollowingUser] = useState(true);
   const [isPolyline, setIsPolyline] = useState(true);
 
-  const targetBottom = (bottomOffset && bottomOffset > 0 ? bottomOffset : 90) + 16;
-  const animatedBottom = useSharedValue(targetBottom);
 
-  useEffect(() => {
-    animatedBottom.value = withSpring(targetBottom, {
-      damping: 18,
-      stiffness: 150,
-      mass: 0.8,
-    });
-  }, [targetBottom, animatedBottom]);
-
-  const fabContainerStyle = useAnimatedStyle(() => ({
-    bottom: animatedBottom.value,
-  }));
   const currentOffer = useDriverTripStore((state) => state.currentOffer);
   const activeTrip = useDriverTripStore((state) => state.activeTrip);
 
@@ -329,30 +315,15 @@ export const CustomMap = ({
         )}
       </MapView>
 
-      {/* Map Control Toggles (positioned bottom-right, dynamically adapting above bottom sheet/card) */}
-      <Animated.View 
-        className="absolute right-4 gap-2.5 z-10" 
-        style={fabContainerStyle}
-        pointerEvents="box-none"
-      >
-        <FAB
-          iconName={isPolyline ? "eye-outline" : "eye-off-outline"}
-          onPress={() => setIsPolyline(!isPolyline)}
-          style={{ position: 'relative' }}
-        />
-
-        <FAB
-          iconName={isFollowingUser ? "walk-outline" : "accessibility-outline"}
-          onPress={() => setIsFollowingUser(!isFollowingUser)}
-          style={{ position: 'relative' }}
-        />
-
-        <FAB
-          iconName="compass-outline"
-          onPress={moveToCurrentLocation}
-          style={{ position: 'relative' }}
-        />
-      </Animated.View>
+      {/* Map Control Toggles Dock (draggable, dark glass transparency) */}
+      <MapControlsDock
+        isPolyline={isPolyline}
+        onTogglePolyline={() => setIsPolyline(!isPolyline)}
+        isFollowingUser={isFollowingUser}
+        onToggleFollowUser={() => setIsFollowingUser(!isFollowingUser)}
+        onRecenter={moveToCurrentLocation}
+        bottomOffset={bottomOffset}
+      />
     </View>
   );
 };

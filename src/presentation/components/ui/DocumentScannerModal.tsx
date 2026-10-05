@@ -12,7 +12,10 @@ import {
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
+import { Image } from 'expo-image';
+import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { THEME_COLORS } from '../../../core/constants/theme';
 import { DocumentType } from '../../onboarding/store/useOnboardingStore';
 
@@ -148,7 +151,10 @@ export const DocumentScannerModal: React.FC<DocumentScannerModalProps> = ({
   const [flashEnabled, setFlashEnabled] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
+  const [capturedPhoto, setCapturedPhoto] = useState<{ uri: string; mimeType: string } | null>(null);
   const cameraRef = useRef<CameraView>(null);
+
+  const insets = useSafeAreaInsets();
 
   const docInfo: DocumentHelpInfo = DOCUMENT_HELP_DATA[docType] || {
     title: 'Documento',
@@ -165,13 +171,13 @@ export const DocumentScannerModal: React.FC<DocumentScannerModalProps> = ({
     try {
       setIsCapturing(true);
       const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.8,
+        quality: 0.85,
         skipProcessing: false,
       });
 
       if (photo?.uri) {
-        onPhotoCaptured(photo.uri, 'image/jpeg');
-        onClose();
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        setCapturedPhoto({ uri: photo.uri, mimeType: 'image/jpeg' });
       }
     } catch (e) {
       console.error('Error al capturar foto:', e);
@@ -187,15 +193,24 @@ export const DocumentScannerModal: React.FC<DocumentScannerModalProps> = ({
       return;
     }
     try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permiso requerido',
+          'Para cargar el documento desde tu galería necesitamos permiso de acceso a tus fotos.'
+        );
+        return;
+      }
+
       const result = await ImagePicker.launchImageLibraryAsync({
         allowsEditing: false,
-        quality: 0.8,
+        quality: 0.85,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
-        onPhotoCaptured(asset.uri, asset.mimeType || 'image/jpeg');
-        onClose();
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setCapturedPhoto({ uri: asset.uri, mimeType: asset.mimeType || 'image/jpeg' });
       }
     } catch (e) {
       console.error('Error al seleccionar de galería:', e);
@@ -203,215 +218,363 @@ export const DocumentScannerModal: React.FC<DocumentScannerModalProps> = ({
     }
   };
 
+  const handleDiscardPhoto = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setCapturedPhoto(null);
+  };
+
+  const handleConfirmPhoto = () => {
+    if (!capturedPhoto) return;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    const { uri, mimeType } = capturedPhoto;
+    setCapturedPhoto(null);
+    onPhotoCaptured(uri, mimeType);
+    onClose();
+  };
+
+  const handleCloseModal = () => {
+    setCapturedPhoto(null);
+    onClose();
+  };
+
   return (
-    <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={onClose}>
+    <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={handleCloseModal}>
       <View className="flex-1 bg-obsidian">
-        {/* Camera View */}
-        {permission?.granted ? (
-          <CameraView
-            ref={cameraRef}
-            style={StyleSheet.absoluteFill}
-            facing="back"
-            enableTorch={flashEnabled}
-          />
-        ) : (
-          <View className="flex-1 items-center justify-center p-6 bg-obsidian">
-            <Ionicons name="camera-outline" size={64} color={THEME_COLORS.gold} />
-            <Text className="text-xl font-montserrat-bold text-platinum text-center mt-4">
-              Permiso de Cámara
-            </Text>
-            <Text className="text-sm font-montserrat text-ash text-center mt-2 mb-6">
-              Para fotografiar tu documento con el visor inteligente necesitamos acceso a la cámara.
-            </Text>
-            <TouchableOpacity
-              onPress={requestPermission}
-              className="bg-gold py-3 px-8 rounded-xl mb-3"
-            >
-              <Text className="text-obsidian font-montserrat-bold text-sm">Habilitar Cámara</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={handlePickFromGallery}
-              className="py-3 px-6 rounded-xl border border-charcoal"
-            >
-              <Text className="text-platinum font-montserrat-medium text-sm">
-                Seleccionar de Galería
-              </Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Dark Vignette Overlay around Viewfinder */}
-        <View className="flex-1 justify-between p-6 pt-12 pb-8">
-          {/* Top Bar */}
-          <View>
-            <View className="flex-row items-center justify-between mb-4">
-              {/* Back Button */}
-              <TouchableOpacity
-                onPress={onClose}
-                activeOpacity={0.7}
-                className="w-10 h-10 rounded-full bg-obsidian/70 border border-charcoal/80 items-center justify-center"
-              >
-                <Ionicons name="chevron-back" size={20} color={THEME_COLORS.platinum} />
-              </TouchableOpacity>
-
-              {/* Step Pill */}
-              <View className="bg-obsidian/80 border border-gold/40 px-3.5 py-1.5 rounded-full">
-                <Text className="text-gold font-montserrat-bold text-xs tracking-wider uppercase">
-                  Paso {stepIndex} de {totalSteps}
-                </Text>
-              </View>
-
-              {/* Help Button */}
-              <TouchableOpacity
-                onPress={() => setShowHelpModal(true)}
-                activeOpacity={0.7}
-                className="px-3 py-1.5 rounded-full bg-obsidian/70 border border-charcoal/80 flex-row items-center gap-1"
-              >
-                <Ionicons name="help-circle-outline" size={16} color={THEME_COLORS.gold} />
-                <Text className="text-platinum font-montserrat-semibold text-xs">Ayuda</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Document Title & Subtitle */}
-            <View className="px-1">
-              <Text className="text-2xl font-montserrat-bold text-white mb-1.5">
-                {docInfo.title}
-              </Text>
-              <Text className="text-ash font-montserrat text-xs leading-4">
-                {docInfo.subtitle}
-              </Text>
-            </View>
-          </View>
-
-          {/* Central Viewfinder Frame */}
-          <View className="items-center justify-center my-auto">
-            <View
-              style={{ width: FRAME_WIDTH, height: FRAME_HEIGHT }}
-              className="relative items-center justify-center rounded-2xl bg-black/25 border border-white/20"
-            >
-              {/* Corner 1: Top-Left */}
-              <View className="absolute -top-1 -left-1 w-7 h-7 border-t-4 border-l-4 border-white rounded-tl-xl" />
-              {/* Corner 2: Top-Right */}
-              <View className="absolute -top-1 -right-1 w-7 h-7 border-t-4 border-r-4 border-white rounded-tr-xl" />
-              {/* Corner 3: Bottom-Left */}
-              <View className="absolute -bottom-1 -left-1 w-7 h-7 border-b-4 border-l-4 border-white rounded-bl-xl" />
-              {/* Corner 4: Bottom-Right */}
-              <View className="absolute -bottom-1 -right-1 w-7 h-7 border-b-4 border-r-4 border-white rounded-br-xl" />
-
-              {/* Center Watermark & Guide */}
-              <View className="items-center px-4">
-                <Ionicons name="id-card-outline" size={54} color="rgba(255,255,255,0.22)" />
-                <View className="w-48 h-[1px] bg-white/20 my-2" />
-                <Text className="text-white/40 font-montserrat-bold text-[11px] tracking-widest text-center uppercase">
-                  {docInfo.watermark}
-                </Text>
-              </View>
-            </View>
-
-            {/* Viewfinder Status & Tips */}
-            <View className="items-center mt-4">
-              <View className="flex-row items-center bg-obsidian/85 border border-charcoal/90 px-3 py-1 rounded-full mb-1.5">
-                <View className="w-2 h-2 rounded-full bg-red-500 mr-2" />
-                <Text className="text-platinum font-montserrat-medium text-xs">
-                  Documento requerido
-                </Text>
-              </View>
-              <Text className="text-ash font-montserrat text-xs text-center">
-                Evitá reflejos y bordes cortados en la toma
-              </Text>
-            </View>
-          </View>
-
-          {/* Bottom Controls Bar */}
-          <View>
-            <View className="flex-row items-center justify-around mb-4">
-              {/* Galería Button */}
-              <TouchableOpacity
-                onPress={handlePickFromGallery}
-                activeOpacity={0.7}
-                className="items-center"
-              >
-                <View className="w-14 h-14 rounded-full bg-obsidian/85 border border-charcoal/90 items-center justify-center mb-1">
-                  <Ionicons name="images-outline" size={22} color={THEME_COLORS.platinum} />
-                </View>
-                <Text className="text-ash font-montserrat-medium text-xs">Galería</Text>
-              </TouchableOpacity>
-
-              {/* Shutter Button (Gold Concentric Ring) */}
-              <TouchableOpacity
-                onPress={handleCapture}
-                disabled={isCapturing}
-                activeOpacity={0.8}
-                className="items-center justify-center"
-              >
-                <View
-                  style={{
-                    width: 78,
-                    height: 78,
-                    borderRadius: 39,
-                    borderWidth: 3,
-                    borderColor: THEME_COLORS.gold,
-                    backgroundColor: 'rgba(197, 160, 89, 0.15)',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
+        {capturedPhoto ? (
+          /* =======================================================
+             VISTA DE REVISIÓN Y CONFIRMACIÓN DE LA FOTO CAPTURADA
+             ======================================================= */
+          <View
+            className="flex-1 bg-[#0A0B10] flex-col justify-between"
+            style={{
+              paddingTop: Math.max(insets.top, 24),
+              paddingBottom: Math.max(insets.bottom, 20),
+            }}
+          >
+            {/* Top Bar con encabezado glass */}
+            <View className="px-6 pb-2" style={{ zIndex: 10, elevation: 10 }}>
+              <View className="flex-row items-center justify-between mb-3">
+                {/* Botón Volver a la cámara */}
+                <TouchableOpacity
+                  onPress={handleDiscardPhoto}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  className="w-11 h-11 rounded-2xl bg-white/10 border border-white/20 items-center justify-center active:scale-95"
+                  accessibilityRole="button"
+                  accessibilityLabel="Volver a la cámara para sacar otra foto"
                 >
-                  <View
-                    style={{
-                      width: 62,
-                      height: 62,
-                      borderRadius: 31,
-                      backgroundColor: THEME_COLORS.gold,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      shadowColor: THEME_COLORS.gold,
-                      shadowOffset: { width: 0, height: 0 },
-                      shadowOpacity: 0.6,
-                      shadowRadius: 10,
-                      elevation: 8,
-                    }}
+                  <Ionicons name="arrow-back" size={20} color="#FFF" />
+                </TouchableOpacity>
+
+                {/* Paso actual */}
+                <View className="bg-white/5 border border-gold/40 px-3.5 py-1.5 rounded-full">
+                  <Text className="text-gold font-montserrat-bold text-xs tracking-wider uppercase">
+                    Paso {stepIndex} de {totalSteps}
+                  </Text>
+                </View>
+
+                {/* Botón Ayuda */}
+                <TouchableOpacity
+                  onPress={() => setShowHelpModal(true)}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  className="w-11 h-11 rounded-2xl bg-white/10 border border-white/20 items-center justify-center active:scale-95"
+                  accessibilityRole="button"
+                  accessibilityLabel="Ver ayuda del documento"
+                >
+                  <Ionicons name="help-circle-outline" size={22} color={THEME_COLORS.gold} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Título de verificación */}
+              <View className="bg-white/[0.04] border border-white/10 rounded-2xl p-3.5 shadow-xl shadow-black">
+                <View className="flex-row items-center justify-between mb-1">
+                  <View className="flex-row items-center gap-2">
+                    <View className="w-2.5 h-2.5 rounded-full bg-gold" />
+                    <Text className="text-sm font-montserrat-bold text-white">
+                      Verificá tu fotografía
+                    </Text>
+                  </View>
+                  <Text className="text-gold font-montserrat-bold text-xs uppercase tracking-wider">
+                    {docInfo.title}
+                  </Text>
+                </View>
+                <Text className="text-ash font-montserrat text-[11px] leading-4">
+                  Asegurate de que los números, firmas y bordes sean 100% legibles antes de confirmar.
+                </Text>
+              </View>
+            </View>
+
+            {/* Foto capturada en área central sin interferencias táctiles */}
+            <View className="flex-1 px-5 py-2 items-center justify-center">
+              <View className="w-full h-full rounded-2xl overflow-hidden bg-black/80 border border-white/15 items-center justify-center shadow-2xl shadow-black">
+                <Image
+                  source={{ uri: capturedPhoto.uri }}
+                  style={{ width: '100%', height: '100%' }}
+                  contentFit="contain"
+                  transition={150}
+                />
+              </View>
+            </View>
+
+            {/* Bottom Controls: La X para sacar otra y el Tick (✓) para subir */}
+            <View
+              className="px-6 pt-4 pb-2 bg-black/90 border-t border-white/15"
+              style={{ zIndex: 10, elevation: 10 }}
+            >
+              <Text className="text-center text-ash font-montserrat text-xs mb-3">
+                ¿La foto se ve clara? Podés descartarla para sacar otra o confirmar para subir.
+              </Text>
+
+              <View className="flex-row items-center justify-center gap-10">
+                {/* Botón X - Sacar otra foto */}
+                <TouchableOpacity
+                  activeOpacity={0.75}
+                  onPress={handleDiscardPhoto}
+                  hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
+                  className="items-center"
+                  accessibilityRole="button"
+                  accessibilityLabel="Descartar y sacar otra foto"
+                >
+                  <View className="w-16 h-16 rounded-full bg-red-500/20 border-2 border-red-500 items-center justify-center shadow-lg shadow-black active:scale-95">
+                    <Ionicons name="close" size={32} color="#EF4444" />
+                  </View>
+                  <Text className="text-red-400 font-montserrat-semibold text-xs mt-1.5">
+                    Sacar otra
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Botón Tick (✓) - Confirmar y subir documento */}
+                <TouchableOpacity
+                  activeOpacity={0.75}
+                  onPress={handleConfirmPhoto}
+                  hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
+                  className="items-center"
+                  accessibilityRole="button"
+                  accessibilityLabel="Confirmar y subir documento"
+                >
+                  <View className="w-16 h-16 rounded-full bg-emerald-500/25 border-2 border-emerald-400 items-center justify-center shadow-lg shadow-black active:scale-95">
+                    <Ionicons name="checkmark" size={34} color="#34D399" />
+                  </View>
+                  <Text className="text-emerald-400 font-montserrat-semibold text-xs mt-1.5">
+                    Subir foto
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        ) : (
+          /* =======================================================
+             VISTA NORMAL DE CÁMARA / VISOR INTELIGENTE
+             ======================================================= */
+          <>
+            {permission?.granted ? (
+              <CameraView
+                ref={cameraRef}
+                style={StyleSheet.absoluteFill}
+                facing="back"
+                enableTorch={flashEnabled}
+              />
+            ) : (
+              <View className="flex-1 items-center justify-center p-6 bg-obsidian">
+                <Ionicons name="camera-outline" size={64} color={THEME_COLORS.gold} />
+                <Text className="text-xl font-montserrat-bold text-platinum text-center mt-4">
+                  Permiso de Cámara
+                </Text>
+                <Text className="text-sm font-montserrat text-ash text-center mt-2 mb-6">
+                  Para fotografiar tu documento con el visor inteligente necesitamos acceso a la cámara.
+                </Text>
+                <TouchableOpacity
+                  onPress={requestPermission}
+                  className="bg-gold py-3 px-8 rounded-xl mb-3"
+                >
+                  <Text className="text-obsidian font-montserrat-bold text-sm">Habilitar Cámara</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handlePickFromGallery}
+                  className="py-3 px-6 rounded-xl border border-charcoal"
+                >
+                  <Text className="text-platinum font-montserrat-medium text-sm">
+                    Seleccionar de Galería
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Dark Vignette Overlay around Viewfinder */}
+            <View className="flex-1 justify-between p-6 pt-12 pb-8">
+              {/* Top Bar */}
+              <View>
+                <View className="flex-row items-center justify-between mb-4">
+                  {/* Back Button */}
+                  <TouchableOpacity
+                    onPress={handleCloseModal}
+                    activeOpacity={0.7}
+                    className="w-10 h-10 rounded-full bg-obsidian/70 border border-charcoal/80 items-center justify-center"
                   >
-                    {isCapturing ? (
-                      <ActivityIndicator size="small" color="#0A0A0C" />
-                    ) : (
-                      <View className="w-5 h-5 rounded-full border-2 border-obsidian/40" />
-                    )}
+                    <Ionicons name="chevron-back" size={20} color={THEME_COLORS.platinum} />
+                  </TouchableOpacity>
+
+                  {/* Step Pill */}
+                  <View className="bg-obsidian/80 border border-gold/40 px-3.5 py-1.5 rounded-full">
+                    <Text className="text-gold font-montserrat-bold text-xs tracking-wider uppercase">
+                      Paso {stepIndex} de {totalSteps}
+                    </Text>
+                  </View>
+
+                  {/* Help Button */}
+                  <TouchableOpacity
+                    onPress={() => setShowHelpModal(true)}
+                    activeOpacity={0.7}
+                    className="px-3 py-1.5 rounded-full bg-obsidian/70 border border-charcoal/80 flex-row items-center gap-1"
+                  >
+                    <Ionicons name="help-circle-outline" size={16} color={THEME_COLORS.gold} />
+                    <Text className="text-platinum font-montserrat-semibold text-xs">Ayuda</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Document Title & Subtitle */}
+                <View className="px-1">
+                  <Text className="text-2xl font-montserrat-bold text-white mb-1.5">
+                    {docInfo.title}
+                  </Text>
+                  <Text className="text-ash font-montserrat text-xs leading-4">
+                    {docInfo.subtitle}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Central Viewfinder Frame */}
+              <View className="items-center justify-center my-auto">
+                <View
+                  style={{ width: FRAME_WIDTH, height: FRAME_HEIGHT }}
+                  className="relative items-center justify-center rounded-2xl bg-black/25 border border-white/20"
+                >
+                  {/* Corner 1: Top-Left */}
+                  <View className="absolute -top-1 -left-1 w-7 h-7 border-t-4 border-l-4 border-white rounded-tl-xl" />
+                  {/* Corner 2: Top-Right */}
+                  <View className="absolute -top-1 -right-1 w-7 h-7 border-t-4 border-r-4 border-white rounded-tr-xl" />
+                  {/* Corner 3: Bottom-Left */}
+                  <View className="absolute -bottom-1 -left-1 w-7 h-7 border-b-4 border-l-4 border-white rounded-bl-xl" />
+                  {/* Corner 4: Bottom-Right */}
+                  <View className="absolute -bottom-1 -right-1 w-7 h-7 border-b-4 border-r-4 border-white rounded-br-xl" />
+
+                  {/* Center Watermark & Guide */}
+                  <View className="items-center px-4">
+                    <Ionicons name="id-card-outline" size={54} color="rgba(255,255,255,0.22)" />
+                    <View className="w-48 h-[1px] bg-white/20 my-2" />
+                    <Text className="text-white/40 font-montserrat-bold text-[11px] tracking-widest text-center uppercase">
+                      {docInfo.watermark}
+                    </Text>
                   </View>
                 </View>
-              </TouchableOpacity>
 
-              {/* Flash / Torch Toggle Button */}
-              <TouchableOpacity
-                onPress={() => setFlashEnabled((prev) => !prev)}
-                activeOpacity={0.7}
-                className="items-center"
-              >
-                <View
-                  className={`w-14 h-14 rounded-full items-center justify-center mb-1 border ${
-                    flashEnabled
-                      ? 'bg-gold/20 border-gold'
-                      : 'bg-obsidian/85 border-charcoal/90'
-                  }`}
-                >
-                  <Ionicons
-                    name={flashEnabled ? 'flash' : 'flash-off-outline'}
-                    size={22}
-                    color={flashEnabled ? THEME_COLORS.gold : THEME_COLORS.platinum}
-                  />
+                {/* Viewfinder Status & Tips */}
+                <View className="items-center mt-4">
+                  <View className="flex-row items-center bg-obsidian/85 border border-charcoal/90 px-3 py-1 rounded-full mb-1.5">
+                    <View className="w-2 h-2 rounded-full bg-red-500 mr-2" />
+                    <Text className="text-platinum font-montserrat-medium text-xs">
+                      Documento requerido
+                    </Text>
+                  </View>
+                  <Text className="text-ash font-montserrat text-xs text-center">
+                    Evitá reflejos y bordes cortados en la toma
+                  </Text>
                 </View>
-                <Text className="text-ash font-montserrat-medium text-xs">Flash</Text>
-              </TouchableOpacity>
-            </View>
+              </View>
 
-            {/* Security Footnote */}
-            <View className="flex-row items-center justify-center gap-1.5">
-              <Ionicons name="shield-checkmark" size={14} color={THEME_COLORS.gold} />
-              <Text className="text-ash/90 font-montserrat text-xs">
-                Validación segura de documentación vehicular VIP
-              </Text>
+              {/* Bottom Controls Bar */}
+              <View>
+                <View className="flex-row items-center justify-around mb-4">
+                  {/* Galería Button */}
+                  <TouchableOpacity
+                    onPress={handlePickFromGallery}
+                    activeOpacity={0.7}
+                    className="items-center"
+                  >
+                    <View className="w-14 h-14 rounded-full bg-obsidian/85 border border-charcoal/90 items-center justify-center mb-1">
+                      <Ionicons name="images-outline" size={22} color={THEME_COLORS.platinum} />
+                    </View>
+                    <Text className="text-ash font-montserrat-medium text-xs">Galería</Text>
+                  </TouchableOpacity>
+
+                  {/* Shutter Button (Gold Concentric Ring) */}
+                  <TouchableOpacity
+                    onPress={handleCapture}
+                    disabled={isCapturing}
+                    activeOpacity={0.8}
+                    className="items-center justify-center"
+                  >
+                    <View
+                      style={{
+                        width: 78,
+                        height: 78,
+                        borderRadius: 39,
+                        borderWidth: 3,
+                        borderColor: THEME_COLORS.gold,
+                        backgroundColor: 'rgba(197, 160, 89, 0.15)',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <View
+                        style={{
+                          width: 62,
+                          height: 62,
+                          borderRadius: 31,
+                          backgroundColor: THEME_COLORS.gold,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          shadowColor: THEME_COLORS.gold,
+                          shadowOffset: { width: 0, height: 0 },
+                          shadowOpacity: 0.6,
+                          shadowRadius: 10,
+                          elevation: 8,
+                        }}
+                      >
+                        {isCapturing ? (
+                          <ActivityIndicator size="small" color="#0A0A0C" />
+                        ) : (
+                          <View className="w-5 h-5 rounded-full border-2 border-obsidian/40" />
+                        )}
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+
+                  {/* Flash / Torch Toggle Button */}
+                  <TouchableOpacity
+                    onPress={() => setFlashEnabled((prev) => !prev)}
+                    activeOpacity={0.7}
+                    className="items-center"
+                  >
+                    <View
+                      className={`w-14 h-14 rounded-full items-center justify-center mb-1 border ${
+                        flashEnabled
+                          ? 'bg-gold/20 border-gold'
+                          : 'bg-obsidian/85 border-charcoal/90'
+                      }`}
+                    >
+                      <Ionicons
+                        name={flashEnabled ? 'flash' : 'flash-off-outline'}
+                        size={22}
+                        color={flashEnabled ? THEME_COLORS.gold : THEME_COLORS.platinum}
+                      />
+                    </View>
+                    <Text className="text-ash font-montserrat-medium text-xs">Flash</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Security Footnote */}
+                <View className="flex-row items-center justify-center gap-1.5">
+                  <Ionicons name="shield-checkmark" size={14} color={THEME_COLORS.gold} />
+                  <Text className="text-ash/90 font-montserrat text-xs">
+                    Validación segura de documentación vehicular VIP
+                  </Text>
+                </View>
+              </View>
             </View>
-          </View>
-        </View>
+          </>
+        )}
 
         {/* Modal Bottom Sheet: AYUDA CONTEXTUAL */}
         <Modal

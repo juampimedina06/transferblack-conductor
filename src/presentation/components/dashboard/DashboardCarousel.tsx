@@ -57,16 +57,16 @@ export const DashboardCarousel = ({ stats, onPressProgress }: DashboardCarouselP
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             router.push('/wallet' as any);
           }}
-          style={{ width: CARD_WIDTH, marginHorizontal: 7 }}
+          style={{ width: CARD_WIDTH, marginHorizontal: 8 }}
           accessibilityRole="button"
           accessibilityLabel="Ver detalle de la Bóveda"
         >
           <LiquidGlassContainer
             variant={isNegative ? 'danger' : 'gold'}
-            className="rounded-[26px] p-4.5 justify-between min-h-[148px]"
+            className="rounded-[28px] p-5 justify-between min-h-[160px]"
           >
             <View>
-              <View className="flex-row justify-between items-center mb-1.5">
+              <View className="flex-row justify-between items-center mb-2">
                 <Text className={`font-montserrat-semibold text-xs uppercase tracking-wider ${isNegative ? 'text-red-300' : 'text-ash'}`}>
                   {isNegative ? 'Saldo Actual (Deuda)' : 'Ganancias Hoy'}
                 </Text>
@@ -80,20 +80,22 @@ export const DashboardCarousel = ({ stats, onPressProgress }: DashboardCarouselP
               </View>
 
               <Text 
+                numberOfLines={1}
+                adjustsFontSizeToFit
                 style={{ fontVariant: ['tabular-nums'] }}
-                className={`font-montserrat-bold text-3xl mb-1 ${isNegative ? 'text-red-400' : 'text-white'}`}
+                className={`font-montserrat-bold text-3xl mb-1.5 ${isNegative ? 'text-red-400' : 'text-white'}`}
               >
                 {isNegative ? `-$${Math.abs(displayAmount).toLocaleString('es-AR', { minimumFractionDigits: 2 })}` : `$${displayAmount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`}
               </Text>
             </View>
 
-            <View className="flex-row justify-between items-center pt-2.5 border-t border-white/10">
-              <Text className={`font-montserrat text-xs flex-1 mr-2 ${isNegative ? 'text-red-300/80' : 'text-ash'}`}>
+            <View className="flex-row justify-between items-center pt-3 border-t border-white/10">
+              <Text className={`font-montserrat text-xs flex-1 mr-3 ${isNegative ? 'text-red-300/80' : 'text-ash'}`} numberOfLines={1}>
                 {isNegative 
                   ? `Comisiones en ${currentStats.completedTripsToday} viajes en efectivo`
                   : `${currentStats.completedTripsToday} solicitudes completadas`}
               </Text>
-              <View className="flex-row items-center bg-white/5 px-2.5 py-1 rounded-full border border-white/10">
+              <View className="flex-row items-center bg-white/5 px-3 py-1.5 rounded-full border border-white/10">
                 <Text className="text-gold font-montserrat-semibold text-[11px] uppercase mr-1">Bóveda</Text>
                 <Ionicons name="chevron-forward" size={12} color={THEME_COLORS.gold} />
               </View>
@@ -108,25 +110,25 @@ export const DashboardCarousel = ({ stats, onPressProgress }: DashboardCarouselP
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             onPressProgress?.();
           }}
-          style={{ width: CARD_WIDTH, marginHorizontal: 7 }}
+          style={{ width: CARD_WIDTH, marginHorizontal: 8 }}
           accessibilityRole="button"
           accessibilityLabel="Ver progreso del conductor"
         >
           <LiquidGlassContainer
             variant="default"
-            className="rounded-[26px] p-4.5 justify-between min-h-[148px]"
+            className="rounded-[28px] p-5 justify-between min-h-[160px]"
           >
             <View>
-              <View className="flex-row justify-between items-center mb-1.5">
+              <View className="flex-row justify-between items-center mb-2">
                 <Text className="text-ash font-montserrat-semibold text-xs uppercase tracking-wider">Tasa de Aceptación</Text>
                 <View className="w-8 h-8 rounded-xl bg-white/10 items-center justify-center">
                   <Ionicons name="trending-up-outline" size={17} color={THEME_COLORS.platinum} />
                 </View>
               </View>
-              <View className="flex-row items-baseline">
+              <View className="flex-row items-baseline mb-1">
                 <Text 
                   style={{ fontVariant: ['tabular-nums'] }}
-                  className="text-platinum font-montserrat-bold text-3xl mr-1.5"
+                  className="text-platinum font-montserrat-bold text-3xl mr-2"
                 >
                   {currentStats.acceptanceRate}%
                 </Text>
@@ -134,16 +136,16 @@ export const DashboardCarousel = ({ stats, onPressProgress }: DashboardCarouselP
                   {currentStats.acceptanceRate >= 80 ? 'Excelente' : 'A mejorar'}
                 </Text>
               </View>
-              <Text className="text-ash/80 font-montserrat text-xs mt-1">
+              <Text className="text-ash/80 font-montserrat text-xs mt-0.5" numberOfLines={1}>
                 Mantené tu tasa alta para recibir prioridad en viajes VIP.
               </Text>
             </View>
 
-            <View className="flex-row justify-between items-center pt-2.5 border-t border-white/10">
+            <View className="flex-row justify-between items-center pt-3 border-t border-white/10">
               <Text className="text-ash font-montserrat text-xs">
                 Rendimiento general
               </Text>
-              <View className="flex-row items-center bg-white/5 px-2.5 py-1 rounded-full border border-white/10">
+              <View className="flex-row items-center bg-white/5 px-3 py-1.5 rounded-full border border-white/10">
                 <Text className="text-gold font-montserrat-semibold text-[11px] uppercase mr-1">
                   Ver Progreso
                 </Text>

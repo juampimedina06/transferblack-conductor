@@ -25,6 +25,7 @@ import {
 } from '../../presentation/auth/schemas/forgot-password.schema';
 import { useForgotPasswordStore } from '../../presentation/auth/store/useForgotPasswordStore';
 import { Button } from '../../presentation/components/ui/Button';
+import { AmbientGlow } from '../../presentation/components/ui/AmbientGlow';
 
 export default function ForgotPasswordVerifyScreen(): React.JSX.Element {
   const [isLoading, setIsLoading] = useState(false);
@@ -139,10 +140,7 @@ export default function ForgotPasswordVerifyScreen(): React.JSX.Element {
   return (
     <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-obsidian">
       {/* Ambient background glow */}
-      <View
-        pointerEvents="none"
-        className="absolute -top-24 -left-24 w-80 h-80 rounded-full bg-[#D4AF37]/10 blur-3xl"
-      />
+      <AmbientGlow position="top-left" height={360} opacity={0.22} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         className="flex-1"
