@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
   Easing,
@@ -21,6 +21,7 @@ import { useOfferTimer } from '../../trip/hooks/useOfferTimer';
 import { useDriverTripStore } from '../../trip/store/useDriverTripStore';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { AmbientGlow } from '../ui/AmbientGlow';
+import { offerAlarmService } from '../../trip/services/offerAlarmService';
 
 interface ConnectionBottomSheetProps {
   isAvailable: boolean;
@@ -101,32 +102,60 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
     };
   });
 
-  // Offer TTL Timer
+  // Offer TTL Timer & Expiration calculation
   const ttl = currentOffer?.ttlSeconds || 15;
   const offerKey = currentOffer ? `${currentOffer.tripId}-${currentOffer.offerId || ''}` : undefined;
-  const handleExpire = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    clearOffer();
-  };
+  const currentExpiresAt = currentOffer?.expiresAt;
 
-  const { progress } = useOfferTimer(ttl, handleExpire, !!currentOffer, offerKey);
-  const [prevOfferKey, setPrevOfferKey] = useState<string | undefined>(offerKey);
+  const handleExpire = useCallback(() => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    void offerAlarmService.stop();
+    clearOffer();
+  }, [clearOffer]);
+
+  const { progress } = useOfferTimer(ttl, handleExpire, !!currentOffer, offerKey, currentExpiresAt);
+  const [prevKey, setPrevKey] = useState<string | undefined>(offerKey);
   const [secondsLeft, setSecondsLeft] = useState<number>(ttl);
 
-  if (offerKey !== prevOfferKey) {
-    setPrevOfferKey(offerKey);
+  if (offerKey !== prevKey) {
+    setPrevKey(offerKey);
     setSecondsLeft(ttl);
   }
+
+  useEffect(() => {
+    if (currentOffer) {
+      void offerAlarmService.start();
+    } else {
+      void offerAlarmService.stop();
+    }
+    return () => {
+      void offerAlarmService.stop();
+    };
+  }, [currentOffer]);
 
   useEffect(() => {
     if (!currentOffer) return;
 
     const interval = setInterval(() => {
-      setSecondsLeft((prev) => (prev <= 1 ? 0 : prev - 1));
+      if (currentExpiresAt) {
+        const remaining = Math.max(0, Math.floor((new Date(currentExpiresAt).getTime() - Date.now()) / 1000));
+        setSecondsLeft(remaining);
+        if (remaining <= 0) {
+          handleExpire();
+        }
+      } else {
+        setSecondsLeft((prev) => {
+          if (prev <= 1) {
+            handleExpire();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [currentOffer, offerKey]);
+  }, [currentOffer, currentExpiresAt, handleExpire]);
 
   // Top Edge Hairline Progress Bar
   const timerBarStyle = useAnimatedStyle(() => {
@@ -229,10 +258,12 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
 
       setActiveTrip(activeTrip);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      void offerAlarmService.stop();
       clearAllOffers();
     } catch (error: any) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Aviso', error.message);
+      void offerAlarmService.stop();
       clearOffer();
     } finally {
       setIsAccepting(false);
@@ -241,6 +272,7 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
 
   const handleReject = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    void offerAlarmService.stop();
     clearOffer();
   };
 

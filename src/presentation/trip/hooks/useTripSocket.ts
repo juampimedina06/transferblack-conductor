@@ -2,13 +2,16 @@ import { useEffect } from 'react';
 import { Alert } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
+import * as Notifications from 'expo-notifications';
 import { socket } from '../../../core/socket/socket';
 import { useDriverTripStore } from '../store/useDriverTripStore';
 import { TripOfferPayload } from '../../../core/trip/interface/trip.interface';
 import { syncActiveTripState } from './useActiveTripSync';
+import { offerAlarmService } from '../services/offerAlarmService';
 
 export const useTripSocket = () => {
   const enqueueOffer = useDriverTripStore((state) => state.enqueueOffer);
+  const cancelOffer = useDriverTripStore((state) => state.cancelOffer);
   const activeTrip = useDriverTripStore((state) => state.activeTrip);
   const setActiveTrip = useDriverTripStore((state) => state.setActiveTrip);
   const updateTripStatus = useDriverTripStore((state) => state.updateTripStatus);
@@ -52,9 +55,17 @@ export const useTripSocket = () => {
       await syncActiveTripState();
     };
 
+    const handleOfferCancel = (payload: { offerId: string; tripId: string; reason: string }) => {
+      console.log('🚫 [Socket] OFERTA CANCELADA:', payload);
+      cancelOffer(payload.offerId || payload.tripId);
+      void offerAlarmService.stop();
+      void Notifications.dismissAllNotificationsAsync().catch(() => {});
+    };
+
     socket.on('connect', handleConnect);
     socket.on('connect_error', handleConnectError);
     socket.on('trip:offer', handleNewOffer);
+    socket.on('trip:offer:cancel', handleOfferCancel);
     socket.on('trip:scheduled_reminder', handleScheduledReminder);
     socket.on('trip:assigned', handleTripAssigned);
 
@@ -66,10 +77,11 @@ export const useTripSocket = () => {
       socket.off('connect', handleConnect);
       socket.off('connect_error', handleConnectError);
       socket.off('trip:offer', handleNewOffer);
+      socket.off('trip:offer:cancel', handleOfferCancel);
       socket.off('trip:scheduled_reminder', handleScheduledReminder);
       socket.off('trip:assigned', handleTripAssigned);
     };
-  }, [enqueueOffer]);
+  }, [enqueueOffer, cancelOffer]);
 
   // Manejo de la sala del viaje activo (ride:join / trip:status_changed / ride:leave)
   useEffect(() => {

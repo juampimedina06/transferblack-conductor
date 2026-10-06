@@ -23,6 +23,7 @@ import { ProfileSkeleton } from '@/presentation/components/profile/ProfileSkelet
 import { VehicleCard } from '@/presentation/components/profile/VehicleCard';
 import { ProfileOptionItem } from '@/presentation/components/profile/ProfileOptionItem';
 import { usePushNotifications } from '@/presentation/hooks/usePushNotifications';
+import { pushNotificationService } from '@/core/push/services/pushNotificationService';
 
 export default function DriverProfileScreen() {
   const user = useAuthStore((state) => state.user);
@@ -86,7 +87,10 @@ export default function DriverProfileScreen() {
         useDriverTripStore.getState().setActiveTrip(null);
       }
 
-      // 3. Invalidar Refresh Token en la API y purgar credenciales de SecureStore + Zustand
+      // 3. Revocar push token en backend
+      await pushNotificationService.revoke();
+
+      // 4. Invalidar Refresh Token en la API y purgar credenciales de SecureStore + Zustand
       await logout();
 
       // 4. Redirección limpia al Stack de Login impidiendo volver atrás
