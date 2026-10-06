@@ -59,8 +59,11 @@ export type DriverDocumentStatus =
 
 export interface DriverDocumentItem {
   id: string;
-  type: string;
+  type?: string;
+  documentType: string;
   status: DriverDocumentStatus;
-  expiresAt: string;
-  daysRemaining?: number;
+  expiresAt: string | null;
+  daysRemaining?: number | null;
+  daysUntilExpiry?: number | null;
+  rejectionReason?: string | null;
 }

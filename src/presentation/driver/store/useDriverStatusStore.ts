@@ -8,6 +8,7 @@ import {
 } from '@/core/driver/interface/driverStatus.interface';
 import { getDriverStatus, getDriverDocuments } from '@/core/driver/actions/driverStatus.actions';
 import { socket } from '@/core/socket/socket';
+import { setOnDocumentExpiryHandler } from '@/core/api/transferApi';
 
 interface DriverStatusState {
   consecutiveCancellations: number;
@@ -113,9 +114,17 @@ export const useDriverStatusStore = create<DriverStatusState>()(
         socket.on('driver:dispatch:suspended', handleSuspended);
         socket.on('driver:compliance:changed', handleComplianceChanged);
 
+        setOnDocumentExpiryHandler(() => {
+          set((state) => ({
+            compliance: { ...state.compliance, status: 'suspended_documents' },
+          }));
+          void get().fetchStatus();
+        });
+
         return () => {
           socket.off('driver:dispatch:suspended', handleSuspended);
           socket.off('driver:compliance:changed', handleComplianceChanged);
+          setOnDocumentExpiryHandler(null);
         };
       },
     }),

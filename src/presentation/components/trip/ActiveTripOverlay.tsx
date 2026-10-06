@@ -20,7 +20,6 @@ import { THEME_COLORS } from '../../../core/constants/theme';
 import {
   completeTrip,
   driverArrived,
-  driverCancelTrip,
   startTrip,
 } from '../../../core/trip/actions/trip.actions';
 import {

@@ -36,6 +36,7 @@ vi.mock('../../src/core/api/transferApi', () => ({
     get: vi.fn(),
     post: vi.fn(),
   },
+  setOnDocumentExpiryHandler: vi.fn(),
 }));
 
 vi.mock('@react-native-async-storage/async-storage', () => {

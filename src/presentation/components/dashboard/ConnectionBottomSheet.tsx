@@ -23,6 +23,7 @@ import { useAuthStore } from '../../auth/store/useAuthStore';
 import { AmbientGlow } from '../ui/AmbientGlow';
 import { offerAlarmService } from '../../trip/services/offerAlarmService';
 import { useDriverStatusStore } from '../../driver/store/useDriverStatusStore';
+import { DocumentExpirationBlockModal } from '../compliance/DocumentExpirationBlockModal';
 
 interface ConnectionBottomSheetProps {
   isAvailable: boolean;
@@ -40,10 +41,28 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
   const setActiveTrip = useDriverTripStore((state) => state.setActiveTrip);
   const lastKnownLocation = useLocationStore((state) => state.lastKnownLocation);
   const dispatchSuspendedUntil = useDriverStatusStore((state) => state.dispatchSuspendedUntil);
+  const compliance = useDriverStatusStore((state) => state.compliance);
 
-  const isSuspended = Boolean(
-    dispatchSuspendedUntil && new Date(dispatchSuspendedUntil).getTime() > Date.now()
-  );
+  const [isDocBlockModalVisible, setIsDocBlockModalVisible] = useState(false);
+  const [isSuspended, setIsSuspended] = useState(false);
+
+  useEffect(() => {
+    if (!dispatchSuspendedUntil) {
+      return;
+    }
+
+    const checkSuspended = () => {
+      setIsSuspended(new Date(dispatchSuspendedUntil).getTime() > Date.now());
+    };
+
+    const timer = setTimeout(checkSuspended, 0);
+    const interval = setInterval(checkSuspended, 1000);
+
+    return () => {
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
+  }, [dispatchSuspendedUntil]);
 
   const [vehicleId, setVehicleId] = useState<string | null>(null);
   const [isAccepting, setIsAccepting] = useState(false);
@@ -646,6 +665,11 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              if (!isAvailable && compliance.status === 'suspended_documents') {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                setIsDocBlockModalVisible(true);
+                return;
+              }
               if (!isAvailable && isSuspended) {
                 Alert.alert(
                   'Despacho Pausado',
@@ -677,6 +701,12 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Modal bloqueante por documentación vencida */}
+      <DocumentExpirationBlockModal
+        visible={isDocBlockModalVisible}
+        onClose={() => setIsDocBlockModalVisible(false)}
+      />
     </View>
   );
 };

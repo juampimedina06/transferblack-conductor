@@ -27,6 +27,7 @@ import { TripReceiptModal } from '../../presentation/components/trip/TripReceipt
 import { useWalletStore } from '../../presentation/wallet/store/useWalletStore';
 import { pushNotificationService } from '../../core/push/services/pushNotificationService';
 import { DispatchSuspensionBanner } from '../../presentation/components/dashboard/DispatchSuspensionBanner';
+import { ComplianceRenewalBanner } from '../../presentation/components/compliance/ComplianceRenewalBanner';
 import { useDriverStatusStore } from '../../presentation/driver/store/useDriverStatusStore';
 
 export default function DriverDashboardScreen() {
@@ -160,6 +161,9 @@ export default function DriverDashboardScreen() {
         
         {/* Banner de suspensión temporal de despacho por cancelaciones */}
         <DispatchSuspensionBanner />
+
+        {/* Banner de renovación de documentación próxima a vencer (15 días) */}
+        <ComplianceRenewalBanner />
 
         {/* Warning Banner */}
         {summary?.is_cash_restricted && (

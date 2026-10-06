@@ -2,9 +2,10 @@ import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
 import { registerDriverPushToken, revokeDriverPushToken } from '../actions/pushToken.actions';
-import { parsePushTripOffer, isPushTripCancel } from '../utils/pushOfferParser';
+import { parsePushTripOffer, isPushTripCancel, isPushDocumentEvent } from '../utils/pushOfferParser';
 import { offerAlarmService } from '@/presentation/trip/services/offerAlarmService';
 import { useDriverTripStore } from '@/presentation/trip/store/useDriverTripStore';
+import { useDriverStatusStore } from '@/presentation/driver/store/useDriverStatusStore';
 
 export const BACKGROUND_NOTIFICATION_TASK = 'BACKGROUND_TRIP_OFFER_TASK';
 export const TRIP_OFFERS_CHANNEL_ID = 'trip-offers';
@@ -37,6 +38,13 @@ try {
 
       const rawData = (data as any)?.notification?.data || (data as any)?.data;
       if (!rawData) return;
+
+      if (isPushDocumentEvent(rawData)) {
+        console.log('📋 [PushBackground] Evento de documentación recibido:', rawData);
+        void useDriverStatusStore.getState().fetchStatus();
+        void useDriverStatusStore.getState().fetchDocuments();
+        return;
+      }
 
       if (isPushTripCancel(rawData)) {
         console.log('🚫 [PushBackground] Cancelación recibida en background:', rawData);
@@ -172,6 +180,13 @@ class PushNotificationService {
           const rawData = notification.request.content.data;
           if (!rawData) return;
 
+          if (isPushDocumentEvent(rawData)) {
+            console.log('📋 [PushForeground] Evento de documentación recibido:', rawData);
+            void useDriverStatusStore.getState().fetchStatus();
+            void useDriverStatusStore.getState().fetchDocuments();
+            return;
+          }
+
           if (isPushTripCancel(rawData)) {
             await offerAlarmService.stop();
             await Notifications.dismissAllNotificationsAsync().catch(() => {});
@@ -192,6 +207,12 @@ class PushNotificationService {
         async (response) => {
           const rawData = response.notification.request.content.data;
           if (!rawData) return;
+
+          if (isPushDocumentEvent(rawData)) {
+            void useDriverStatusStore.getState().fetchStatus();
+            void useDriverStatusStore.getState().fetchDocuments();
+            return;
+          }
 
           const offer = parsePushTripOffer(rawData);
           if (offer) {

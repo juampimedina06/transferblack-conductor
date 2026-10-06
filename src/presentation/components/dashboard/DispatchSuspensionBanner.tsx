@@ -8,37 +8,31 @@ export const DispatchSuspensionBanner: React.FC = () => {
   const setDispatchSuspendedUntil = useDriverStatusStore((state) => state.setDispatchSuspendedUntil);
   const fetchStatus = useDriverStatusStore((state) => state.fetchStatus);
 
-  const [remainingSeconds, setRemainingSeconds] = useState<number>(() => {
-    if (!dispatchSuspendedUntil) return 0;
-    const diff = Math.floor((new Date(dispatchSuspendedUntil).getTime() - Date.now()) / 1000);
-    return Math.max(0, diff);
-  });
+  const [remainingSeconds, setRemainingSeconds] = useState(0);
 
   useEffect(() => {
     if (!dispatchSuspendedUntil) {
-      setRemainingSeconds(0);
       return;
     }
 
-    const calculateRemaining = () => {
+    const updateTimer = () => {
       const diff = Math.floor((new Date(dispatchSuspendedUntil).getTime() - Date.now()) / 1000);
-      return Math.max(0, diff);
-    };
-
-    setRemainingSeconds(calculateRemaining());
-
-    const interval = setInterval(() => {
-      const remaining = calculateRemaining();
+      const remaining = Math.max(0, diff);
       setRemainingSeconds(remaining);
 
       if (remaining <= 0) {
-        clearInterval(interval);
         setDispatchSuspendedUntil(null);
         void fetchStatus();
       }
-    }, 1000);
+    };
 
-    return () => clearInterval(interval);
+    const timer = setTimeout(updateTimer, 0);
+    const interval = setInterval(updateTimer, 1000);
+
+    return () => {
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
   }, [dispatchSuspendedUntil, setDispatchSuspendedUntil, fetchStatus]);
 
   if (!dispatchSuspendedUntil || remainingSeconds <= 0) {

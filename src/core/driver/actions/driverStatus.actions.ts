@@ -25,14 +25,23 @@ export async function getDriverStatus(): Promise<DriverMeStatus> {
  */
 export async function getDriverDocuments(): Promise<DriverDocumentItem[]> {
   const response = await transferApi.get<
-    DriverDocumentItem[] | { data: DriverDocumentItem[] }
+    any
   >('/drivers/me/documents');
   const data = response.data;
-  if ('data' in data && Array.isArray(data.data)) {
-    return data.data;
-  }
-  if (Array.isArray(data)) {
-    return data;
-  }
-  return [];
+  const rawList: any[] = Array.isArray(data?.data)
+    ? data.data
+    : Array.isArray(data)
+      ? data
+      : [];
+
+  return rawList.map((item) => ({
+    id: String(item.id || ''),
+    type: item.type || item.documentType,
+    documentType: item.documentType || item.type || '',
+    status: item.status,
+    expiresAt: item.expiresAt || null,
+    daysRemaining: item.daysRemaining ?? item.daysUntilExpiry ?? null,
+    daysUntilExpiry: item.daysUntilExpiry ?? item.daysRemaining ?? null,
+    rejectionReason: item.rejectionReason || null,
+  }));
 }
