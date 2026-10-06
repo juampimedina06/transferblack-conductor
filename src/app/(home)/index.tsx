@@ -58,7 +58,6 @@ export default function DriverDashboardScreen() {
       if (isAvailable || hasActiveTrip) {
         const token = await authStorage.getAccessToken();
         if (token && !isCancelled) {
-          socket.auth = { token };
           if (!socket.connected) {
             socket.connect();
           }
