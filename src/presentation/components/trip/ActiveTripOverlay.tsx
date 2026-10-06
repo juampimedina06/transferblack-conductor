@@ -35,6 +35,7 @@ import { SwipeToArriveButton } from './SwipeToArriveButton';
 import { SwipeToFinishButton } from './SwipeToFinishButton';
 import { AmbientGlow } from '../ui/AmbientGlow';
 import { SosConfirmationModal } from '../safety/SosConfirmationModal';
+import { CancelTripModal } from './CancelTripModal';
 import { sosQueueService } from '../../../core/safety/services/sosQueueService';
 
 const getPreferenceIcon = (pref: string): keyof typeof Ionicons.glyphMap => {
@@ -93,6 +94,7 @@ export const ActiveTripOverlay = ({ trip, onHeightChange }: ActiveTripOverlayPro
   const [pinError, setPinError] = useState<boolean>(false);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState<boolean>(false);
   const [isSosModalVisible, setIsSosModalVisible] = useState<boolean>(false);
+  const [isCancelModalVisible, setIsCancelModalVisible] = useState<boolean>(false);
   const [sosStatus, setSosStatus] = useState<'idle' | 'sending' | 'success' | 'retrying'>('idle');
 
   // Snap points: 0 = Minimized, 1 = Partially open (default), 2 = Fully expanded
@@ -218,34 +220,7 @@ export const ActiveTripOverlay = ({ trip, onHeightChange }: ActiveTripOverlayPro
   };
 
   const handleCancelTrip = () => {
-    Alert.alert(
-      'Cancelar servicio',
-      '¿Estás seguro de cancelar este viaje por no presentación del pasajero?',
-      [
-        { text: 'No', style: 'cancel' },
-        {
-          text: 'Sí, cancelar',
-          style: 'destructive',
-          onPress: async () => {
-            if (!location) return;
-            try {
-              setIsLoading(true);
-              await driverCancelTrip(trip.id, {
-                reason_code: 'driver_no_show',
-                latitude: location.latitude,
-                longitude: location.longitude,
-              });
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-              useDriverTripStore.getState().setActiveTrip(null);
-            } catch (error: any) {
-              Alert.alert('Error', error.message || 'No se pudo cancelar el viaje.');
-            } finally {
-              setIsLoading(false);
-            }
-          },
-        },
-      ]
-    );
+    setIsCancelModalVisible(true);
   };
 
   const handleFinishTrip = async () => {
@@ -829,7 +804,7 @@ export const ActiveTripOverlay = ({ trip, onHeightChange }: ActiveTripOverlayPro
                 accessibilityLabel="Cancelar servicio"
               >
                 <Text className="text-zinc-400 font-montserrat-medium text-xs">
-                  Pasajero no se presentó
+                  Cancelar viaje
                 </Text>
               </TouchableOpacity>
             )}
@@ -843,6 +818,14 @@ export const ActiveTripOverlay = ({ trip, onHeightChange }: ActiveTripOverlayPro
         tripId={trip.id}
         fallbackLocation={location}
         onClose={() => setIsSosModalVisible(false)}
+      />
+
+      {/* Modal de selección de motivos de cancelación */}
+      <CancelTripModal
+        visible={isCancelModalVisible}
+        tripId={trip.id}
+        location={location}
+        onClose={() => setIsCancelModalVisible(false)}
       />
     </BottomSheet>
   );

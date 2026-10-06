@@ -22,6 +22,7 @@ import { useDriverTripStore } from '../../trip/store/useDriverTripStore';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { AmbientGlow } from '../ui/AmbientGlow';
 import { offerAlarmService } from '../../trip/services/offerAlarmService';
+import { useDriverStatusStore } from '../../driver/store/useDriverStatusStore';
 
 interface ConnectionBottomSheetProps {
   isAvailable: boolean;
@@ -38,6 +39,11 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
   const clearAllOffers = useDriverTripStore((state) => state.clearAllOffers);
   const setActiveTrip = useDriverTripStore((state) => state.setActiveTrip);
   const lastKnownLocation = useLocationStore((state) => state.lastKnownLocation);
+  const dispatchSuspendedUntil = useDriverStatusStore((state) => state.dispatchSuspendedUntil);
+
+  const isSuspended = Boolean(
+    dispatchSuspendedUntil && new Date(dispatchSuspendedUntil).getTime() > Date.now()
+  );
 
   const [vehicleId, setVehicleId] = useState<string | null>(null);
   const [isAccepting, setIsAccepting] = useState(false);
@@ -570,7 +576,7 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
         position="top-left"
         height={180}
         opacity={0.16}
-        color={isAvailable ? '#10B981' : '#EF4444'}
+        color={isAvailable ? (isSuspended ? '#F59E0B' : '#10B981') : '#EF4444'}
       />
 
       {/* Drag Indicator Pill */}
@@ -590,7 +596,7 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
                       width: 32,
                       height: 32,
                       borderRadius: 16,
-                      backgroundColor: 'rgba(16, 185, 129, 0.35)',
+                      backgroundColor: isSuspended ? 'rgba(245, 158, 11, 0.35)' : 'rgba(16, 185, 129, 0.35)',
                     },
                   ]}
                 />
@@ -602,11 +608,15 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
                       width: 32,
                       height: 32,
                       borderRadius: 16,
-                      backgroundColor: 'rgba(16, 185, 129, 0.22)',
+                      backgroundColor: isSuspended ? 'rgba(245, 158, 11, 0.22)' : 'rgba(16, 185, 129, 0.22)',
                     },
                   ]}
                 />
-                <View className="w-4 h-4 rounded-full bg-emerald-400 shadow-md shadow-emerald-400" />
+                <View
+                  className={`w-4 h-4 rounded-full ${
+                    isSuspended ? 'bg-amber-400 shadow-amber-400' : 'bg-emerald-400 shadow-emerald-400'
+                  } shadow-md`}
+                />
               </View>
             ) : (
               <View key="radar-inactive" className="w-12 h-12 items-center justify-center mr-3">
@@ -616,10 +626,14 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
 
             <View className="flex-1">
               <Text className="text-white font-montserrat-bold text-base tracking-wide">
-                {isAvailable ? 'EN LÍNEA' : 'DESCONECTADO'}
+                {isAvailable ? (isSuspended ? 'EN LÍNEA (PAUSADO)' : 'EN LÍNEA') : 'DESCONECTADO'}
               </Text>
               <Text className="text-ash font-montserrat text-xs mt-0.5" numberOfLines={1}>
-                {isAvailable ? 'Buscando viajes en tu zona...' : 'Tocá para comenzar tu jornada'}
+                {isAvailable
+                  ? isSuspended
+                    ? 'Despacho pausado por cancelaciones'
+                    : 'Buscando viajes en tu zona...'
+                  : 'Tocá para comenzar tu jornada'}
               </Text>
             </View>
           </View>
@@ -632,6 +646,12 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              if (!isAvailable && isSuspended) {
+                Alert.alert(
+                  'Despacho Pausado',
+                  'Estarás en línea, pero no recibirás ofertas hasta que expire la pausa de 15 minutos.'
+                );
+              }
               onToggleAvailability(!isAvailable);
             }}
             className={`h-12 px-5 rounded-2xl border flex-row items-center justify-center relative overflow-hidden shadow-lg ${
