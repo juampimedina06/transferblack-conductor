@@ -82,7 +82,7 @@ export const DriverDocumentsModal: React.FC<DriverDocumentsModalProps> = ({
           filePath: uploadRes.filePath,
         });
       } catch {
-        // Fallback a POST /drivers/me/documents
+        // Fallback a POST /driver/documents
         await transferApi.post('/driver/documents', {
           id: selectedDoc.id,
           documentType: selectedDoc.documentType,

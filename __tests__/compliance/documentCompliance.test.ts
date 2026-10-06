@@ -79,7 +79,7 @@ describe('TICKET-06: Semiannual Document Compliance & Online Blocking', () => {
   });
 
   describe('getDriverDocuments action', () => {
-    it('calls GET /drivers/me/documents and returns array of documents', async () => {
+    it('calls GET /driver/me/documents and returns array of documents', async () => {
       const mockDocs = [
         {
           id: 'doc-1',
@@ -102,7 +102,7 @@ describe('TICKET-06: Semiannual Document Compliance & Online Blocking', () => {
       });
 
       const docs = await getDriverDocuments();
-      expect(transferApi.get).toHaveBeenCalledWith('/drivers/me/documents');
+      expect(transferApi.get).toHaveBeenCalledWith('/driver/me/documents');
       expect(docs).toHaveLength(2);
       expect(docs[0].status).toBe('expiring_soon');
       expect(docs[0].daysUntilExpiry).toBe(14);

@@ -52,12 +52,12 @@ describe('TICKET-04: SOS Emergency Actions & Offline Queue', () => {
   });
 
   describe('sendSosAlert action', () => {
-    it('executes POST /trips/:tripId/sos with exact payload and returns response', async () => {
+    it('executes POST /rides/:tripId/sos with exact payload and returns response', async () => {
       const mockResponse = { id: 'sos-uuid-789', receivedAt: '2026-10-06T12:00:01.000Z' };
       (transferApi.post as any).mockResolvedValueOnce({ data: mockResponse });
 
       const result = await sendSosAlert(mockTripId, mockPayload);
-      expect(transferApi.post).toHaveBeenCalledWith(`/trips/${mockTripId}/sos`, mockPayload);
+      expect(transferApi.post).toHaveBeenCalledWith(`/rides/${mockTripId}/sos`, mockPayload);
       expect(result.id).toBe('sos-uuid-789');
     });
   });
@@ -89,7 +89,7 @@ describe('TICKET-04: SOS Emergency Actions & Offline Queue', () => {
       await sosQueueService.flushQueue();
 
       expect(transferApi.post).toHaveBeenCalledTimes(2);
-      expect(transferApi.post).toHaveBeenLastCalledWith(`/trips/${mockTripId}/sos`, {
+      expect(transferApi.post).toHaveBeenLastCalledWith(`/rides/${mockTripId}/sos`, {
         clientEventId: mockPayload.clientEventId,
         lat: mockPayload.lat,
         lng: mockPayload.lng,

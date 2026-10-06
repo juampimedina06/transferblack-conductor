@@ -6,11 +6,11 @@ import {
 
 /**
  * Obtiene el estado operativo, contador de cancelaciones, cooldown y compliance documental.
- * GET /api/v1/drivers/me/status
+ * GET /api/v1/driver/me/status
  */
 export async function getDriverStatus(): Promise<DriverMeStatus> {
   const response = await transferApi.get<DriverMeStatus | { data: DriverMeStatus }>(
-    '/drivers/me/status'
+    '/driver/me/status'
   );
   const data = response.data;
   if ('data' in data && data.data) {
@@ -21,12 +21,12 @@ export async function getDriverStatus(): Promise<DriverMeStatus> {
 
 /**
  * Obtiene el listado de documentos del chofer con sus estados de vigencia.
- * GET /api/v1/drivers/me/documents
+ * GET /api/v1/driver/me/documents
  */
 export async function getDriverDocuments(): Promise<DriverDocumentItem[]> {
   const response = await transferApi.get<
     any
-  >('/drivers/me/documents');
+  >('/driver/me/documents');
   const data = response.data;
   const rawList: any[] = Array.isArray(data?.data)
     ? data.data

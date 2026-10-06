@@ -3,7 +3,7 @@ import { SosRequestPayload, SosResponse } from '../interface/sos.interface';
 
 /**
  * Registra una alerta de emergencia SOS asociada al viaje activo.
- * POST /api/v1/trips/:tripId/sos
+ * POST /api/v1/rides/:tripId/sos
  * Idempotente por clientEventId.
  */
 export async function sendSosAlert(
@@ -11,7 +11,7 @@ export async function sendSosAlert(
   payload: SosRequestPayload
 ): Promise<SosResponse> {
   const response = await transferApi.post<SosResponse | { data: SosResponse }>(
-    `/trips/${tripId}/sos`,
+    `/rides/${tripId}/sos`,
     payload
   );
   const data = response.data;
