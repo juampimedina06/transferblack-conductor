@@ -34,6 +34,8 @@ import { useCourtesyTimer } from '../../trip/hooks/useCourtesyTimer';
 import { SwipeToArriveButton } from './SwipeToArriveButton';
 import { SwipeToFinishButton } from './SwipeToFinishButton';
 import { AmbientGlow } from '../ui/AmbientGlow';
+import { SosConfirmationModal } from '../safety/SosConfirmationModal';
+import { sosQueueService } from '../../../core/safety/services/sosQueueService';
 
 const getPreferenceIcon = (pref: string): keyof typeof Ionicons.glyphMap => {
   const lower = pref.toLowerCase();
@@ -90,9 +92,15 @@ export const ActiveTripOverlay = ({ trip, onHeightChange }: ActiveTripOverlayPro
   const pinInputRefs = useRef<TextInput[]>([]);
   const [pinError, setPinError] = useState<boolean>(false);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState<boolean>(false);
+  const [isSosModalVisible, setIsSosModalVisible] = useState<boolean>(false);
+  const [sosStatus, setSosStatus] = useState<'idle' | 'sending' | 'success' | 'retrying'>('idle');
 
   // Snap points: 0 = Minimized, 1 = Partially open (default), 2 = Fully expanded
   const snapPoints = useMemo(() => ['16%', '48%', '88%'], []);
+
+  useEffect(() => {
+    return sosQueueService.subscribe(setSosStatus);
+  }, []);
 
   useEffect(() => {
     const showSub = Keyboard.addListener('keyboardDidShow', () => setIsKeyboardVisible(true));
@@ -289,25 +297,7 @@ export const ActiveTripOverlay = ({ trip, onHeightChange }: ActiveTripOverlayPro
   };
 
   const handleEmergencyCall = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    Alert.alert(
-      'Asistencia y Seguridad en Ruta',
-      '¿Con quién deseás comunicarte?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Llamar al 911 (Emergencias)',
-          style: 'destructive',
-          onPress: () => Linking.openURL('tel:911'),
-        },
-        {
-          text: 'Central de Operaciones TransferBlack',
-          onPress: () => {
-            Linking.openURL('tel:+543516598216').catch(() => {});
-          },
-        },
-      ]
-    );
+    setIsSosModalVisible(true);
   };
 
   const handlePinDigitChange = (text: string, index: number) => {
@@ -440,6 +430,20 @@ export const ActiveTripOverlay = ({ trip, onHeightChange }: ActiveTripOverlayPro
             </View>
           </View>
 
+          {/* Botón SOS en minimizado (< 2 toques: 1 toque abre modal, 1 toque confirma) */}
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={(e) => {
+              e.stopPropagation();
+              handleEmergencyCall();
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Botón de emergencia SOS 911"
+            className="w-9 h-9 rounded-xl bg-red-600/20 border border-red-500/50 items-center justify-center mr-2.5 active:scale-95 shadow-sm shadow-red-500/30"
+          >
+            <Ionicons name="warning" size={17} color="#EF4444" />
+          </TouchableOpacity>
+
           {/* Passenger Collection Indicator (Efectivo vs Digital) */}
           <View className="items-end">
             <Text
@@ -472,7 +476,7 @@ export const ActiveTripOverlay = ({ trip, onHeightChange }: ActiveTripOverlayPro
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* HEADER: PASAJERO Y ACCESOS RÁPIDOS DIRECTOS (Llamar, Chat, GPS) */}
+          {/* HEADER: PASAJERO Y ACCESOS RÁPIDOS DIRECTOS (Llamar, Chat, GPS, SOS) */}
           <View className="flex-row items-center justify-between mt-1 mb-3">
             <View className="flex-row items-center flex-1 mr-2">
               <View className="w-12 h-12 rounded-2xl bg-gold/15 border border-gold/30 items-center justify-center mr-3">
@@ -502,8 +506,18 @@ export const ActiveTripOverlay = ({ trip, onHeightChange }: ActiveTripOverlayPro
               </View>
             </View>
 
-            {/* Quick Actions: Call, Chat & Open GPS Navigation */}
+            {/* Quick Actions: Call, Chat, Open GPS & SOS 911 */}
             <View className="flex-row items-center gap-2">
+              <TouchableOpacity
+                onPress={handleEmergencyCall}
+                accessibilityLabel="Botón de emergencia SOS 911"
+                accessibilityRole="button"
+                hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                className="w-10 h-10 rounded-xl bg-red-600/20 border border-red-500/50 items-center justify-center active:scale-95 shadow-sm shadow-red-500/30"
+              >
+                <Ionicons name="warning" size={17} color="#EF4444" />
+              </TouchableOpacity>
+
               <TouchableOpacity
                 onPress={handleCallPassenger}
                 accessibilityLabel="Llamar al pasajero"
@@ -538,6 +552,24 @@ export const ActiveTripOverlay = ({ trip, onHeightChange }: ActiveTripOverlayPro
               </TouchableOpacity>
             </View>
           </View>
+
+          {/* Feedback discreto post-alerta SOS */}
+          {sosStatus === 'success' && (
+            <View className="flex-row items-center bg-emerald-500/15 border border-emerald-500/35 rounded-xl px-3 py-1.5 mb-2.5 self-start">
+              <Ionicons name="checkmark-circle" size={13} color="#10B981" style={{ marginRight: 6 }} />
+              <Text className="text-emerald-400 font-montserrat-semibold text-[11px]">
+                Alerta de emergencia 911 registrada
+              </Text>
+            </View>
+          )}
+          {sosStatus === 'retrying' && (
+            <View className="flex-row items-center bg-amber-500/15 border border-amber-500/35 rounded-xl px-3 py-1.5 mb-2.5 self-start">
+              <ActivityIndicator size="small" color="#F59E0B" style={{ marginRight: 6 }} />
+              <Text className="text-amber-400 font-montserrat-semibold text-[11px]">
+                Reintentando registrar alerta en central...
+              </Text>
+            </View>
+          )}
 
           {/* ESTADO DEL VIAJE EN PÍLDORA ELEGANTE */}
           <View className="flex-row items-center justify-between bg-white/[0.04] border border-white/10 rounded-2xl px-3.5 py-2.5 mb-3">
@@ -804,6 +836,14 @@ export const ActiveTripOverlay = ({ trip, onHeightChange }: ActiveTripOverlayPro
           </View>
         </BottomSheetScrollView>
       )}
+
+      {/* Modal de confirmación SOS 911 */}
+      <SosConfirmationModal
+        visible={isSosModalVisible}
+        tripId={trip.id}
+        fallbackLocation={location}
+        onClose={() => setIsSosModalVisible(false)}
+      />
     </BottomSheet>
   );
 };
