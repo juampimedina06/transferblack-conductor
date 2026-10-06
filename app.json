@@ -13,7 +13,12 @@
         "NSCameraUsageDescription": "TransferBlack necesita acceso a tu cámara para que puedas fotografiar tus documentos oficiales y vehículo.",
         "NSPhotoLibraryUsageDescription": "TransferBlack necesita acceso a tu galería para que puedas adjuntar comprobantes de documentación y fotos del vehículo.",
         "NSLocationWhenInUseUsageDescription": "TransferBlack requiere tu ubicación para mostrarte en el mapa y encontrar viajes cercanos.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "TransferBlack requiere tu ubicación en segundo plano para rastrear el vehículo durante un viaje y mantener informados a los pasajeros."
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "TransferBlack requiere tu ubicación en segundo plano para rastrear el vehículo durante un viaje y mantener informados a los pasajeros.",
+        "UIBackgroundModes": [
+          "location",
+          "fetch",
+          "remote-notification"
+        ]
       }
     },
     "android": {
@@ -27,7 +32,11 @@
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
-        "ACCESS_BACKGROUND_LOCATION"
+        "ACCESS_BACKGROUND_LOCATION",
+        "POST_NOTIFICATIONS",
+        "VIBRATE",
+        "WAKE_LOCK",
+        "USE_FULL_SCREEN_INTENT"
       ]
     },
     "web": {

@@ -11,7 +11,8 @@ export const useOfferTimer = (
   ttlSeconds: number,
   onExpire: () => void,
   isActive: boolean,
-  offerKey?: string
+  offerKey?: string,
+  expiresAt?: string | null
 ) => {
   const progress = useSharedValue(1);
 
@@ -26,20 +27,37 @@ export const useOfferTimer = (
   useEffect(() => {
     cancelAnimation(progress);
 
-    if (isActive && ttlSeconds > 0) {
-      progress.value = 1;
-      progress.value = withTiming(
-        0,
-        {
-          duration: ttlSeconds * 1000,
-          easing: Easing.linear,
-        },
-        (finished) => {
-          if (finished) {
-            runOnJS(triggerExpire)();
-          }
+    if (isActive) {
+      let durationMs = ttlSeconds * 1000;
+
+      if (expiresAt) {
+        const remainingMs = new Date(expiresAt).getTime() - Date.now();
+        if (remainingMs <= 0) {
+          progress.value = 0;
+          onExpireRef.current();
+          return;
         }
-      );
+        durationMs = remainingMs;
+      }
+
+      if (durationMs > 0) {
+        progress.value = 1;
+        progress.value = withTiming(
+          0,
+          {
+            duration: durationMs,
+            easing: Easing.linear,
+          },
+          (finished) => {
+            if (finished) {
+              runOnJS(triggerExpire)();
+            }
+          }
+        );
+      } else {
+        progress.value = 0;
+        onExpireRef.current();
+      }
     } else {
       progress.value = 1;
     }
@@ -51,7 +69,7 @@ export const useOfferTimer = (
     return () => {
       cancelAnimation(progress);
     };
-  }, [isActive, ttlSeconds, progress, offerKey]);
+  }, [isActive, ttlSeconds, progress, offerKey, expiresAt]);
 
   return { progress };
 };

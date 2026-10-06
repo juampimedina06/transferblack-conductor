@@ -25,6 +25,7 @@ import { ActiveTripOverlay } from '../../presentation/components/trip/ActiveTrip
 import { ActiveTripTopHeader } from '../../presentation/components/trip/ActiveTripTopHeader';
 import { TripReceiptModal } from '../../presentation/components/trip/TripReceiptModal';
 import { useWalletStore } from '../../presentation/wallet/store/useWalletStore';
+import { pushNotificationService } from '../../core/push/services/pushNotificationService';
 
 export default function DriverDashboardScreen() {
   const user = useAuthStore(state => state.user);
@@ -45,6 +46,7 @@ export default function DriverDashboardScreen() {
 
   useEffect(() => {
     fetchSummary();
+    void pushNotificationService.initialize();
   }, [fetchSummary]);
 
   // Inicializa la escucha de eventos de socket (trip:offer)
@@ -58,7 +60,6 @@ export default function DriverDashboardScreen() {
       if (isAvailable || hasActiveTrip) {
         const token = await authStorage.getAccessToken();
         if (token && !isCancelled) {
-          socket.auth = { token };
           if (!socket.connected) {
             socket.connect();
           }
@@ -87,6 +88,7 @@ export default function DriverDashboardScreen() {
   const performLogout = async () => {
     setIsAvailable(false);
     socket.disconnect();
+    await pushNotificationService.revoke();
 
     const trip = useDriverTripStore.getState().activeTrip;
     const isTripLive = !!trip && trip.status !== 'completed' && trip.status !== 'cancelled';

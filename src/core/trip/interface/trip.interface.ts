@@ -38,6 +38,7 @@ export interface TripOfferPayload {
   tripId: string;
   offerId: string;
   ttlSeconds: number;
+  expiresAt?: string | null;
   fare: TripFareDetails;
   pickup: TripPickupDetails;
   dropoff: TripDropoffDetails;
