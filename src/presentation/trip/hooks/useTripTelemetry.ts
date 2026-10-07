@@ -25,7 +25,8 @@ export interface UseTripTelemetryOptions {
 export const useTripTelemetry = (options?: UseTripTelemetryOptions): void => {
   const config = options?.config ?? DEFAULT_TELEMETRY_CONFIG;
   const activeTrip = useDriverTripStore((state) => state.activeTrip);
-  const { watchLocation } = useLocationStore();
+  const isAvailable = useDriverTripStore((state) => state.isAvailable);
+  const { watchLocation, clearWatchLocation } = useLocationStore();
 
   const isTripActive =
     !!activeTrip?.id &&
@@ -34,6 +35,7 @@ export const useTripTelemetry = (options?: UseTripTelemetryOptions): void => {
     activeTrip.status !== 'draft';
 
   const activeTripId = isTripActive ? activeTrip.id : null;
+  const shouldTrack = isAvailable || isTripActive;
 
   // Sliding window of recent readings for event detection
   const readingsHistoryRef = useRef<LocationReading[]>([]);
@@ -46,11 +48,15 @@ export const useTripTelemetry = (options?: UseTripTelemetryOptions): void => {
   const isMountedRef = useRef<boolean>(true);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
 
-  // Keep activeTripId in ref for interval tick
   const activeTripIdRef = useRef<string | null>(activeTripId);
   useEffect(() => {
     activeTripIdRef.current = activeTripId;
   }, [activeTripId]);
+
+  const isAvailableRef = useRef<boolean>(isAvailable);
+  useEffect(() => {
+    isAvailableRef.current = isAvailable;
+  }, [isAvailable]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -60,18 +66,18 @@ export const useTripTelemetry = (options?: UseTripTelemetryOptions): void => {
   }, []);
 
   useEffect(() => {
-    if (!activeTripId) {
-      // Clear interval and state if there is no active trip
+    if (!shouldTrack) {
       if (intervalIdRef.current) {
         clearInterval(intervalIdRef.current);
         intervalIdRef.current = null;
       }
+      clearWatchLocation();
       readingsHistoryRef.current = [];
       detectorStateRef.current = { ...initialTelemetryDetectorState };
       return;
     }
 
-    // Ensure location watching is active while on a trip
+    // Ensure location watching is active while available or on a trip
     void watchLocation();
 
     const emitTelemetryPing = (): void => {
@@ -85,6 +91,7 @@ export const useTripTelemetry = (options?: UseTripTelemetryOptions): void => {
         config,
         activeTripIdRef.current,
         socket.connected,
+        isAvailableRef.current,
       );
 
       readingsHistoryRef.current = updatedHistory;
@@ -109,29 +116,27 @@ export const useTripTelemetry = (options?: UseTripTelemetryOptions): void => {
       }
     };
 
-    // Immediate ping upon starting active trip tracking
+    // Immediate ping upon tracking becoming active
     emitTelemetryPing();
     startInterval();
 
-    // Reconnection handling: ensure ride room is joined and send fresh ping immediately
+    // Reconnection handling: ensure ride room is joined if in trip and send fresh ping immediately
     const handleSocketConnect = (): void => {
       if (activeTripIdRef.current && socket.connected) {
         socket.emit('ride:join', { rideId: activeTripIdRef.current });
+      }
+      if (socket.connected) {
         emitTelemetryPing();
       }
     };
 
-    // AppState handling: manage timers cleanly across background/foreground cycles
     const handleAppStateChange = (nextAppState: AppStateStatus): void => {
       appStateRef.current = nextAppState;
       if (nextAppState === 'active') {
-        if (!intervalIdRef.current && activeTripIdRef.current) {
+        if (!intervalIdRef.current) {
           emitTelemetryPing();
           startInterval();
         }
-      } else {
-        // App backgrounded: keep timer safe and prevent interval accumulation
-        stopInterval();
       }
     };
 
@@ -143,5 +148,5 @@ export const useTripTelemetry = (options?: UseTripTelemetryOptions): void => {
       socket.off('connect', handleSocketConnect);
       appStateSub.remove();
     };
-  }, [activeTripId, config, watchLocation]);
+  }, [shouldTrack, config, watchLocation, clearWatchLocation]);
 };

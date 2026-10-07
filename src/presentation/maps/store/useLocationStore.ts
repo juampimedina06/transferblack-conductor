@@ -41,6 +41,10 @@ export const useLocationStore = create<LocationState>((set, get) => ({
       get().clearWatchLocation();
     }
 
+    if (!get().lastKnownReading) {
+      void get().getLocation();
+    }
+
     try {
       const subscription = await watchCurrentPosition((reading: LocationReading) => {
         const coords: LatLng = {

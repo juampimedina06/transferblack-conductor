@@ -12,11 +12,11 @@ export interface LocationReading extends LatLng {
 export interface DriverLocationPayload {
   lat: number;
   lng: number;
-  latitude?: number;
-  longitude?: number;
-  heading?: number | null;
-  speed?: number | null;
-  accuracy?: number | null;
+  latitude: number;
+  longitude: number;
+  heading?: number;
+  speed?: number;
+  accuracy?: number;
   timestamp: number;
   event?: TelemetryEventType;
 }

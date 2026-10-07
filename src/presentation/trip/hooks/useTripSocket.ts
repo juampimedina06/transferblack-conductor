@@ -126,16 +126,28 @@ export const useTripSocket = () => {
       }
     };
 
+    const handleRideJoined = (payload: { rideId: string }) => {
+      console.log('✅ [Socket] Confirmada unión a sala de viaje:', payload?.rideId);
+    };
+
+    const handleSocketError = (err: any) => {
+      console.warn('⚠️ [Socket error]:', err);
+    };
+
     // Unirse a la sala si el socket ya está conectado
     joinRideRoom();
 
     // Si el socket se reconecta, re-unirse a la sala automáticamente
     socket.on('connect', joinRideRoom);
+    socket.on('ride:joined', handleRideJoined);
     socket.on('trip:status_changed', handleStatusChanged);
+    socket.on('error', handleSocketError);
 
     return () => {
       socket.off('connect', joinRideRoom);
+      socket.off('ride:joined', handleRideJoined);
       socket.off('trip:status_changed', handleStatusChanged);
+      socket.off('error', handleSocketError);
       if (socket.connected) {
         socket.emit('ride:leave', { rideId });
       }
