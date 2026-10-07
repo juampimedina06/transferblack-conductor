@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Modal,
   View,
@@ -13,6 +13,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { THEME_COLORS } from '../../../core/constants/theme';
 import { AmbientGlow } from '../ui/AmbientGlow';
+import { LegalTermsConsultModal } from '../legal/LegalTermsConsultModal';
+import { DriverDocumentsModal } from '../compliance/DriverDocumentsModal';
 
 interface SecurityModalProps {
   visible: boolean;
@@ -35,6 +37,9 @@ interface SecurityItem {
 }
 
 export const SecurityModal = ({ visible, onClose, onEmergencySos }: SecurityModalProps) => {
+  const [isLegalModalVisible, setIsLegalModalVisible] = useState(false);
+  const [isDocsModalVisible, setIsDocsModalVisible] = useState(false);
+
   const handleCall911 = () => {
     Alert.alert(
       'Llamar al 911',
@@ -130,11 +135,34 @@ export const SecurityModal = ({ visible, onClose, onEmergencySos }: SecurityModa
           'Accedé a guías de prevención, protocolos de viaje y contactos clave de TransferBlack.'
         ),
     },
+    {
+      id: 'driver_documents',
+      icon: 'file-tray-full-outline',
+      title: 'Mis Documentos y Habilitaciones',
+      subtitle: 'Gestioná y renová tu carnet, seguro automotor, ITV y cédula.',
+      badge: 'Legales',
+      onPress: () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setIsDocsModalVisible(true);
+      },
+    },
+    {
+      id: 'legal_terms',
+      icon: 'document-text-outline',
+      title: 'Términos y Marco Legal',
+      subtitle: 'Contrato de intermediación tecnológica y deslinde de responsabilidad.',
+      badge: 'Legal',
+      onPress: () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setIsLegalModalVisible(true);
+      },
+    },
   ];
 
   return (
-    <Modal
-      visible={visible}
+    <>
+      <Modal
+        visible={visible}
       transparent
       animationType="slide"
       onRequestClose={onClose}
@@ -234,5 +262,18 @@ export const SecurityModal = ({ visible, onClose, onEmergencySos }: SecurityModa
         </View>
       </TouchableWithoutFeedback>
     </Modal>
+
+    {/* Modal de consulta de términos legales y deslinde */}
+    <LegalTermsConsultModal
+      visible={isLegalModalVisible}
+      onClose={() => setIsLegalModalVisible(false)}
+    />
+
+    {/* Modal de gestión y renovación de documentos */}
+    <DriverDocumentsModal
+      visible={isDocsModalVisible}
+      onClose={() => setIsDocsModalVisible(false)}
+    />
+  </>
   );
 };

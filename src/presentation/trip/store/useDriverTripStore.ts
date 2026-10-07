@@ -31,6 +31,15 @@ export function popNextValidOffer(
   return { nextOffer: null, remainingQueue: [] };
 }
 
+export interface TripExtraItem {
+  id: string;
+  category: 'toll' | 'parking' | 'extra_stop' | 'other';
+  label: string;
+  amount: number;
+  notes?: string;
+  createdAt: string;
+}
+
 interface DriverTripState {
   currentOffer: TripOfferPayload | null;
   offerQueue: QueuedTripOffer[];
@@ -43,6 +52,12 @@ interface DriverTripState {
   activeTrip: Trip | null;
   setActiveTrip: (trip: Trip | null) => void;
   updateTripStatus: (status: Trip['status']) => void;
+
+  tripExtras: TripExtraItem[];
+  addTripExtra: (extra: Omit<TripExtraItem, 'id' | 'createdAt'>) => void;
+  removeTripExtra: (id: string) => void;
+  clearTripExtras: () => void;
+  getTripExtrasTotal: () => number;
 
   isAvailable: boolean;
   setIsAvailable: (val: boolean) => void;
@@ -169,14 +184,45 @@ export const useDriverTripStore = create<DriverTripState>()(
       },
       
       activeTrip: null,
+      tripExtras: [],
+
+      addTripExtra: (extra) => {
+        const item: TripExtraItem = {
+          ...extra,
+          id: `extra-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          createdAt: new Date().toISOString(),
+        };
+        set((state) => ({
+          tripExtras: [...state.tripExtras, item],
+        }));
+      },
+
+      removeTripExtra: (id) => {
+        set((state) => ({
+          tripExtras: state.tripExtras.filter((item) => item.id !== id),
+        }));
+      },
+
+      clearTripExtras: () => {
+        set({ tripExtras: [] });
+      },
+
+      getTripExtrasTotal: () => {
+        return get().tripExtras.reduce((sum, item) => sum + (item.amount || 0), 0);
+      },
+
       setActiveTrip: (trip) => {
         const isLive = !!trip && trip.status !== 'completed' && trip.status !== 'cancelled';
-        set((state) => ({
-          ...state,
-          activeTrip: trip, 
-          arrivedAt: trip?.status === 'driver_arrived' ? Date.now() : null,
-          ...(isLive ? { currentOffer: null, offerQueue: [] } : {}),
-        }));
+        set((state) => {
+          const tripChanged = !trip || (state.activeTrip && state.activeTrip.id !== trip.id);
+          return {
+            ...state,
+            activeTrip: trip, 
+            arrivedAt: trip?.status === 'driver_arrived' ? Date.now() : null,
+            ...(isLive ? { currentOffer: null, offerQueue: [] } : {}),
+            ...(tripChanged && !trip ? { tripExtras: [] } : {}),
+          };
+        });
       },
       updateTripStatus: (status) => set((state) => ({
         activeTrip: state.activeTrip ? { ...state.activeTrip, status } : null,
@@ -198,6 +244,7 @@ export const useDriverTripStore = create<DriverTripState>()(
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
         activeTrip: state.activeTrip,
+        tripExtras: state.tripExtras,
         arrivedAt: state.arrivedAt,
         isAvailable: state.isAvailable,
       }),
