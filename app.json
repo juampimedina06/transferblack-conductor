@@ -8,6 +8,7 @@
     "scheme": "transferblackconductor",
     "userInterfaceStyle": "automatic",
     "ios": {
+      "bundleIdentifier": "com.transferblack.driver",
       "icon": "./assets/expo.icon",
       "infoPlist": {
         "NSCameraUsageDescription": "TransferBlack Conductor necesita acceso a tu cámara para fotografiar tus documentos oficiales (licencia de conducir, DNI, póliza de seguro e ITV) y tu vehículo para la validación de tu cuenta de conductor.",
