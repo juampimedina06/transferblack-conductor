@@ -19,11 +19,13 @@ import { SecurityModal } from '../../presentation/components/dashboard/SecurityM
 import { DriverProgressModal } from '../../presentation/components/dashboard/DriverProgressModal';
 import { useDashboardStats } from '../../presentation/hooks/useDashboardStats';
 import { useTripSocket } from '../../presentation/trip/hooks/useTripSocket';
+import { useTripTelemetry } from '../../presentation/trip/hooks/useTripTelemetry';
 import { useActiveTripSync } from '../../presentation/trip/hooks/useActiveTripSync';
 import { useDriverTripStore } from '../../presentation/trip/store/useDriverTripStore';
 import { ActiveTripOverlay } from '../../presentation/components/trip/ActiveTripOverlay';
 import { ActiveTripTopHeader } from '../../presentation/components/trip/ActiveTripTopHeader';
 import { TripReceiptModal } from '../../presentation/components/trip/TripReceiptModal';
+import { SosConfirmationModal } from '../../presentation/components/safety/SosConfirmationModal';
 import { useWalletStore } from '../../presentation/wallet/store/useWalletStore';
 import { pushNotificationService } from '../../core/push/services/pushNotificationService';
 import { DispatchSuspensionBanner } from '../../presentation/components/dashboard/DispatchSuspensionBanner';
@@ -39,9 +41,12 @@ export default function DriverDashboardScreen() {
   const [isStatsExpanded, setIsStatsExpanded] = useState(false);
   const [isSecurityModalVisible, setIsSecurityModalVisible] = useState(false);
   const [isProgressModalVisible, setIsProgressModalVisible] = useState(false);
+  // Estado asociado al tripId: al cambiar el viaje queda inválido solo, sin efectos de reset.
+  const [sosOpenTripId, setSosOpenTripId] = useState<string | null>(null);
   const [bottomHeight, setBottomHeight] = useState(100);
 
   const hasActiveTrip = !!activeTrip;
+  const activeTripId = activeTrip?.id ?? null;
 
   const { location, errorMsg } = useDriverLocation(isAvailable || hasActiveTrip);
   const { stats } = useDashboardStats(isAvailable);
@@ -59,6 +64,7 @@ export default function DriverDashboardScreen() {
 
   // Inicializa la escucha de eventos de socket (trip:offer)
   useTripSocket();
+  useTripTelemetry();
 
   // Manejo declarativo de la conexión del socket (activo si está disponible o en viaje)
   useEffect(() => {
@@ -331,28 +337,44 @@ export default function DriverDashboardScreen() {
 
       {activeTrip && activeTrip.status !== 'completed' ? (
         <ActiveTripOverlay trip={activeTrip} onHeightChange={setBottomHeight} />
-      ) : !activeTrip || activeTrip.status === 'completed' ? (
-        <>
-          {/* Emergency Button */}
-          <EmergencyFAB 
-            onPress={() => setIsSecurityModalVisible(true)} 
-            bottomOffset={bottomHeight}
-          />
+      ) : (
+        /* Bottom Sheet for Connection */
+        <ConnectionBottomSheet
+          isAvailable={isAvailable}
+          onToggleAvailability={toggleAvailability}
+          onHeightChange={setBottomHeight}
+        />
+      )}
 
-          {/* Bottom Sheet for Connection */}
-          <ConnectionBottomSheet 
-            isAvailable={isAvailable} 
-            onToggleAvailability={toggleAvailability} 
-            onHeightChange={setBottomHeight}
-          />
-        </>
-      ) : null}
+      {/* Escudo de funciones de seguridad: flota siempre por encima de la tarjeta, lado izquierdo */}
+      <EmergencyFAB
+        onPress={() => setIsSecurityModalVisible(true)}
+        bottomOffset={bottomHeight}
+      />
 
       {/* Security Functions Modal */}
-      <SecurityModal 
-        visible={isSecurityModalVisible} 
-        onClose={() => setIsSecurityModalVisible(false)} 
+      <SecurityModal
+        visible={isSecurityModalVisible}
+        onClose={() => setIsSecurityModalVisible(false)}
+        onEmergencySos={
+          activeTrip && activeTrip.status !== 'completed'
+            ? () => {
+                setIsSecurityModalVisible(false);
+                setSosOpenTripId(activeTrip.id);
+              }
+            : undefined
+        }
       />
+
+      {/* Modal SOS: 911 + alerta registrada en backend con la ubicación del viaje */}
+      {activeTrip && activeTrip.status !== 'completed' && (
+        <SosConfirmationModal
+          visible={sosOpenTripId === activeTripId}
+          tripId={activeTrip.id}
+          fallbackLocation={location}
+          onClose={() => setSosOpenTripId(null)}
+        />
+      )}
 
       {/* Driver Progress & Performance Modal */}
       <DriverProgressModal 

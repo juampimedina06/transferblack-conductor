@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { socket } from '../../../core/socket/socket';
 import { checkLocationPermission, requestLocationPermission } from '../../../core/location/actions/permissions.actions';
 import { LatLng } from '../../../core/location/interface/latLng.interface';
 import { PermissionStatus } from '../../../core/location/interface/permission.interface';
@@ -46,31 +45,6 @@ export const useDriverLocation = (isAvailable: boolean): { location: LatLng | nu
       cancelled = true;
     };
   }, [getLocation]);
-
-  // Emisión periódica de ubicación por WebSocket cada 5 segundos cuando el conductor está disponible
-  useEffect(() => {
-    if (!isAvailable) return;
-
-    const emitLocation = (): void => {
-      const currentLoc = lastLocationRef.current;
-      if (currentLoc && socket.connected) {
-        socket.emit('driver:location_update', {
-          latitude: currentLoc.latitude,
-          longitude: currentLoc.longitude,
-        });
-      }
-    };
-
-    // Emitir inmediatamente al quedar disponible si ya tenemos posición
-    emitLocation();
-
-    // Intervalo de 5 segundos conforme al backend (throttle mínimo del backend: 3s)
-    const intervalId = setInterval(emitLocation, 5000);
-
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, [isAvailable]);
 
   return { location: lastKnownLocation, errorMsg };
 };

@@ -17,6 +17,11 @@ import { AmbientGlow } from '../ui/AmbientGlow';
 interface SecurityModalProps {
   visible: boolean;
   onClose: () => void;
+  /**
+   * Flujo de emergencia enriquecido (discado 911 + alerta registrada en backend).
+   * Cuando el padre no lo provee, el ítem 911 cae en el discado simple.
+   */
+  onEmergencySos?: () => void;
 }
 
 interface SecurityItem {
@@ -29,7 +34,7 @@ interface SecurityItem {
   onPress: () => void;
 }
 
-export const SecurityModal = ({ visible, onClose }: SecurityModalProps) => {
+export const SecurityModal = ({ visible, onClose, onEmergencySos }: SecurityModalProps) => {
   const handleCall911 = () => {
     Alert.alert(
       'Llamar al 911',
@@ -56,7 +61,7 @@ export const SecurityModal = ({ visible, onClose }: SecurityModalProps) => {
       iconColor: '#EF4444',
       title: 'Emergencias: 911',
       subtitle: 'Contacta a los servicios de emergencia',
-      onPress: handleCall911,
+      onPress: onEmergencySos ?? handleCall911,
     },
     {
       id: 'record_trip',
