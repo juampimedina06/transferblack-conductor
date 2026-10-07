@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "563443742670",
+    "project_id": "transfer-black-cbbd9",
+    "storage_bucket": "transfer-black-cbbd9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:563443742670:android:f0e653aae57a96abe79d9f",
+        "android_client_info": {
+          "package_name": "com.transferblack.driver"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC2_6-ePNvekR-KtOEZs5PDEv4L9kEnxlI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:563443742670:android:a202eba2391b8c89e79d9f",
+        "android_client_info": {
+          "package_name": "com.transferblack.passenger"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC2_6-ePNvekR-KtOEZs5PDEv4L9kEnxlI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

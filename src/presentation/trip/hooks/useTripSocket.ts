@@ -1,13 +1,26 @@
 import { useEffect } from 'react';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
-import * as Notifications from 'expo-notifications';
+import Constants, { AppOwnership } from 'expo-constants';
 import { socket } from '../../../core/socket/socket';
 import { useDriverTripStore } from '../store/useDriverTripStore';
 import { TripOfferPayload } from '../../../core/trip/interface/trip.interface';
 import { syncActiveTripState } from './useActiveTripSync';
 import { offerAlarmService } from '../services/offerAlarmService';
+
+const isExpoGoOnAndroid =
+  Platform.OS === 'android' && Constants.appOwnership === AppOwnership.Expo;
+
+const dismissAllNotificationsSafely = async () => {
+  if (isExpoGoOnAndroid) return;
+  try {
+    const Notifications = await import('expo-notifications');
+    await Notifications.dismissAllNotificationsAsync();
+  } catch {
+    // No-op en Expo Go o entornos sin módulo nativo
+  }
+};
 
 export const useTripSocket = () => {
   const enqueueOffer = useDriverTripStore((state) => state.enqueueOffer);
@@ -59,7 +72,7 @@ export const useTripSocket = () => {
       console.log('🚫 [Socket] OFERTA CANCELADA:', payload);
       cancelOffer(payload.offerId || payload.tripId);
       void offerAlarmService.stop();
-      void Notifications.dismissAllNotificationsAsync().catch(() => {});
+      void dismissAllNotificationsSafely();
     };
 
     socket.on('connect', handleConnect);
