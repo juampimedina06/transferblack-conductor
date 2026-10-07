@@ -26,6 +26,9 @@ import { ActiveTripTopHeader } from '../../presentation/components/trip/ActiveTr
 import { TripReceiptModal } from '../../presentation/components/trip/TripReceiptModal';
 import { useWalletStore } from '../../presentation/wallet/store/useWalletStore';
 import { pushNotificationService } from '../../core/push/services/pushNotificationService';
+import { DispatchSuspensionBanner } from '../../presentation/components/dashboard/DispatchSuspensionBanner';
+import { ComplianceRenewalBanner } from '../../presentation/components/compliance/ComplianceRenewalBanner';
+import { useDriverStatusStore } from '../../presentation/driver/store/useDriverStatusStore';
 
 export default function DriverDashboardScreen() {
   const user = useAuthStore(state => state.user);
@@ -47,6 +50,11 @@ export default function DriverDashboardScreen() {
   useEffect(() => {
     fetchSummary();
     void pushNotificationService.initialize();
+    void useDriverStatusStore.getState().fetchStatus();
+    const cleanupSocket = useDriverStatusStore.getState().initSocketListeners();
+    return () => {
+      cleanupSocket();
+    };
   }, [fetchSummary]);
 
   // Inicializa la escucha de eventos de socket (trip:offer)
@@ -151,6 +159,12 @@ export default function DriverDashboardScreen() {
       {/* Top Navigation Overlay */}
       <SafeAreaView className="absolute top-0 w-full" edges={['top']} pointerEvents="box-none">
         
+        {/* Banner de suspensión temporal de despacho por cancelaciones */}
+        <DispatchSuspensionBanner />
+
+        {/* Banner de renovación de documentación próxima a vencer (15 días) */}
+        <ComplianceRenewalBanner />
+
         {/* Warning Banner */}
         {summary?.is_cash_restricted && (
           <TouchableOpacity 

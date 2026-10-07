@@ -10,10 +10,11 @@
     "ios": {
       "icon": "./assets/expo.icon",
       "infoPlist": {
-        "NSCameraUsageDescription": "TransferBlack necesita acceso a tu cámara para que puedas fotografiar tus documentos oficiales y vehículo.",
-        "NSPhotoLibraryUsageDescription": "TransferBlack necesita acceso a tu galería para que puedas adjuntar comprobantes de documentación y fotos del vehículo.",
-        "NSLocationWhenInUseUsageDescription": "TransferBlack requiere tu ubicación para mostrarte en el mapa y encontrar viajes cercanos.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "TransferBlack requiere tu ubicación en segundo plano para rastrear el vehículo durante un viaje y mantener informados a los pasajeros.",
+        "NSCameraUsageDescription": "TransferBlack Conductor necesita acceso a tu cámara para fotografiar tus documentos oficiales (licencia de conducir, DNI, póliza de seguro e ITV) y tu vehículo para la validación de tu cuenta de conductor.",
+        "NSPhotoLibraryUsageDescription": "TransferBlack Conductor necesita acceso a tu galería para que puedas seleccionar y adjuntar comprobantes de tu documentación oficial y fotos del vehículo para su verificación.",
+        "NSLocationWhenInUseUsageDescription": "TransferBlack Conductor necesita tu ubicación en tiempo real mientras usás la app para mostrarte en el mapa, calcular distancias y navegar hacia los puntos de partida y destino de los pasajeros.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "TransferBlack Conductor requiere tu ubicación en segundo plano para rastrear el vehículo durante viajes activos, calcular la tarifa con precisión, garantizar la seguridad en ruta y ofrecerte viajes cercanos mientras estás en servicio.",
+        "NSLocationAlwaysUsageDescription": "TransferBlack Conductor requiere tu ubicación continua para rastrear viajes en curso, garantizar la seguridad del trayecto y asignarte viajes cercanos aun cuando la aplicación esté en segundo plano.",
         "UIBackgroundModes": [
           "location",
           "fetch",
@@ -22,6 +23,8 @@
       }
     },
     "android": {
+      "package": "com.transferblack.conductor",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -36,7 +39,10 @@
         "POST_NOTIFICATIONS",
         "VIBRATE",
         "WAKE_LOCK",
-        "USE_FULL_SCREEN_INTENT"
+        "USE_FULL_SCREEN_INTENT",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "READ_MEDIA_IMAGES"
       ]
     },
     "web": {
@@ -67,22 +73,22 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "TransferBlack necesita acceso a tu cámara para fotografiar tus documentos y tu vehículo."
+          "cameraPermission": "TransferBlack Conductor necesita acceso a tu cámara para fotografiar tus documentos oficiales (licencia de conducir, DNI, seguro, ITV) y tu vehículo para la validación de tu cuenta."
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "TransferBlack necesita acceso a tu galería para adjuntar fotos de tus documentos y de tu vehículo.",
-          "cameraPermission": "TransferBlack necesita acceso a tu cámara para fotografiar tus documentos y tu vehículo."
+          "photosPermission": "TransferBlack Conductor necesita acceso a tu galería para que puedas seleccionar y adjuntar imágenes de tus documentos obligatorios y de tu vehículo para su verificación.",
+          "cameraPermission": "TransferBlack Conductor necesita acceso a tu cámara para fotografiar tus documentos oficiales y tu vehículo para la validación de tu cuenta."
         }
       ],
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "TransferBlack requiere tu ubicación en segundo plano para rastrear el vehículo durante un viaje y mantener informados a los pasajeros.",
-          "locationAlwaysPermission": "TransferBlack requiere tu ubicación en todo momento para asignarte viajes cercanos y realizar el seguimiento de los mismos.",
-          "locationWhenInUsePermission": "TransferBlack requiere tu ubicación para mostrarte en el mapa y encontrar viajes cercanos.",
+          "locationAlwaysAndWhenInUsePermission": "TransferBlack Conductor requiere tu ubicación en segundo plano para rastrear el vehículo durante viajes activos, calcular la tarifa con precisión, garantizar la seguridad en ruta y ofrecerte viajes cercanos mientras estás en servicio.",
+          "locationAlwaysPermission": "TransferBlack Conductor requiere tu ubicación continua para rastrear viajes en curso, garantizar la seguridad del trayecto y asignarte viajes cercanos aun cuando la aplicación esté en segundo plano.",
+          "locationWhenInUsePermission": "TransferBlack Conductor necesita tu ubicación en tiempo real mientras usás la app para mostrarte en el mapa, calcular distancias y navegar hacia los puntos de partida y destino de los pasajeros.",
           "isAndroidBackgroundLocationEnabled": true
         }
       ]

@@ -1,0 +1,47 @@
+import { transferApi } from '@/core/api/transferApi';
+import {
+  DriverMeStatus,
+  DriverDocumentItem,
+} from '../interface/driverStatus.interface';
+
+/**
+ * Obtiene el estado operativo, contador de cancelaciones, cooldown y compliance documental.
+ * GET /api/v1/driver/me/status
+ */
+export async function getDriverStatus(): Promise<DriverMeStatus> {
+  const response = await transferApi.get<DriverMeStatus | { data: DriverMeStatus }>(
+    '/driver/me/status'
+  );
+  const data = response.data;
+  if ('data' in data && data.data) {
+    return data.data;
+  }
+  return data as DriverMeStatus;
+}
+
+/**
+ * Obtiene el listado de documentos del chofer con sus estados de vigencia.
+ * GET /api/v1/driver/me/documents
+ */
+export async function getDriverDocuments(): Promise<DriverDocumentItem[]> {
+  const response = await transferApi.get<
+    any
+  >('/driver/me/documents');
+  const data = response.data;
+  const rawList: any[] = Array.isArray(data?.data)
+    ? data.data
+    : Array.isArray(data)
+      ? data
+      : [];
+
+  return rawList.map((item) => ({
+    id: String(item.id || ''),
+    type: item.type || item.documentType,
+    documentType: item.documentType || item.type || '',
+    status: item.status,
+    expiresAt: item.expiresAt || null,
+    daysRemaining: item.daysRemaining ?? item.daysUntilExpiry ?? null,
+    daysUntilExpiry: item.daysUntilExpiry ?? item.daysRemaining ?? null,
+    rejectionReason: item.rejectionReason || null,
+  }));
+}

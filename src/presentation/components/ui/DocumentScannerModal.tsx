@@ -3,6 +3,7 @@ import {
   View,
   Text,
   TouchableOpacity,
+  Pressable,
   Modal,
   StyleSheet,
   ActivityIndicator,
@@ -172,11 +173,12 @@ export const DocumentScannerModal: React.FC<DocumentScannerModalProps> = ({
       setIsCapturing(true);
       const photo = await cameraRef.current.takePictureAsync({
         quality: 0.85,
-        skipProcessing: false,
       });
 
       if (photo?.uri) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        try {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        } catch {}
         setCapturedPhoto({ uri: photo.uri, mimeType: 'image/jpeg' });
       }
     } catch (e) {
@@ -244,15 +246,20 @@ export const DocumentScannerModal: React.FC<DocumentScannerModalProps> = ({
           /* =======================================================
              VISTA DE REVISIÓN Y CONFIRMACIÓN DE LA FOTO CAPTURADA
              ======================================================= */
-          <View
-            className="flex-1 bg-[#0A0B10] flex-col justify-between"
-            style={{
-              paddingTop: Math.max(insets.top, 24),
-              paddingBottom: Math.max(insets.bottom, 20),
-            }}
-          >
-            {/* Top Bar con encabezado glass */}
-            <View className="px-6 pb-2" style={{ zIndex: 10, elevation: 10 }}>
+          <View className="flex-1 bg-black relative">
+            {/* Foto capturada en pantalla completa - pointerEvents none para no interceptar toques */}
+            <Image
+              source={{ uri: capturedPhoto.uri }}
+              style={StyleSheet.absoluteFill}
+              contentFit="contain"
+              pointerEvents="none"
+            />
+
+            {/* Top Bar con encabezado glass flotante */}
+            <View
+              className="absolute top-0 left-0 right-0 z-50 px-6 pb-2"
+              style={{ paddingTop: Math.max(insets.top, 24), elevation: 20 }}
+            >
               <View className="flex-row items-center justify-between mb-3">
                 {/* Botón Volver a la cámara */}
                 <TouchableOpacity
@@ -287,7 +294,7 @@ export const DocumentScannerModal: React.FC<DocumentScannerModalProps> = ({
               </View>
 
               {/* Título de verificación */}
-              <View className="bg-white/[0.04] border border-white/10 rounded-2xl p-3.5 shadow-xl shadow-black">
+              <View className="bg-black/60 border border-white/15 rounded-2xl p-3.5 shadow-xl shadow-black">
                 <View className="flex-row items-center justify-between mb-1">
                   <View className="flex-row items-center gap-2">
                     <View className="w-2.5 h-2.5 rounded-full bg-gold" />
@@ -305,22 +312,13 @@ export const DocumentScannerModal: React.FC<DocumentScannerModalProps> = ({
               </View>
             </View>
 
-            {/* Foto capturada en área central sin interferencias táctiles */}
-            <View className="flex-1 px-5 py-2 items-center justify-center">
-              <View className="w-full h-full rounded-2xl overflow-hidden bg-black/80 border border-white/15 items-center justify-center shadow-2xl shadow-black">
-                <Image
-                  source={{ uri: capturedPhoto.uri }}
-                  style={{ width: '100%', height: '100%' }}
-                  contentFit="contain"
-                  transition={150}
-                />
-              </View>
-            </View>
-
-            {/* Bottom Controls: La X para sacar otra y el Tick (✓) para subir */}
+            {/* Bottom Controls flotantes fijados al fondo con alta elevación */}
             <View
-              className="px-6 pt-4 pb-2 bg-black/90 border-t border-white/15"
-              style={{ zIndex: 10, elevation: 10 }}
+              className="absolute bottom-0 left-0 right-0 z-50 px-6 pt-4 bg-black/95 border-t border-white/15"
+              style={{
+                paddingBottom: Math.max(insets.bottom, 24),
+                elevation: 30,
+              }}
             >
               <Text className="text-center text-ash font-montserrat text-xs mb-3">
                 ¿La foto se ve clara? Podés descartarla para sacar otra o confirmar para subir.
@@ -328,38 +326,50 @@ export const DocumentScannerModal: React.FC<DocumentScannerModalProps> = ({
 
               <View className="flex-row items-center justify-center gap-10">
                 {/* Botón X - Sacar otra foto */}
-                <TouchableOpacity
-                  activeOpacity={0.75}
+                <Pressable
                   onPress={handleDiscardPhoto}
-                  hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
+                  hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+                  style={({ pressed }) => [
+                    { elevation: 20, zIndex: 100 },
+                    pressed ? { transform: [{ scale: 0.95 }], opacity: 0.85 } : null,
+                  ]}
                   className="items-center"
                   accessibilityRole="button"
                   accessibilityLabel="Descartar y sacar otra foto"
                 >
-                  <View className="w-16 h-16 rounded-full bg-red-500/20 border-2 border-red-500 items-center justify-center shadow-lg shadow-black active:scale-95">
+                  <View
+                    pointerEvents="none"
+                    className="w-16 h-16 rounded-full bg-red-500/20 border-2 border-red-500 items-center justify-center shadow-lg shadow-black"
+                  >
                     <Ionicons name="close" size={32} color="#EF4444" />
                   </View>
-                  <Text className="text-red-400 font-montserrat-semibold text-xs mt-1.5">
+                  <Text pointerEvents="none" className="text-red-400 font-montserrat-semibold text-xs mt-1.5">
                     Sacar otra
                   </Text>
-                </TouchableOpacity>
+                </Pressable>
 
                 {/* Botón Tick (✓) - Confirmar y subir documento */}
-                <TouchableOpacity
-                  activeOpacity={0.75}
+                <Pressable
                   onPress={handleConfirmPhoto}
-                  hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
+                  hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+                  style={({ pressed }) => [
+                    { elevation: 20, zIndex: 100 },
+                    pressed ? { transform: [{ scale: 0.95 }], opacity: 0.85 } : null,
+                  ]}
                   className="items-center"
                   accessibilityRole="button"
                   accessibilityLabel="Confirmar y subir documento"
                 >
-                  <View className="w-16 h-16 rounded-full bg-emerald-500/25 border-2 border-emerald-400 items-center justify-center shadow-lg shadow-black active:scale-95">
-                    <Ionicons name="checkmark" size={34} color="#34D399" />
+                  <View
+                    pointerEvents="none"
+                    className="w-16 h-16 rounded-full bg-emerald-500 border-2 border-emerald-400 items-center justify-center shadow-lg shadow-black"
+                  >
+                    <Ionicons name="checkmark" size={36} color="#FFFFFF" />
                   </View>
-                  <Text className="text-emerald-400 font-montserrat-semibold text-xs mt-1.5">
+                  <Text pointerEvents="none" className="text-emerald-400 font-montserrat-semibold text-xs mt-1.5">
                     Subir foto
                   </Text>
-                </TouchableOpacity>
+                </Pressable>
               </View>
             </View>
           </View>

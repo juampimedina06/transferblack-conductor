@@ -1,34 +1,56 @@
 import { Platform } from 'react-native';
-import * as Notifications from 'expo-notifications';
+import Constants, { AppOwnership } from 'expo-constants';
+import type * as ExpoNotifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
 import { registerDriverPushToken, revokeDriverPushToken } from '../actions/pushToken.actions';
-import { parsePushTripOffer, isPushTripCancel } from '../utils/pushOfferParser';
+import { parsePushTripOffer, isPushTripCancel, isPushDocumentEvent } from '../utils/pushOfferParser';
 import { offerAlarmService } from '@/presentation/trip/services/offerAlarmService';
 import { useDriverTripStore } from '@/presentation/trip/store/useDriverTripStore';
+import { useDriverStatusStore } from '@/presentation/driver/store/useDriverStatusStore';
 
 export const BACKGROUND_NOTIFICATION_TASK = 'BACKGROUND_TRIP_OFFER_TASK';
 export const TRIP_OFFERS_CHANNEL_ID = 'trip-offers';
 
-// Handler global para notificaciones en foreground
-Notifications.setNotificationHandler({
-  handleNotification: async (notification) => {
-    const data = notification.request.content.data;
-    const isOffer = data?.type === 'trip:offer';
+const isExpoGoOnAndroid =
+  Platform.OS === 'android' && Constants.appOwnership === AppOwnership.Expo;
 
-    return {
-      shouldShowAlert: true,
-      shouldPlaySound: !isOffer, // La alarma continua gestiona el sonido para ofertas
-      shouldSetBadge: true,
-      shouldShowBanner: true,
-      shouldShowList: true,
-      priority: Notifications.AndroidNotificationPriority.MAX,
-    };
-  },
-});
+let Notifications: typeof ExpoNotifications | null = null;
+
+if (!isExpoGoOnAndroid) {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    Notifications = require('expo-notifications');
+  } catch (err) {
+    console.warn('⚠️ [PushNotificationService] expo-notifications no disponible:', err);
+  }
+}
+
+// Handler global para notificaciones en foreground
+if (Notifications?.setNotificationHandler) {
+  try {
+    Notifications.setNotificationHandler({
+      handleNotification: async (notification) => {
+        const data = notification.request.content.data;
+        const isOffer = data?.type === 'trip:offer';
+
+        return {
+          shouldShowAlert: true,
+          shouldPlaySound: !isOffer, // La alarma continua gestiona el sonido para ofertas
+          shouldSetBadge: true,
+          shouldShowBanner: true,
+          shouldShowList: true,
+          priority: Notifications?.AndroidNotificationPriority?.MAX ?? 2,
+        };
+      },
+    });
+  } catch (err) {
+    console.warn('⚠️ [PushNotificationService] Error configurando notificationHandler:', err);
+  }
+}
 
 // Definición de la tarea en background con TaskManager
 try {
-  if (!TaskManager.isTaskDefined(BACKGROUND_NOTIFICATION_TASK)) {
+  if (!isExpoGoOnAndroid && !TaskManager.isTaskDefined(BACKGROUND_NOTIFICATION_TASK)) {
     TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error }) => {
       if (error) {
         console.warn('⚠️ [PushBackground] Error en background notification task:', error);
@@ -38,10 +60,17 @@ try {
       const rawData = (data as any)?.notification?.data || (data as any)?.data;
       if (!rawData) return;
 
+      if (isPushDocumentEvent(rawData)) {
+        console.log('📋 [PushBackground] Evento de documentación recibido:', rawData);
+        void useDriverStatusStore.getState().fetchStatus();
+        void useDriverStatusStore.getState().fetchDocuments();
+        return;
+      }
+
       if (isPushTripCancel(rawData)) {
         console.log('🚫 [PushBackground] Cancelación recibida en background:', rawData);
         await offerAlarmService.stop();
-        await Notifications.dismissAllNotificationsAsync().catch(() => {});
+        await Notifications?.dismissAllNotificationsAsync().catch(() => {});
         useDriverTripStore.getState().cancelOffer(rawData.offerId || rawData.tripId);
         return;
       }
@@ -57,17 +86,19 @@ try {
         useDriverTripStore.getState().enqueueOffer(offer);
 
         // Presentar notificación local visible de máxima prioridad para despertar la pantalla
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: '🚕 ¡Nueva Oferta de Viaje Disponible!',
-            body: `${offer.pickup.address} ➔ ${offer.dropoff.address} ($${offer.fare.totalFare})`,
-            data: rawData,
-            sound: 'default',
-            priority: Notifications.AndroidNotificationPriority.MAX,
-            vibrate: [0, 500, 200, 500],
-          },
-          trigger: null,
-        });
+        if (Notifications?.scheduleNotificationAsync) {
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: '🚕 ¡Nueva Oferta de Viaje Disponible!',
+              body: `${offer.pickup.address} ➔ ${offer.dropoff.address} ($${offer.fare.totalFare})`,
+              data: rawData,
+              sound: 'default',
+              priority: Notifications?.AndroidNotificationPriority?.MAX ?? 2,
+              vibrate: [0, 500, 200, 500],
+            },
+            trigger: null,
+          });
+        }
       }
     });
   }
@@ -88,16 +119,29 @@ class PushNotificationService {
   async initialize(): Promise<string | null> {
     if (this.isInitialized) return this.currentDeviceToken;
 
+    if (isExpoGoOnAndroid) {
+      console.info(
+        'TransferBlack: Push notifications en Android requieren Development Build (removido de Expo Go en SDK 53).'
+      );
+      return null;
+    }
+
+    if (!Notifications) {
+      return null;
+    }
+
+    const notif = Notifications;
+
     try {
       // 1. Configurar canal de notificación prioritario en Android
       if (Platform.OS === 'android') {
-        await Notifications.setNotificationChannelAsync(TRIP_OFFERS_CHANNEL_ID, {
+        await notif.setNotificationChannelAsync(TRIP_OFFERS_CHANNEL_ID, {
           name: 'Ofertas de viaje',
           description: 'Notificaciones de alta prioridad para asignación de viajes',
-          importance: Notifications.AndroidImportance.MAX,
+          importance: notif.AndroidImportance.MAX,
           vibrationPattern: [0, 500, 200, 500],
           lightColor: '#D4AF37',
-          lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+          lockscreenVisibility: notif.AndroidNotificationVisibility.PUBLIC,
           bypassDnd: true,
           sound: 'default',
           enableLights: true,
@@ -107,11 +151,11 @@ class PushNotificationService {
       }
 
       // 2. Solicitar permisos de notificación
-      const permissions = await Notifications.getPermissionsAsync();
+      const permissions = await notif.getPermissionsAsync();
       let isGranted = permissions.granted || permissions.status === 'granted';
 
       if (!isGranted) {
-        const request = await Notifications.requestPermissionsAsync({
+        const request = await notif.requestPermissionsAsync({
           ios: {
             allowAlert: true,
             allowBadge: true,
@@ -131,14 +175,14 @@ class PushNotificationService {
       try {
         const isRegistered = await TaskManager.isTaskRegisteredAsync(BACKGROUND_NOTIFICATION_TASK);
         if (!isRegistered) {
-          await Notifications.registerTaskAsync(BACKGROUND_NOTIFICATION_TASK);
+          await notif.registerTaskAsync(BACKGROUND_NOTIFICATION_TASK);
         }
       } catch (taskErr) {
         console.warn('⚠️ [PushService] No se pudo registrar la tarea en background:', taskErr);
       }
 
       // 4. Obtener Device Push Token nativo (FCM / APNs)
-      const tokenResult = await Notifications.getDevicePushTokenAsync();
+      const tokenResult = await notif.getDevicePushTokenAsync();
       const nativeToken = tokenResult.data;
       this.currentDeviceToken = nativeToken;
 
@@ -154,7 +198,7 @@ class PushNotificationService {
       console.log('✅ [PushService] Token nativo registrado en backend exitosamente');
 
       // 6. Listener para cambios de token del sistema
-      this.tokenListenerSubscription = Notifications.addPushTokenListener(async (tokenData) => {
+      this.tokenListenerSubscription = notif.addPushTokenListener(async (tokenData) => {
         const refreshedToken = tokenData.data;
         if (refreshedToken && refreshedToken !== this.currentDeviceToken) {
           this.currentDeviceToken = refreshedToken;
@@ -167,14 +211,21 @@ class PushNotificationService {
       });
 
       // 7. Listener para notificaciones recibidas en foreground
-      this.notificationReceivedSubscription = Notifications.addNotificationReceivedListener(
+      this.notificationReceivedSubscription = notif.addNotificationReceivedListener(
         async (notification) => {
           const rawData = notification.request.content.data;
           if (!rawData) return;
 
+          if (isPushDocumentEvent(rawData)) {
+            console.log('📋 [PushForeground] Evento de documentación recibido:', rawData);
+            void useDriverStatusStore.getState().fetchStatus();
+            void useDriverStatusStore.getState().fetchDocuments();
+            return;
+          }
+
           if (isPushTripCancel(rawData)) {
             await offerAlarmService.stop();
-            await Notifications.dismissAllNotificationsAsync().catch(() => {});
+            await notif.dismissAllNotificationsAsync().catch(() => {});
             useDriverTripStore.getState().cancelOffer(rawData.offerId || rawData.tripId);
             return;
           }
@@ -188,10 +239,16 @@ class PushNotificationService {
       );
 
       // 8. Listener para taps en la notificación
-      this.notificationResponseSubscription = Notifications.addNotificationResponseReceivedListener(
+      this.notificationResponseSubscription = notif.addNotificationResponseReceivedListener(
         async (response) => {
           const rawData = response.notification.request.content.data;
           if (!rawData) return;
+
+          if (isPushDocumentEvent(rawData)) {
+            void useDriverStatusStore.getState().fetchStatus();
+            void useDriverStatusStore.getState().fetchDocuments();
+            return;
+          }
 
           const offer = parsePushTripOffer(rawData);
           if (offer) {
@@ -220,7 +277,9 @@ class PushNotificationService {
       }
 
       await offerAlarmService.stop();
-      await Notifications.dismissAllNotificationsAsync().catch(() => {});
+      if (Notifications?.dismissAllNotificationsAsync) {
+        await Notifications.dismissAllNotificationsAsync().catch(() => {});
+      }
 
       if (this.tokenListenerSubscription?.remove) {
         this.tokenListenerSubscription.remove();

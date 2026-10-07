@@ -97,9 +97,24 @@ export const startTrip = async (
   }
 };
 
-export const driverCancelTrip = async (tripId: string, data: { reason_code: string; notes?: string; latitude: number; longitude: number }) => {
+export const driverCancelTrip = async (
+  tripId: string,
+  data: {
+    reason_code?: string;
+    reasonCode?: string;
+    notes?: string;
+    latitude: number;
+    longitude: number;
+  }
+) => {
   try {
-    const response = await transferApi.post(`/rides/${tripId}/driver-cancel`, data);
+    const canonicalCode = data.reasonCode || data.reason_code || 'NO_REASON';
+    const payload = {
+      ...data,
+      reason_code: canonicalCode,
+      reasonCode: canonicalCode,
+    };
+    const response = await transferApi.post(`/rides/${tripId}/driver-cancel`, payload);
     return response.data;
   } catch (error: any) {
     const apiError = error.response?.data as ApiErrorResponse;

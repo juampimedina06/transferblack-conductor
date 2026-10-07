@@ -18,7 +18,7 @@ describe('Driver Push Token Actions (TICKET-01)', () => {
   });
 
   describe('registerDriverPushToken', () => {
-    it('sends PUT /drivers/me/push-token with validated body', async () => {
+    it('sends PUT /driver/me/push-token with validated body', async () => {
       const mockPayload = {
         token: 'fcm-device-native-token-abc-123',
         platform: 'android' as const,
@@ -38,7 +38,7 @@ describe('Driver Push Token Actions (TICKET-01)', () => {
       (transferApi.put as any).mockResolvedValueOnce({ data: mockResponse });
 
       const result = await registerDriverPushToken(mockPayload);
-      expect(transferApi.put).toHaveBeenCalledWith('/drivers/me/push-token', mockPayload);
+      expect(transferApi.put).toHaveBeenCalledWith('/driver/me/push-token', mockPayload);
       expect(result.success).toBe(true);
       expect(result.data?.token).toBe(mockPayload.token);
     });
@@ -56,25 +56,25 @@ describe('Driver Push Token Actions (TICKET-01)', () => {
   });
 
   describe('revokeDriverPushToken', () => {
-    it('sends DELETE /drivers/me/push-token without token body when not provided', async () => {
+    it('sends DELETE /driver/me/push-token without token body when not provided', async () => {
       (transferApi.delete as any).mockResolvedValueOnce({
         data: { success: true, message: 'Tokens revoked' },
       });
 
       const result = await revokeDriverPushToken();
-      expect(transferApi.delete).toHaveBeenCalledWith('/drivers/me/push-token', {
+      expect(transferApi.delete).toHaveBeenCalledWith('/driver/me/push-token', {
         data: undefined,
       });
       expect(result.success).toBe(true);
     });
 
-    it('sends DELETE /drivers/me/push-token with token body when specified', async () => {
+    it('sends DELETE /driver/me/push-token with token body when specified', async () => {
       (transferApi.delete as any).mockResolvedValueOnce({
         data: { success: true },
       });
 
       const result = await revokeDriverPushToken('specific-token');
-      expect(transferApi.delete).toHaveBeenCalledWith('/drivers/me/push-token', {
+      expect(transferApi.delete).toHaveBeenCalledWith('/driver/me/push-token', {
         data: { token: 'specific-token' },
       });
       expect(result.success).toBe(true);

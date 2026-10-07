@@ -78,3 +78,20 @@ export function isPushTripCancel(
     typeof rawData.tripId === 'string'
   );
 }
+
+/**
+ * Determina si el payload de la notificación corresponde a un evento de documentación.
+ */
+export function isPushDocumentEvent(
+  rawData?: Record<string, unknown> | null
+): boolean {
+  if (!rawData) return false;
+  const eventName = String(rawData.type || rawData.event || '');
+  return (
+    eventName === 'docs:expiring' ||
+    eventName === 'docs:expired' ||
+    eventName === 'document_expiring' ||
+    eventName === 'document_expired'
+  );
+}
+

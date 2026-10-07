@@ -18,16 +18,16 @@ import path from 'node:path';
  *   node scripts/dispatch_dean_funes_empalme.mjs --no-watch
  */
 
-const DEFAULT_API_URL = 'https://transfer-black-api.onrender.com/api/v1';
+const DEFAULT_API_URL = 'https://transfer-black-api-ih1o.onrender.com/api/v1';
 
 const ADMIN_CREDENTIALS = {
   email: 'admin@transferblack.com',
-  password: 'Admin123456!',
+  password: 'Administrador123456!',
 };
 
 const DEFAULT_PASSENGER = {
   email: 'bruno@demo.transferblack.com',
-  password: 'Demo1234',
+  password: 'DemoPrueba1234567!',
 };
 
 const ORIGIN = {

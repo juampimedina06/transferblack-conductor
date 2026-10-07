@@ -24,6 +24,13 @@ transferApi.interceptors.request.use(
   }
 );
 
+type DocumentExpiryHandler = () => void;
+let documentExpiryHandler: DocumentExpiryHandler | null = null;
+
+export const setOnDocumentExpiryHandler = (handler: DocumentExpiryHandler | null) => {
+  documentExpiryHandler = handler;
+};
+
 let isRefreshing = false;
 let failedQueue: {
   resolve: (value?: unknown) => void;
@@ -110,6 +117,20 @@ transferApi.interceptors.response.use(
       } finally {
         isRefreshing = false;
       }
+    }
+
+    const errorCode =
+      error.response?.data?.error?.code ||
+      error.response?.data?.code ||
+      error.response?.data?.error;
+
+    if (
+      status === 403 &&
+      (errorCode === 'DOCUMENTS_EXPIRED' ||
+        errorCode === 'SUSPENDED_DOCUMENTS' ||
+        String(error.response?.data?.message || '').toLowerCase().includes('documento'))
+    ) {
+      documentExpiryHandler?.();
     }
 
     return Promise.reject(error);

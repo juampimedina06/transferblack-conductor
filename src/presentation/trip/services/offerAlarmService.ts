@@ -1,55 +1,98 @@
-import { Audio } from 'expo-av';
-import { Vibration } from 'react-native';
+import type { Audio as AudioNamespace } from 'expo-av';
+import { NativeModules, Vibration } from 'react-native';
+
+let cachedAudio: typeof AudioNamespace | null | undefined;
+
+const checkHasNativeAV = (): boolean => {
+  if (process.env.NODE_ENV === 'test') return true;
+
+  try {
+    const expoModules = (globalThis as any)?.expo?.modules;
+    if (expoModules && 'ExponentAV' in expoModules) {
+      return Boolean(expoModules.ExponentAV);
+    }
+    if ((NativeModules as any)?.ExponentAV) {
+      return true;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { requireOptionalNativeModule } = require('expo-modules-core');
+    return Boolean(requireOptionalNativeModule?.('ExponentAV'));
+  } catch {
+    return false;
+  }
+};
+
+const getAudio = async (): Promise<typeof AudioNamespace | null> => {
+  if (cachedAudio !== undefined) return cachedAudio;
+
+  if (!checkHasNativeAV()) {
+    cachedAudio = null;
+    return null;
+  }
+
+  try {
+    const expoAv = await import('expo-av');
+    cachedAudio = expoAv?.Audio ?? (expoAv as any)?.default?.Audio ?? null;
+  } catch {
+    cachedAudio = null;
+  }
+  return cachedAudio;
+};
 
 class OfferAlarmService {
-  private sound: Audio.Sound | null = null;
+  private sound: AudioNamespace.Sound | null = null;
   private isPlaying = false;
   private isVibrating = false;
-
   /**
-   * Inicia el sonido de alarma y vibración continua para alertar de la oferta entrante.
+   * Inicia el sonido chill de alerta para la oferta entrante sin vibración molesta.
    */
-  async start(): Promise<void> {
+  async start(options: { vibrate?: boolean } = {}): Promise<void> {
     if (this.isPlaying) return;
     this.isPlaying = true;
 
     try {
-      // Iniciar vibración en loop (patrón 500ms vibra, 500ms pausa)
-      Vibration.vibrate([0, 500, 500, 500], true);
-      this.isVibrating = true;
-
-      // Configurar modo de audio de alta prioridad
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        staysActiveInBackground: true,
-        playsInSilentModeIOS: true,
-        shouldDuckAndroid: true,
-        playThroughEarpieceAndroid: false,
-      });
-
-      // Si ya existía una instancia de sonido previa, descargarla
-      if (this.sound) {
-        await this.sound.unloadAsync().catch(() => {});
-        this.sound = null;
+      // Vibración opcional (deshabilitada por defecto para no molestar al conductor)
+      if (options.vibrate) {
+        Vibration.vibrate([0, 500, 500, 500], true);
+        this.isVibrating = true;
+      } else {
+        this.isVibrating = false;
       }
 
-      // Cargar sonido de alerta si está disponible
-      try {
-        const { sound } = await Audio.Sound.createAsync(
-          { uri: 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3' },
-          {
-            isLooping: true,
-            volume: 1.0,
-            shouldPlay: true,
-          }
-        );
-        this.sound = sound;
-      } catch {
-        // En caso de que no haya conexión para el audio remoto o falle la carga nativa,
-        // la vibración continua ya está activa como fallback infalible.
+      // Configurar modo de audio de alta prioridad si el módulo nativo está disponible
+      const Audio = await getAudio();
+      if (Audio) {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          staysActiveInBackground: true,
+          playsInSilentModeIOS: true,
+          shouldDuckAndroid: true,
+          playThroughEarpieceAndroid: false,
+        });
+
+        // Si ya existía una instancia de sonido previa, descargarla
+        if (this.sound) {
+          await this.sound.unloadAsync().catch(() => {});
+          this.sound = null;
+        }
+
+        // Cargar sonido chill de campana/notificación agradable
+        try {
+          const { sound } = await Audio.Sound.createAsync(
+            { uri: 'https://assets.mixkit.co/active_storage/sfx/2874/2874-preview.mp3' },
+            {
+              isLooping: false,
+              volume: 0.75,
+              shouldPlay: true,
+            }
+          );
+          this.sound = sound;
+        } catch {
+          // Si falla la carga del audio remoto, no bloquea el flujo
+        }
       }
     } catch (error) {
-      console.warn('⚠️ [OfferAlarmService] No se pudo iniciar audio continuo:', error);
+      console.warn('⚠️ [OfferAlarmService] No se pudo iniciar audio chill:', error);
     }
   }
 
