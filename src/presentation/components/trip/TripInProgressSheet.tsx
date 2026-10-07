@@ -48,7 +48,6 @@ import {
   startTrip,
 } from '../../../core/trip/actions/trip.actions';
 import { socket } from '../../../core/socket/socket';
-import { sosQueueService } from '../../../core/safety/services/sosQueueService';
 import { useDriverLocation } from '../../maps/hooks/useDriverLocation';
 import { useCourtesyTimer } from '../../trip/hooks/useCourtesyTimer';
 import { useDriverTripStore } from '../../trip/store/useDriverTripStore';
@@ -58,7 +57,6 @@ import { SlideToComplete } from './ui/SlideToComplete';
 import { PassengerRow } from './ui/PassengerRow';
 import { RouteTimeline } from './ui/RouteTimeline';
 import { PaymentSummary } from './ui/PaymentSummary';
-import { SosConfirmationModal } from '../safety/SosConfirmationModal';
 import { CancelTripModal } from './CancelTripModal';
 import {
   TripUiPhase,
@@ -155,9 +153,7 @@ export const TripInProgressSheet: React.FC<TripInProgressSheetProps> = ({
   }, [trip.status, trip.dropoff?.durationMinutes]);
 
   // Modales
-  const [isSosModalVisible, setIsSosModalVisible] = useState(false);
   const [isCancelModalVisible, setIsCancelModalVisible] = useState(false);
-  const [sosStatus, setSosStatus] = useState<'idle' | 'sending' | 'success' | 'retrying'>('idle');
 
   // Socket listener
   useEffect(() => {
@@ -174,11 +170,6 @@ export const TripInProgressSheet: React.FC<TripInProgressSheetProps> = ({
       socket.off('disconnect', onDisconnect);
       socket.off('connect_error', onConnectError);
     };
-  }, []);
-
-  // SOS Queue listener
-  useEffect(() => {
-    return sosQueueService.subscribe(setSosStatus);
   }, []);
 
   // Datos de viaje
@@ -829,7 +820,6 @@ export const TripInProgressSheet: React.FC<TripInProgressSheetProps> = ({
                 preferences={preferences}
                 onCall={handleCallPassenger}
                 onChat={handleOpenChat}
-                onEmergency={() => setIsSosModalVisible(true)}
               />
 
               {/* Cronómetro de Cortesía en Espera */}
@@ -1080,14 +1070,6 @@ export const TripInProgressSheet: React.FC<TripInProgressSheetProps> = ({
           )}
         </GlassSurface>
       </Animated.View>
-
-      {/* Modal SOS Seguridad */}
-      <SosConfirmationModal
-        visible={isSosModalVisible}
-        tripId={trip.id}
-        fallbackLocation={location}
-        onClose={() => setIsSosModalVisible(false)}
-      />
 
       {/* Modal de Cancelación */}
       <CancelTripModal

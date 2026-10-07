@@ -30,7 +30,7 @@ export const EmergencyFAB = ({ onPress, bottomOffset }: EmergencyFABProps) => {
 
   return (
     <Animated.View 
-      className="absolute left-4 z-50"
+      className="absolute left-4 z-[100]"
       style={animatedStyle}
       pointerEvents="box-none"
     >

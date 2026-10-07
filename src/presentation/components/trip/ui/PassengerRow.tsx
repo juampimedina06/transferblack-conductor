@@ -20,7 +20,6 @@ export interface PassengerRowProps {
   unreadMessagesCount?: number;
   onCall: () => void;
   onChat: () => void;
-  onEmergency?: () => void;
 }
 
 const getPreferenceIcon = (pref: string): keyof typeof Ionicons.glyphMap => {
@@ -61,7 +60,7 @@ const getPreferenceIcon = (pref: string): keyof typeof Ionicons.glyphMap => {
  * Fila unificada de Pasajero para el Cockpit de Conducción:
  * - Avatar con monograma y borde de acento
  * - Nombre, rating tabular y chips sutiles de vidrio (VIP, equipaje, confort)
- * - Botones circulares con target táctil >= 44x44 (Llamar, Chat con badge, SOS)
+ * - Botones circulares con target táctil >= 44x44 (Llamar, Chat con badge)
  */
 export const PassengerRow: React.FC<PassengerRowProps> = React.memo(({
   theme,
@@ -74,7 +73,6 @@ export const PassengerRow: React.FC<PassengerRowProps> = React.memo(({
   unreadMessagesCount = 0,
   onCall,
   onChat,
-  onEmergency,
 }) => {
   return (
     <View style={styles.container}>
@@ -178,29 +176,6 @@ export const PassengerRow: React.FC<PassengerRowProps> = React.memo(({
 
       {/* Botones de Acción Circulares (Targets >= 44x44) */}
       <View style={styles.actionsRow}>
-        {/* SOS */}
-        {onEmergency && (
-          <Pressable
-            onPress={() => {
-              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              onEmergency();
-            }}
-            accessibilityRole="button"
-            accessibilityLabel="Botón de emergencia SOS"
-            hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
-            style={({ pressed }) => [
-              styles.actionButton,
-              {
-                backgroundColor: theme.urgentSoft,
-                borderColor: 'rgba(239, 68, 68, 0.4)',
-                transform: [{ scale: pressed ? 0.95 : 1 }],
-              },
-            ]}
-          >
-            <Ionicons name="warning" size={18} color={theme.urgentAccent} />
-          </Pressable>
-        )}
-
         {/* Llamar */}
         <Pressable
           onPress={() => {
