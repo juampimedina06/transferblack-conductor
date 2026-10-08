@@ -3,22 +3,6 @@ import { ExpoConfig, ConfigContext } from 'expo/config';
 export default ({ config }: ConfigContext): ExpoConfig => {
   const googleMapsApiKey = process.env.VITE_GOOGLE_MAPS_API_KEY;
 
-  const plugins = [...(config.plugins ?? [])];
-
-  const hasMapsPlugin = plugins.some((p) =>
-    Array.isArray(p) ? p[0] === 'react-native-maps' : p === 'react-native-maps'
-  );
-
-  if (!hasMapsPlugin) {
-    plugins.push([
-      'react-native-maps',
-      {
-        androidGoogleMapsApiKey: googleMapsApiKey,
-        iosGoogleMapsApiKey: googleMapsApiKey,
-      },
-    ]);
-  }
-
   return {
     ...config,
     name: config.name ?? 'Transferblack Conductor',
@@ -30,6 +14,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     android: {
       ...config.android,
       package: config.android?.package ?? 'com.transferblack.driver',
+      googleServicesFile:
+        process.env.GOOGLE_SERVICES_JSON ?? config.android?.googleServicesFile,
       config: {
         ...config.android?.config,
         ...(googleMapsApiKey
@@ -41,6 +27,5 @@ export default ({ config }: ConfigContext): ExpoConfig => {
           : {}),
       },
     },
-    plugins,
   };
 };
