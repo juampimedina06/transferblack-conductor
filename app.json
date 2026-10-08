@@ -9,7 +9,6 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "bundleIdentifier": "com.transferblack.driver",
-      "icon": "./assets/expo.icon",
       "infoPlist": {
         "NSCameraUsageDescription": "TransferBlack Conductor necesita acceso a tu cámara para fotografiar tus documentos oficiales (licencia de conducir, DNI, póliza de seguro e ITV) y tu vehículo para la validación de tu cuenta de conductor.",
         "NSPhotoLibraryUsageDescription": "TransferBlack Conductor necesita acceso a tu galería para que puedas seleccionar y adjuntar comprobantes de tu documentación oficial y fotos del vehículo para su verificación.",
@@ -27,9 +26,8 @@
       "package": "com.transferblack.driver",
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#0A0A0C",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,

@@ -75,12 +75,11 @@ export const TripOfferCard: React.FC<TripOfferCardProps> = ({
     offer?.expiresAt
   );
 
-  // Intervalo liviano de 1s para actualizar los números del temporizador
+  // Intervalo liviano de 1s para actualizar los números del temporizador.
+  // Solo corre cuando hay fecha de expiración; sin expiresAt el valor
+  // restante se deriva directo del TTL (sin tocar estado en el effect).
   useEffect(() => {
-    if (!offer?.expiresAt) {
-      setSecondsLeft(ttlSeconds);
-      return;
-    }
+    if (!offer?.expiresAt) return;
 
     const updateSeconds = () => {
       const remainingMs = new Date(offer.expiresAt!).getTime() - Date.now();
@@ -92,6 +91,8 @@ export const TripOfferCard: React.FC<TripOfferCardProps> = ({
     const interval = setInterval(updateSeconds, 1000);
     return () => clearInterval(interval);
   }, [offer?.expiresAt, ttlSeconds]);
+
+  const remainingSeconds = offer?.expiresAt ? secondsLeft : ttlSeconds;
 
   // Háptico suave chill al recibir el viaje
   useEffect(() => {
@@ -146,7 +147,7 @@ export const TripOfferCard: React.FC<TripOfferCardProps> = ({
     );
   }, [offer?.pickup, offer?.dropoff, durationMin]);
 
-  const isUrgent = secondsLeft <= 5;
+  const isUrgent = remainingSeconds <= 5;
 
   // Estado Skeleton si está cargando
   if (isLoading) {
@@ -207,7 +208,7 @@ export const TripOfferCard: React.FC<TripOfferCardProps> = ({
             <CountdownRing
               theme={theme}
               progress={progress}
-              secondsLeft={secondsLeft}
+              secondsLeft={remainingSeconds}
               size={36}
               strokeWidth={3}
               isUrgent={isUrgent}
@@ -359,9 +360,11 @@ export const TripOfferCard: React.FC<TripOfferCardProps> = ({
                 onAccept();
               }}
               onPressIn={() => {
+                // eslint-disable-next-line react-hooks/immutability -- Reanimated SharedValue; mutar .value es su API intencional (facebook/react#29640)
                 acceptScale.value = withTiming(0.97, { duration: 100 });
               }}
               onPressOut={() => {
+                // eslint-disable-next-line react-hooks/immutability -- Reanimated SharedValue; mutar .value es su API intencional (facebook/react#29640)
                 acceptScale.value = withTiming(1, { duration: 120 });
               }}
               disabled={isAccepting}
@@ -407,9 +410,11 @@ export const TripOfferCard: React.FC<TripOfferCardProps> = ({
                 onReject();
               }}
               onPressIn={() => {
+                // eslint-disable-next-line react-hooks/immutability -- Reanimated SharedValue; mutar .value es su API intencional (facebook/react#29640)
                 rejectScale.value = withTiming(0.96, { duration: 100 });
               }}
               onPressOut={() => {
+                // eslint-disable-next-line react-hooks/immutability -- Reanimated SharedValue; mutar .value es su API intencional (facebook/react#29640)
                 rejectScale.value = withTiming(1, { duration: 120 });
               }}
               disabled={isAccepting}

@@ -277,6 +277,7 @@ export const TripInProgressSheet: React.FC<TripInProgressSheetProps> = ({
       setSnapIndex(index);
       const targetHeight = index === 0 ? COLLAPSED_HEIGHT : EXPANDED_HEIGHT;
       if (reducedMotion) {
+        // eslint-disable-next-line react-hooks/immutability -- Reanimated SharedValue; mutar .value es su API intencional (facebook/react#29640)
         sheetHeight.value = targetHeight;
       } else {
         sheetHeight.value = withTiming(targetHeight, {
@@ -301,6 +302,7 @@ export const TripInProgressSheet: React.FC<TripInProgressSheetProps> = ({
     .onUpdate((event) => {
       const nextH = startDragHeight.value - event.translationY;
       if (nextH < COLLAPSED_HEIGHT * 0.9) {
+        // eslint-disable-next-line react-hooks/immutability -- Reanimated SharedValue; mutar .value es su API intencional (facebook/react#29640)
         sheetHeight.value = COLLAPSED_HEIGHT * 0.9;
       } else if (nextH > EXPANDED_HEIGHT + 10) {
         sheetHeight.value = EXPANDED_HEIGHT + 10;

@@ -158,20 +158,14 @@ export const ratePassenger = async (
   data: RatePassengerInput
 ) => {
   try {
-    const payload: Record<string, any> = {
-      rating: data.rating,
+    const payload: { rating: number; comment?: string; tags?: string[] } = {
+      rating: Math.round(data.rating),
     };
     if (data.comment?.trim()) {
       payload.comment = data.comment.trim();
     }
     if (data.tags && data.tags.length > 0) {
       payload.tags = data.tags;
-    }
-    if (data.block_matching !== undefined) {
-      payload.block_matching = data.block_matching;
-    }
-    if (data.incident_type) {
-      payload.incident_type = data.incident_type;
     }
     const response = await transferApi.post(`/rides/${tripId}/rate-passenger`, payload);
     return response.data;
