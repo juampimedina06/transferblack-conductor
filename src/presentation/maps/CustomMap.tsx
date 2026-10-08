@@ -14,78 +14,23 @@ interface Props extends ViewProps {
   bottomOffset?: number;
 }
 
-// Dark theme map style
+// Dark theme map style aligned with TransferBlack palette
 const darkMapStyle = [
-  {
-    elementType: "geometry",
-    stylers: [{ color: "#242f3e" }],
-  },
-  {
-    elementType: "labels.text.fill",
-    stylers: [{ color: "#746855" }],
-  },
-  {
-    elementType: "labels.text.stroke",
-    stylers: [{ color: "#242f3e" }],
-  },
-  {
-    featureType: "administrative.locality",
-    elementType: "labels.text.fill",
-    stylers: [{ color: "#d59563" }],
-  },
-  {
-    featureType: "poi",
-    stylers: [{ visibility: "off" }],
-  },
-  {
-    featureType: "road",
-    elementType: "geometry",
-    stylers: [{ color: "#38414e" }],
-  },
-  {
-    featureType: "road",
-    elementType: "geometry.stroke",
-    stylers: [{ color: "#212a37" }],
-  },
-  {
-    featureType: "road",
-    elementType: "labels.text.fill",
-    stylers: [{ color: "#9ca5b3" }],
-  },
-  {
-    featureType: "road.highway",
-    elementType: "geometry",
-    stylers: [{ color: "#746855" }],
-  },
-  {
-    featureType: "road.highway",
-    elementType: "geometry.stroke",
-    stylers: [{ color: "#1f2835" }],
-  },
-  {
-    featureType: "road.highway",
-    elementType: "labels.text.fill",
-    stylers: [{ color: "#f3d19c" }],
-  },
-  {
-    featureType: "transit",
-    stylers: [{ visibility: "off" }],
-  },
-  {
-    featureType: "water",
-    elementType: "geometry",
-    stylers: [{ color: "#17263c" }],
-  },
-  {
-    featureType: "water",
-    elementType: "labels.text.fill",
-    stylers: [{ color: "#515c6d" }],
-  },
-  {
-    featureType: "water",
-    elementType: "labels.text.stroke",
-    stylers: [{ color: "#17263c" }],
-  },
+  { elementType: "geometry", stylers: [{ color: "#0A0A0C" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#8E8E93" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#0A0A0C" }] },
+  { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+  { featureType: "poi", stylers: [{ visibility: "off" }] },
+  { featureType: "transit", stylers: [{ visibility: "off" }] },
+  { featureType: "administrative", elementType: "geometry", stylers: [{ color: "#2C2C2E" }] },
+  { featureType: "landscape", elementType: "geometry", stylers: [{ color: "#101012" }] },
+  { featureType: "road", elementType: "geometry", stylers: [{ color: "#1A1A1C" }] },
+  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#0A0A0C" }] },
+  { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#2C2C2E" }] },
+  { featureType: "road.arterial", elementType: "labels", stylers: [{ visibility: "off" }] },
+  { featureType: "road.local", elementType: "labels", stylers: [{ visibility: "off" }] },
+  { featureType: "water", elementType: "geometry", stylers: [{ color: "#050507" }] },
+  { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#2C2C2E" }] },
 ];
 
 export const CustomMap = ({
@@ -238,19 +183,19 @@ export const CustomMap = ({
         ref={mapRef}
         style={styles.map}
         provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
-        loadingEnabled={true}
-        loadingIndicatorColor={THEME_COLORS.gold}
-        loadingBackgroundColor={THEME_COLORS.obsidian}
         customMapStyle={darkMapStyle}
+        userInterfaceStyle="dark"
         showsPointsOfInterests={false}
+        showsBuildings={true}
         showsCompass={false}
+        toolbarEnabled={false}
         onTouchStart={() => setIsFollowingUser(false)}
         showsUserLocation={showUserLocation}
         initialRegion={{
           latitude: initialLocation.latitude,
           longitude: initialLocation.longitude,
-          latitudeDelta: 0.0922,
-          longitudeDelta: 0.0421,
+          latitudeDelta: 0.05,
+          longitudeDelta: 0.05,
         }}
       >
         {/* Past Driver Trail */}
