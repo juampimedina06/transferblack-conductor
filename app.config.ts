@@ -26,16 +26,6 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ios: {
       ...config.ios,
       bundleIdentifier: config.ios?.bundleIdentifier ?? 'com.transferblack.driver',
-      config: {
-        ...config.ios?.config,
-        ...(googleMapsApiKey
-          ? {
-              googleMaps: {
-                apiKey: googleMapsApiKey,
-              },
-            }
-          : {}),
-      },
     },
     android: {
       ...config.android,
