@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,9 +19,11 @@ import { Trip, getPaymentMethodInfo } from '../../../core/trip/interface/trip.in
 import { THEME_COLORS } from '../../../core/constants/theme';
 import { useDriverTripStore } from '../../trip/store/useDriverTripStore';
 import { useWalletStore } from '../../wallet/store/useWalletStore';
+import { useSafetyStore } from '../../safety/store/useSafetyStore';
 import { ratePassenger } from '../../../core/trip/actions/trip.actions';
 import { router } from 'expo-router';
 import { LiquidGlassContainer } from '../ui/LiquidGlassContainer';
+import { IncidentReportModal } from './IncidentReportModal';
 
 interface TripReceiptModalProps {
   trip: Trip;
@@ -30,38 +33,51 @@ interface TripReceiptModalProps {
 export const TripReceiptModal = ({ trip, visible }: TripReceiptModalProps) => {
   const [rating, setRating] = useState<number>(5);
   const [comment, setComment] = useState<string>('');
+  const [blockPassenger, setBlockPassenger] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isIncidentModalVisible, setIsIncidentModalVisible] = useState(false);
 
-  const rawThirdPartyName = trip?.thirdPartyName || trip?.third_party?.name || trip?.chat?.third_party?.name;
+  const rawThirdPartyName =
+    trip?.thirdPartyName || trip?.third_party?.name || trip?.chat?.third_party?.name;
   const isThirdParty = Boolean(rawThirdPartyName || trip?.chat?.is_third_party_trip);
-  const passengerName = isThirdParty && rawThirdPartyName
-    ? `Viaja: ${rawThirdPartyName} (Tercero)`
-    : (trip?.passenger?.fullName || 'Pasajero');
+  const passengerName =
+    isThirdParty && rawThirdPartyName
+      ? `Viaja: ${rawThirdPartyName} (Tercero)`
+      : trip?.passenger?.fullName || 'Pasajero';
 
   // Payment method info & Cash verification
   const paymentInfo = getPaymentMethodInfo(trip?.payment_method);
   const isCash = paymentInfo.isCash;
 
-  // Calculate fees safely
-  const finalFare = Number(trip?.final_fare || trip?.estimated_fare || 0);
-  const commissionPercent = 0.20; // Default 20% platform fee
-  const commission = finalFare * commissionPercent;
-  const netEarnings = Math.max(0, finalFare - commission);
+  // Tolls and extras declared by driver
+  const tollsAmount = useDriverTripStore((s) => s.getTripExtrasTotal());
+  const tripExtras = useDriverTripStore((s) => s.tripExtras);
+
+  // Calculate fees safely & transparently
+  const baseFare = Number(trip?.final_fare || trip?.estimated_fare || 0);
+  const totalAmountToCollect = baseFare + tollsAmount;
+  const commissionPercent = 0.20; // 20% platform fee applies ONLY to baseFare
+  const commission = baseFare * commissionPercent;
+  const netEarnings = Math.max(0, baseFare - commission) + tollsAmount;
 
   const finishAndClose = () => {
     useWalletStore.getState().fetchSummary().catch(() => {});
+    useDriverTripStore.getState().clearTripExtras();
     useDriverTripStore.getState().setActiveTrip(null);
     router.replace('/' as any);
   };
 
   const handleRatingChange = (newRating: number) => {
-    Haptics.selectionAsync();
+    void Haptics.selectionAsync();
     setRating(newRating);
+    if (newRating <= 2) {
+      setBlockPassenger(true);
+    }
   };
 
   const handleConfirm = async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setSubmitError(null);
     if (!trip?.id) {
       finishAndClose();
@@ -73,19 +89,35 @@ export const TripReceiptModal = ({ trip, visible }: TripReceiptModalProps) => {
       await ratePassenger(trip.id, {
         rating,
         ...(comment.trim() ? { comment: comment.trim() } : {}),
+        block_matching: blockPassenger,
       });
 
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      // Persist blocked passenger in local store if selected
+      const passengerId = trip?.passenger?.phone || trip?.id;
+      if (blockPassenger && passengerId) {
+        useSafetyStore.getState().blockPassenger({
+          passengerId,
+          passengerName,
+          blockedAt: new Date().toISOString(),
+          reason: comment.trim() || 'Calificación baja y bloqueo solicitado por el conductor',
+          tripId: trip.id,
+        });
+      }
+
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       finishAndClose();
     } catch (err: any) {
       const msg = err.message || 'Error al calificar al pasajero';
-      // Si ya fue calificado o el backend no lo requiere (409), permitimos continuar
-      if (msg.includes('ya fue calificado') || msg.includes('NO_PASSENGER') || msg.includes('RATING_ALREADY_EXISTS')) {
+      if (
+        msg.includes('ya fue calificado') ||
+        msg.includes('NO_PASSENGER') ||
+        msg.includes('RATING_ALREADY_EXISTS')
+      ) {
         finishAndClose();
         return;
       }
 
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       setSubmitError(msg);
       Alert.alert(
         'No se pudo enviar la calificación',
@@ -124,7 +156,7 @@ export const TripReceiptModal = ({ trip, visible }: TripReceiptModalProps) => {
                 Viaje Completado
               </Text>
               <Text className="text-ash font-montserrat text-xs mt-0.5">
-                Resumen de cobro y calificación
+                Desglose transparente y cobro verificado
               </Text>
             </View>
 
@@ -145,10 +177,12 @@ export const TripReceiptModal = ({ trip, visible }: TripReceiptModalProps) => {
                     className="text-white font-montserrat-bold text-2xl mt-0.5"
                     style={{ fontVariant: ['tabular-nums'] }}
                   >
-                    ${finalFare.toFixed(2)}
+                    ${totalAmountToCollect.toFixed(2)}
                   </Text>
                   <Text className="text-emerald-300/80 font-montserrat text-[11px]">
-                    Cobrá el total antes de que el pasajero descienda
+                    {tollsAmount > 0
+                      ? `Incluye $${tollsAmount.toFixed(2)} en peajes/extras`
+                      : 'Cobrá el total antes de que el pasajero descienda'}
                   </Text>
                 </View>
               </LiquidGlassContainer>
@@ -171,14 +205,14 @@ export const TripReceiptModal = ({ trip, visible }: TripReceiptModalProps) => {
               </LiquidGlassContainer>
             )}
 
-            {/* Liquid Glass Receipt Card */}
+            {/* Liquid Glass Receipt Card - Transparencia de Ganancias */}
             <LiquidGlassContainer
               variant="gold"
               className="w-full rounded-[24px] p-5 mb-5 shadow-2xl"
             >
               <View className="items-center mb-4">
                 <Text className="text-ash font-montserrat-bold text-[10px] tracking-widest uppercase mb-1">
-                  GANANCIA NETA ESTIMADA
+                  GANANCIA NETA FINAL
                 </Text>
                 <Text
                   className="text-gold font-montserrat-bold text-4xl"
@@ -191,19 +225,54 @@ export const TripReceiptModal = ({ trip, visible }: TripReceiptModalProps) => {
               {/* Line items divider */}
               <View className="h-[1px] bg-white/10 w-full mb-3" />
 
-              {/* Line items */}
+              {/* Transparent Line items */}
               <View className="w-full gap-2">
                 <View className="flex-row justify-between items-center">
-                  <Text className="text-ash font-montserrat-medium text-xs">Tarifa del viaje</Text>
+                  <Text className="text-ash font-montserrat-medium text-xs">Tarifa del servicio</Text>
                   <Text
                     className="text-white font-montserrat-semibold text-xs"
                     style={{ fontVariant: ['tabular-nums'] }}
                   >
-                    ${finalFare.toFixed(2)}
+                    ${baseFare.toFixed(2)}
                   </Text>
                 </View>
+
+                {tripExtras.length > 0 && (
+                  <View className="bg-white/5 px-2.5 py-2 rounded-lg border border-gold/20 gap-1.5">
+                    <View className="flex-row justify-between items-center">
+                      <View className="flex-row items-center gap-1.5">
+                        <Ionicons name="car-outline" size={13} color={THEME_COLORS.gold} />
+                        <Text className="text-gold font-montserrat-semibold text-xs">
+                          Peajes y Extras (100% conductor)
+                        </Text>
+                      </View>
+                      <Text
+                        className="text-gold font-montserrat-bold text-xs"
+                        style={{ fontVariant: ['tabular-nums'] }}
+                      >
+                        +${tollsAmount.toFixed(2)}
+                      </Text>
+                    </View>
+                    {tripExtras.map((item) => (
+                      <View key={item.id} className="flex-row justify-between items-center pl-4">
+                        <Text className="text-zinc-400 font-montserrat text-[11px]">
+                          • {item.notes || item.label}
+                        </Text>
+                        <Text
+                          className="text-zinc-300 font-montserrat text-[11px]"
+                          style={{ fontVariant: ['tabular-nums'] }}
+                        >
+                          +${item.amount.toFixed(2)}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
                 <View className="flex-row justify-between items-center">
-                  <Text className="text-ash font-montserrat-medium text-xs">Comisión de plataforma (20%)</Text>
+                  <Text className="text-ash font-montserrat-medium text-xs">
+                    Comisión de plataforma (20% sobre base)
+                  </Text>
                   <Text
                     className="text-red-400 font-montserrat-semibold text-xs"
                     style={{ fontVariant: ['tabular-nums'] }}
@@ -211,8 +280,9 @@ export const TripReceiptModal = ({ trip, visible }: TripReceiptModalProps) => {
                     - ${commission.toFixed(2)}
                   </Text>
                 </View>
-                <View className="flex-row justify-between items-center">
-                  <Text className="text-ash font-montserrat-medium text-xs">Método de pago</Text>
+
+                <View className="flex-row justify-between items-center pt-1 border-t border-white/5">
+                  <Text className="text-ash font-montserrat-medium text-xs">Método de cobro</Text>
                   <Text className="text-gold font-montserrat-semibold text-xs capitalize">
                     {paymentInfo.label}
                   </Text>
@@ -223,7 +293,7 @@ export const TripReceiptModal = ({ trip, visible }: TripReceiptModalProps) => {
             {/* Rating Section */}
             <LiquidGlassContainer
               variant="default"
-              className="w-full rounded-[24px] p-5 mb-5"
+              className="w-full rounded-[24px] p-5 mb-4"
             >
               <View className="items-center mb-3">
                 <View className="w-12 h-12 rounded-full bg-charcoal items-center justify-center mb-2 border border-white/10">
@@ -255,7 +325,7 @@ export const TripReceiptModal = ({ trip, visible }: TripReceiptModalProps) => {
               </View>
 
               {/* Comment Input */}
-              <View className="w-full">
+              <View className="w-full mb-3">
                 <TextInput
                   value={comment}
                   onChangeText={setComment}
@@ -263,14 +333,30 @@ export const TripReceiptModal = ({ trip, visible }: TripReceiptModalProps) => {
                   placeholderTextColor="#71717A"
                   multiline
                   maxLength={500}
-                  className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white font-montserrat text-xs min-h-[70px]"
+                  className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white font-montserrat text-xs min-h-[60px]"
                   textAlignVertical="top"
                 />
-                <View className="flex-row justify-end mt-1">
-                  <Text className="text-zinc-500 font-montserrat text-[10px]">
-                    {comment.length}/500
+              </View>
+
+              {/* Bloqueo de pasajero toggle */}
+              <View className="flex-row items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
+                <View className="flex-1 mr-3">
+                  <Text className="text-white font-montserrat-semibold text-xs">
+                    Bloquear emparejamiento futuro
+                  </Text>
+                  <Text className="text-zinc-400 font-montserrat text-[10px] mt-0.5">
+                    No volverás a recibir ofertas de este pasajero
                   </Text>
                 </View>
+                <Switch
+                  value={blockPassenger}
+                  onValueChange={(val) => {
+                    void Haptics.selectionAsync();
+                    setBlockPassenger(val);
+                  }}
+                  trackColor={{ false: '#27272A', true: '#EF4444' }}
+                  thumbColor={blockPassenger ? '#FFFFFF' : '#A1A1AA'}
+                />
               </View>
 
               {/* Error banner if submission failed */}
@@ -283,6 +369,22 @@ export const TripReceiptModal = ({ trip, visible }: TripReceiptModalProps) => {
                 </View>
               )}
             </LiquidGlassContainer>
+
+            {/* Acceso a Reporte de Incidente / Daños */}
+            <TouchableOpacity
+              onPress={() => setIsIncidentModalVisible(true)}
+              className="w-full py-3 px-4 rounded-xl border border-red-500/30 bg-red-950/20 flex-row items-center justify-between mb-5"
+              accessibilityRole="button"
+              accessibilityLabel="Reportar incidente o pasajero conflictivo"
+            >
+              <View className="flex-row items-center gap-2">
+                <Ionicons name="warning-outline" size={18} color="#F87171" />
+                <Text className="text-red-400 font-montserrat-semibold text-xs">
+                  ¿Hubo agresión, suciedad o daños?
+                </Text>
+              </View>
+              <Text className="text-zinc-400 font-montserrat-medium text-xs">Reportar →</Text>
+            </TouchableOpacity>
 
             {/* Footer 56px Ergonomic Button */}
             <View className="w-full mt-auto pb-6">
@@ -307,8 +409,24 @@ export const TripReceiptModal = ({ trip, visible }: TripReceiptModalProps) => {
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
+
+        {/* Modal dedicado de reporte de incidente y daños */}
+        <IncidentReportModal
+          visible={isIncidentModalVisible}
+          tripId={trip.id}
+          passengerId={trip?.passenger?.phone || trip?.id}
+          passengerName={passengerName}
+          onClose={() => setIsIncidentModalVisible(false)}
+          onReportSuccess={() => {
+            setBlockPassenger(true);
+            Alert.alert(
+              'Reporte Recibido',
+              'El incidente fue registrado. El pasajero fue bloqueado de tu cuenta.',
+              [{ text: 'Entendido' }]
+            );
+          }}
+        />
       </SafeAreaView>
     </Modal>
   );
 };
-

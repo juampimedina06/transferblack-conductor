@@ -122,7 +122,15 @@ export const driverCancelTrip = async (
   }
 };
 
-export const completeTrip = async (tripId: string, data: { latitude: number; longitude: number }) => {
+export interface CompleteTripInput {
+  latitude: number;
+  longitude: number;
+  tolls_amount?: number;
+  extra_charges?: number;
+  extra_notes?: string;
+}
+
+export const completeTrip = async (tripId: string, data: CompleteTripInput) => {
   try {
     const idempotencyKey = `${tripId}-complete-${Date.now()}`;
     const response = await transferApi.post(`/rides/${tripId}/complete`, data, {
@@ -137,12 +145,20 @@ export const completeTrip = async (tripId: string, data: { latitude: number; lon
   }
 };
 
+export interface RatePassengerInput {
+  rating: number;
+  comment?: string;
+  tags?: string[];
+  block_matching?: boolean;
+  incident_type?: string;
+}
+
 export const ratePassenger = async (
   tripId: string, 
-  data: { rating: number; comment?: string; tags?: string[] }
+  data: RatePassengerInput
 ) => {
   try {
-    const payload: { rating: number; comment?: string; tags?: string[] } = {
+    const payload: Record<string, any> = {
       rating: data.rating,
     };
     if (data.comment?.trim()) {
@@ -150,6 +166,12 @@ export const ratePassenger = async (
     }
     if (data.tags && data.tags.length > 0) {
       payload.tags = data.tags;
+    }
+    if (data.block_matching !== undefined) {
+      payload.block_matching = data.block_matching;
+    }
+    if (data.incident_type) {
+      payload.incident_type = data.incident_type;
     }
     const response = await transferApi.post(`/rides/${tripId}/rate-passenger`, payload);
     return response.data;

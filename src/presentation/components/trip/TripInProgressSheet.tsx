@@ -58,6 +58,7 @@ import { PassengerRow } from './ui/PassengerRow';
 import { RouteTimeline } from './ui/RouteTimeline';
 import { PaymentSummary } from './ui/PaymentSummary';
 import { CancelTripModal } from './CancelTripModal';
+import { AddTripExtraModal } from './AddTripExtraModal';
 import {
   TripUiPhase,
   TripStateMachineState,
@@ -154,6 +155,10 @@ export const TripInProgressSheet: React.FC<TripInProgressSheetProps> = ({
 
   // Modales
   const [isCancelModalVisible, setIsCancelModalVisible] = useState(false);
+  const [isAddExtraModalVisible, setIsAddExtraModalVisible] = useState(false);
+
+  // Extras y peajes
+  const tollsAmount = useDriverTripStore((s) => s.getTripExtrasTotal());
 
   // Socket listener
   useEffect(() => {
@@ -173,7 +178,8 @@ export const TripInProgressSheet: React.FC<TripInProgressSheetProps> = ({
   }, []);
 
   // Datos de viaje
-  const totalFare = Number(trip.final_fare || trip.estimated_fare || 0);
+  const baseFare = Number(trip.final_fare || trip.estimated_fare || 0);
+  const totalFare = baseFare + tollsAmount;
   const paymentInfo = getPaymentMethodInfo(trip.payment_method);
   const durationMin = trip.dropoff?.durationMinutes || 12;
 
@@ -388,9 +394,22 @@ export const TripInProgressSheet: React.FC<TripInProgressSheetProps> = ({
 
     try {
       dispatch({ type: 'START_ACTION', actionType: 'finishing' });
+      const currentTollsAmount = useDriverTripStore.getState().getTripExtrasTotal();
+      const currentExtras = useDriverTripStore.getState().tripExtras;
+      const extraNotes = currentExtras
+        .map((e) => `${e.label}: $${e.amount}`)
+        .join('; ');
+
       const completedTrip = await completeTrip(trip.id, {
         latitude: location.latitude,
         longitude: location.longitude,
+        ...(currentTollsAmount > 0
+          ? {
+              tolls_amount: currentTollsAmount,
+              extra_charges: currentTollsAmount,
+              extra_notes: extraNotes || undefined,
+            }
+          : {}),
       });
 
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -1002,6 +1021,7 @@ export const TripInProgressSheet: React.FC<TripInProgressSheetProps> = ({
               <PaymentSummary
                 theme={theme}
                 totalFare={totalFare}
+                tollsAmount={tollsAmount}
                 isCash={paymentInfo.isCash}
                 paymentLabel={paymentInfo.label}
                 paymentIcon={paymentInfo.icon}
@@ -1046,6 +1066,37 @@ export const TripInProgressSheet: React.FC<TripInProgressSheetProps> = ({
                   </Text>
                 </Pressable>
 
+                {(state.phase === 'in_trip' || state.phase === 'approaching_dropoff') && (
+                  <Pressable
+                    onPress={() => setIsAddExtraModalVisible(true)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Agregar peaje o gasto adicional"
+                    style={[
+                      styles.secondaryBtn,
+                      {
+                        backgroundColor: theme.innerSurfaceBg,
+                        borderColor: tollsAmount > 0 ? theme.accent : theme.innerSurfaceBorder,
+                      },
+                    ]}
+                  >
+                    <Ionicons
+                      name="add-circle-outline"
+                      size={15}
+                      color={tollsAmount > 0 ? theme.accent : theme.textPrimary}
+                    />
+                    <Text
+                      style={[
+                        styles.secondaryBtnText,
+                        { color: tollsAmount > 0 ? theme.accent : theme.textPrimary },
+                      ]}
+                    >
+                      {tollsAmount > 0
+                        ? `Extras ($${tollsAmount.toLocaleString('es-AR')})`
+                        : '+ Peaje'}
+                    </Text>
+                  </Pressable>
+                )}
+
                 {(state.phase === 'navigating_to_pickup' || state.phase === 'waiting_passenger') && (
                   <Pressable
                     onPress={() => setIsCancelModalVisible(true)}
@@ -1077,6 +1128,12 @@ export const TripInProgressSheet: React.FC<TripInProgressSheetProps> = ({
         tripId={trip.id}
         location={location}
         onClose={() => setIsCancelModalVisible(false)}
+      />
+
+      {/* Modal de Peajes y Gastos Extras */}
+      <AddTripExtraModal
+        visible={isAddExtraModalVisible}
+        onClose={() => setIsAddExtraModalVisible(false)}
       />
     </>
   );

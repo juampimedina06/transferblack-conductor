@@ -130,9 +130,13 @@ export const CancelTripModal: React.FC<CancelTripModalProps> = ({
             </TouchableOpacity>
           </View>
 
-          <Text className="text-zinc-300 font-montserrat-medium text-xs mb-3">
-            Seleccioná el motivo de la cancelación. Las cancelaciones justificadas no afectan tu cuenta.
-          </Text>
+          {/* Banner de Política de Transparencia de Cancelaciones */}
+          <View className="bg-blue-500/10 border border-blue-500/25 rounded-2xl p-2.5 mb-3 flex-row items-center">
+            <Ionicons name="information-circle" size={18} color="#60A5FA" style={{ marginRight: 8 }} />
+            <Text className="text-blue-200/90 font-montserrat-medium text-[11px] flex-1 leading-4">
+              <Text className="font-montserrat-bold text-white">Política Justa TransferBlack:</Text> Espera de +5 min, exceso de pasajeros o motivos de seguridad nunca penalizan tu cuenta.
+            </Text>
+          </View>
 
           {/* Reason options */}
           <ScrollView className="max-h-64 mb-3" showsVerticalScrollIndicator={false}>
@@ -157,9 +161,23 @@ export const CancelTripModal: React.FC<CancelTripModalProps> = ({
                     >
                       {reason.label}
                     </Text>
-                    <Text className="text-zinc-500 font-montserrat text-[10px] mt-0.5">
-                      {reason.isJustified ? 'Justificada • No penaliza' : 'Sin justificación'}
-                    </Text>
+                    <View className="flex-row items-center mt-1">
+                      <View
+                        className={`px-1.5 py-0.5 rounded border ${
+                          reason.isJustified
+                            ? 'bg-emerald-500/15 border-emerald-500/30'
+                            : 'bg-amber-500/15 border-amber-500/30'
+                        }`}
+                      >
+                        <Text
+                          className={`font-montserrat-bold text-[9px] ${
+                            reason.isJustified ? 'text-emerald-400' : 'text-amber-400'
+                          }`}
+                        >
+                          {reason.isJustified ? 'JUSTIFICADA • NO PENALIZA' : 'SIN JUSTIFICACIÓN'}
+                        </Text>
+                      </View>
+                    </View>
                   </View>
                   <Ionicons
                     name={isSelected ? 'radio-button-on' : 'radio-button-off'}

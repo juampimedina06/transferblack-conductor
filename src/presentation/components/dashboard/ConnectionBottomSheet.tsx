@@ -23,6 +23,8 @@ import { AmbientGlow } from '../ui/AmbientGlow';
 import { offerAlarmService } from '../../trip/services/offerAlarmService';
 import { useDriverStatusStore } from '../../driver/store/useDriverStatusStore';
 import { DocumentExpirationBlockModal } from '../compliance/DocumentExpirationBlockModal';
+import { TermsAcceptanceModal } from '../legal/TermsAcceptanceModal';
+import { useLegalStore } from '../../legal/store/useLegalStore';
 import { TripOfferCard } from '../trip/TripOfferCard';
 
 interface ConnectionBottomSheetProps {
@@ -42,8 +44,10 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
   const lastKnownLocation = useLocationStore((state) => state.lastKnownLocation);
   const dispatchSuspendedUntil = useDriverStatusStore((state) => state.dispatchSuspendedUntil);
   const compliance = useDriverStatusStore((state) => state.compliance);
+  const hasAcceptedCurrentTerms = useLegalStore((state) => state.hasAcceptedCurrentTerms);
 
   const [isDocBlockModalVisible, setIsDocBlockModalVisible] = useState(false);
+  const [isTermsModalVisible, setIsTermsModalVisible] = useState(false);
   const [isSuspended, setIsSuspended] = useState(false);
 
   useEffect(() => {
@@ -356,6 +360,11 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
                 setIsDocBlockModalVisible(true);
                 return;
               }
+              if (!isAvailable && !hasAcceptedCurrentTerms()) {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                setIsTermsModalVisible(true);
+                return;
+              }
               if (!isAvailable && isSuspended) {
                 Alert.alert(
                   'Despacho Pausado',
@@ -392,6 +401,13 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
       <DocumentExpirationBlockModal
         visible={isDocBlockModalVisible}
         onClose={() => setIsDocBlockModalVisible(false)}
+      />
+
+      {/* Modal de aceptación obligatoria de Términos y Condiciones */}
+      <TermsAcceptanceModal
+        visible={isTermsModalVisible}
+        onClose={() => setIsTermsModalVisible(false)}
+        onAccepted={() => onToggleAvailability(true)}
       />
     </View>
   );
