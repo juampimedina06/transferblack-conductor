@@ -53,6 +53,7 @@ Docs: https://docs.expo.dev/eas/index.md
 - **Cero refactorizaciones no solicitadas:** NUNCA refactorices, reestructures o modifiques archivos ajenos al requerimiento exacto que te pedí, a menos que yo te dé luz verde explícitamente.
 - **No asumas, preguntá:** Si hay ambigüedad en un requerimiento o falta contexto, DETENETE y preguntame. No intentes adivinar ni inventar implementaciones.
 - **Respetá el código existente:** Adaptate al estilo, convenciones de nombrado y patrones del código que ya está escrito en el archivo o módulo. No intentes imponer un patrón nuevo si el proyecto ya usa otro.
+- **Commit automático por tarea (SIN PUSH):** Al finalizar y verificar cada tarea con linter y typecheck, ejecutá siempre `git add .` y `git commit -m "<descripción de la tarea realizada>"` (usando convención tipo `feat:`, `fix:`). NUNCA hagas `git push`; el push lo realiza exclusivamente el usuario.
 ## Stack Tecnológico y Dependencias
 *(Ajustá esto según lo que uses en tu proyecto)*
 - Framework principal: React Native (Expo)
@@ -164,6 +165,8 @@ Docs: https://docs.expo.dev/eas/index.md
 - Considerar cache/persistencia local (MMKV, AsyncStorage) para datos críticos si la app debe funcionar offline.
 
 ## Git / commits
+- **Commit por cada tarea completada:** Por cada tarea que realices (tras pasar linter y typecheck), ejecutá `git add .` y `git commit -m "<tarea realizada>"` (usando convención tipo `feat:`, `fix:`, etc.).
+- **NUNCA HACER GIT PUSH:** El comando `git push` está estrictamente reservado para el usuario. El agente solo commitea localmente.
 - Commits atómicos con mensaje claro (convención tipo `feat:`, `fix:`, `refactor:`).
 - No mezclar cambios de estilo/formato masivo con cambios de lógica en el mismo commit.
 - **Pull Requests (PR):** Entregar SIEMPRE las descripciones de PR en formato GitHub Markdown dentro de un bloque de código markdown listo para copiar y pegar, estructurado con: Título convencional, Resumen, Motivación, Cambios por módulo, Checklist de QA/verificación y Archivos afectados.
