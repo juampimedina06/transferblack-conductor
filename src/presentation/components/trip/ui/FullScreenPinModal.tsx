@@ -1,9 +1,12 @@
 import React, { useEffect, useRef } from 'react';
 import {
   ActivityIndicator,
+  Keyboard,
+  KeyboardAvoidingView,
   Linking,
   Modal,
   Platform,
+  ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
@@ -65,6 +68,9 @@ export const FullScreenPinModal: React.FC<FullScreenPinModalProps> = ({
 
     if (val && index < 3) {
       inputRefs.current[index + 1]?.focus();
+    } else if (val && index === 3) {
+      // Ocultar teclado automáticamente al ingresar el 4to dígito para liberar pantalla
+      Keyboard.dismiss();
     }
   };
 
@@ -88,6 +94,7 @@ export const FullScreenPinModal: React.FC<FullScreenPinModalProps> = ({
 
   const handleStart = () => {
     if (!isComplete || isLoading) return;
+    Keyboard.dismiss();
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     onConfirmStart();
   };
@@ -100,18 +107,27 @@ export const FullScreenPinModal: React.FC<FullScreenPinModalProps> = ({
       onRequestClose={onClose}
       statusBarTranslucent
     >
-      <View
-        className="flex-1 bg-obsidian justify-between px-6"
-        style={{
-          paddingTop:
-            Platform.OS === 'ios'
-              ? Math.max(insets.top, 54) + 8
-              : Math.max(insets.top, 24),
-          paddingBottom: Math.max(insets.bottom, 20),
-        }}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        className="flex-1 bg-obsidian"
       >
-        {/* Top Bar con botón para minimizar */}
-        <View className="flex-row items-center justify-between">
+        <ScrollView
+          contentContainerStyle={{
+            flexGrow: 1,
+            justifyContent: 'space-between',
+            paddingTop:
+              Platform.OS === 'ios'
+                ? Math.max(insets.top, 54) + 8
+                : Math.max(insets.top, 24),
+            paddingBottom: Math.max(insets.bottom, 24),
+            paddingHorizontal: 24,
+          }}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+        >
+          {/* Top Bar con botón para minimizar */}
+          <View className="flex-row items-center justify-between">
           <View className="flex-row items-center bg-gold/15 px-3 py-1 rounded-full border border-gold/30">
             <Ionicons name="shield-checkmark" size={14} color={THEME_COLORS.gold} />
             <Text className="font-montserrat-bold text-[10px] tracking-wider text-gold uppercase ml-1.5">
@@ -254,7 +270,8 @@ export const FullScreenPinModal: React.FC<FullScreenPinModalProps> = ({
             </Text>
           </TouchableOpacity>
         </View>
-      </View>
-    </Modal>
-  );
+      </ScrollView>
+    </KeyboardAvoidingView>
+  </Modal>
+);
 };
