@@ -7,11 +7,13 @@ import {
   Modal,
   Platform,
   ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -103,14 +105,25 @@ export const FullScreenPinModal: React.FC<FullScreenPinModalProps> = ({
     <Modal
       visible={visible}
       animationType="slide"
-      transparent={false}
+      transparent={true}
       onRequestClose={onClose}
       statusBarTranslucent
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        className="flex-1 bg-obsidian"
+        className="flex-1 overflow-hidden"
       >
+        {/* Fondo Liquid Glass frosted sobre el mapa */}
+        <BlurView
+          intensity={Platform.OS === 'ios' ? 75 : 88}
+          tint="dark"
+          style={StyleSheet.absoluteFill}
+        />
+        <View
+          pointerEvents="none"
+          style={StyleSheet.absoluteFill}
+          className="bg-obsidian/85"
+        />
         <ScrollView
           contentContainerStyle={{
             flexGrow: 1,

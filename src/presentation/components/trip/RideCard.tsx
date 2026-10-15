@@ -2,12 +2,15 @@ import React, { useRef } from 'react';
 import {
   ActivityIndicator,
   Linking,
+  Platform,
   Share,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { BlurView } from 'expo-blur';
 import Animated, {
   FadeIn,
   FadeOut,
@@ -144,7 +147,7 @@ export const PassengerProfileRow: React.FC<PassengerProfileRowProps> = ({
   };
 
   return (
-    <View className="flex-row items-center justify-between bg-white/[0.03] border border-white/[0.06] rounded-2xl p-3 mb-3">
+    <View className="flex-row items-center justify-between bg-white/[0.05] border border-white/[0.12] rounded-2xl p-3 mb-3 shadow-sm">
       <View className="flex-row items-center flex-1 mr-2.5">
         <View className="w-10 h-10 rounded-full bg-gold/15 border border-gold/35 items-center justify-center mr-3">
           <Text className="font-montserrat-bold text-base text-gold">{avatarLetter}</Text>
@@ -214,7 +217,7 @@ export const RouteAddressRow: React.FC<RouteAddressRowProps> = ({
   const isPickup = type === 'pickup';
 
   return (
-    <View className="flex-row items-center bg-white/[0.025] border border-white/[0.06] rounded-2xl p-3 mb-3">
+    <View className="flex-row items-center bg-white/[0.05] border border-white/[0.12] rounded-2xl p-3 mb-3 shadow-sm">
       <View
         className={`w-8 h-8 rounded-full border items-center justify-center mr-3 ${
           isPickup
@@ -262,7 +265,7 @@ export const TripProgressIndicator: React.FC<TripProgressIndicatorProps> = ({
   const clamped = Math.min(Math.max(percent, 0), 100);
 
   return (
-    <View className="bg-white/[0.025] border border-white/[0.06] rounded-2xl p-3 mb-3">
+    <View className="bg-white/[0.05] border border-white/[0.12] rounded-2xl p-3 mb-3 shadow-sm">
       <View className="flex-row justify-between items-center mb-2">
         <Text className="font-montserrat-bold text-[9.5px] tracking-wider text-ash-muted">
           PROGRESO DEL TRAYECTO
@@ -488,13 +491,33 @@ export const RideCard: React.FC<RideCardProps> = ({
   return (
     <Animated.View
       layout={LinearTransition.springify().damping(18).stiffness(120)}
-      className="w-full bg-obsidian-card rounded-t-[28px] rounded-b-none px-5 pt-3 pb-6 border-t border-white/10 shadow-2xl"
+      className="w-full overflow-hidden rounded-t-[28px] rounded-b-none px-5 pt-3 pb-6 border-t border-x border-white/20 shadow-2xl"
       accessible={true}
       accessibilityRole="summary"
     >
+      {/* Capa de desenfoque Liquid Glass (frosted glass sobre el mapa) */}
+      <BlurView
+        intensity={Platform.OS === 'ios' ? 65 : 80}
+        tint="dark"
+        style={StyleSheet.absoluteFill}
+      />
+
+      {/* Tinte translúcido Liquid Glass para contraste y legibilidad óptima */}
+      <View
+        pointerEvents="none"
+        style={StyleSheet.absoluteFill}
+        className="bg-[#0A0A0C]/85"
+      />
+
+      {/* Resplandor especular superior característico de Liquid Glass */}
+      <View
+        pointerEvents="none"
+        className="absolute top-0 left-8 right-8 h-[1px] bg-white/35 rounded-full"
+      />
+
       {/* Handle indicador de Bottom Sheet */}
       <View className="items-center pb-2.5">
-        <View className="w-10 h-1 rounded-full bg-white/20" />
+        <View className="w-10 h-1 rounded-full bg-white/25" />
       </View>
       {/* ====================================================================
           1. HEADER UNIFICADO (Badge de Estado + ETA / Distancia destacada)
