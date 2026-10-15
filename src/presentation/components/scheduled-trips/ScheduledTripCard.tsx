@@ -3,7 +3,6 @@ import { View, Text, TouchableOpacity, Linking, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { DriverScheduledTrip } from '../../../core/trip/interface/trip.interface';
-import { THEME_COLORS } from '../../../core/constants/theme';
 import { LiquidGlassContainer } from '../ui/LiquidGlassContainer';
 
 interface ScheduledTripCardProps {
@@ -63,34 +62,24 @@ export const ScheduledTripCard = ({ trip, onPress }: ScheduledTripCardProps) => 
       accessibilityLabel={`Reserva para ${passengerName}, fecha ${formatScheduledDate(trip.scheduledAt)}`}
     >
       <LiquidGlassContainer
-        variant={trip.isRecurring ? 'gold' : 'default'}
-        className="rounded-[22px] p-4 border border-white/10"
+        variant="default"
+        className="rounded-[24px] p-5 border border-white/15"
       >
         {/* Top Header: Schedule Date & Recurring Badge */}
-        <View className="flex-row items-center justify-between mb-3 pb-2.5 border-b border-white/10">
+        <View className="flex-row items-center justify-between mb-3 pb-3 border-b border-white/10">
           <View className="flex-row items-center flex-1 mr-2">
-            <View className="w-8 h-8 rounded-full bg-gold/15 border border-gold/30 items-center justify-center mr-2.5">
-              <Ionicons name="calendar-outline" size={16} color={THEME_COLORS.gold} />
+            <View className="w-8 h-8 rounded-full bg-white/15 border border-white/30 items-center justify-center mr-2.5">
+              <Ionicons name="calendar-outline" size={16} color="#FFFFFF" />
             </View>
-            <Text className="text-white font-montserrat-bold text-xs" numberOfLines={1}>
+            <Text className="text-white font-montserrat-bold text-sm" numberOfLines={1}>
               {formatScheduledDate(trip.scheduledAt)}
             </Text>
           </View>
 
           {/* Badge Abono vs Puntual */}
-          <View
-            className={`px-3 py-1 rounded-full border ${
-              trip.isRecurring
-                ? 'bg-gold/15 border-gold/40'
-                : 'bg-white/10 border-white/15'
-            }`}
-          >
-            <Text
-              className={`font-montserrat-semibold text-[10px] tracking-wider uppercase ${
-                trip.isRecurring ? 'text-gold' : 'text-platinum'
-              }`}
-            >
-              {trip.isRecurring ? 'Abono' : 'Puntual'}
+          <View className="px-3 py-1 rounded-full border border-white/20 bg-white/10">
+            <Text className="font-montserrat-bold text-[10px] tracking-wider uppercase text-white">
+              {trip.isRecurring ? 'Abono recurrente' : 'Viaje puntual'}
             </Text>
           </View>
         </View>
@@ -98,25 +87,28 @@ export const ScheduledTripCard = ({ trip, onPress }: ScheduledTripCardProps) => 
         {/* Passenger Row with Call Button */}
         <View className="flex-row items-center justify-between mb-3.5">
           <View className="flex-row items-center flex-1 mr-2">
-            <View className="w-10 h-10 rounded-2xl bg-white/5 border border-white/10 items-center justify-center mr-3">
+            <View className="w-11 h-11 rounded-2xl bg-white/10 border border-white/20 items-center justify-center mr-3">
               <Ionicons
                 name={isThirdParty ? 'people' : 'person'}
                 size={18}
-                color={isThirdParty ? THEME_COLORS.gold : THEME_COLORS.platinum}
+                color="#FFFFFF"
               />
             </View>
             <View className="flex-1">
-              <Text className="text-white font-montserrat-semibold text-sm" numberOfLines={1}>
+              <Text className="text-white font-montserrat-bold text-base" numberOfLines={1}>
                 {passengerName}
               </Text>
               {isThirdParty ? (
-                <Text className="text-gold font-montserrat-medium text-[10px] uppercase tracking-wider mt-0.5">
+                <Text className="text-white/60 font-montserrat-medium text-[11px] uppercase tracking-wider mt-0.5">
                   Pasajero tercero
                 </Text>
               ) : (
-                <Text className="text-ash font-montserrat text-[11px] mt-0.5">
-                  TransferBlack VIP
-                </Text>
+                <View className="flex-row items-center mt-0.5">
+                  <Ionicons name="shield-checkmark" size={11} color="#FFFFFF" />
+                  <Text className="text-white/70 font-montserrat text-xs ml-1">
+                    TransferBlack VIP
+                  </Text>
+                </View>
               )}
             </View>
           </View>
@@ -127,67 +119,66 @@ export const ScheduledTripCard = ({ trip, onPress }: ScheduledTripCardProps) => 
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               accessibilityRole="button"
               accessibilityLabel={`Llamar a ${passengerName}`}
-              className="w-11 h-11 rounded-2xl bg-white/5 border border-white/10 items-center justify-center active:scale-95"
+              className="w-11 h-11 rounded-2xl bg-white/10 border border-white/20 items-center justify-center active:bg-white/20"
             >
-              <Ionicons name="call" size={16} color={THEME_COLORS.gold} />
+              <Ionicons name="call" size={17} color="#FFFFFF" />
             </TouchableOpacity>
           ) : null}
         </View>
 
-        {/* Route Trajectory */}
-        <View className="mb-4 pt-1">
-          {/* Origin */}
-          <View className="flex-row items-start mb-2.5">
-            <View className="items-center mr-3 mt-1">
-              <View className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
-              <View className="w-0.5 h-5 bg-white/15 my-0.5" />
+        {/* Route Trajectory estilo TripOfferCard */}
+        <View className="mb-4 pt-1 border-t border-white/10 pt-2.5">
+          {/* Origen */}
+          <View className="flex-row items-center mb-2.5">
+            <View className="w-6 h-6 rounded-full bg-white/15 border border-white/40 items-center justify-center mr-3">
+              <View className="w-2 h-2 rounded-full bg-white" />
             </View>
             <View className="flex-1">
-              <Text className="text-ash font-montserrat text-[10px] uppercase tracking-wider">
+              <Text className="text-white/50 font-montserrat-bold text-[9px] uppercase tracking-wider">
                 Origen
               </Text>
-              <Text className="text-white font-montserrat-medium text-xs leading-4 mt-0.5" numberOfLines={1}>
+              <Text className="text-white font-montserrat-semibold text-sm leading-5" numberOfLines={1}>
                 {trip.origin?.address || 'Ubicación de partida'}
               </Text>
             </View>
           </View>
 
-          {/* Destination */}
-          <View className="flex-row items-start">
-            <View className="items-center mr-3 mt-1">
-              <View className="w-2.5 h-2.5 rounded-full bg-red-400" />
+          {/* Destino */}
+          <View className="flex-row items-center">
+            <View className="w-6 h-6 rounded-full bg-white/15 border border-white/40 items-center justify-center mr-3">
+              <Ionicons name="location" size={13} color="#FFFFFF" />
             </View>
             <View className="flex-1">
-              <Text className="text-ash font-montserrat text-[10px] uppercase tracking-wider">
+              <Text className="text-white/50 font-montserrat-bold text-[9px] uppercase tracking-wider">
                 Destino
               </Text>
-              <Text className="text-white font-montserrat-medium text-xs leading-4 mt-0.5" numberOfLines={1}>
+              <Text className="text-white font-montserrat-semibold text-sm leading-5" numberOfLines={1}>
                 {trip.destination?.address || 'Destino final'}
               </Text>
             </View>
           </View>
         </View>
 
-        {/* Footer: Earnings and Total Fare */}
+        {/* Footer: Earnings and Total Fare estilo TripOfferCard */}
         <View className="flex-row items-center justify-between pt-3 border-t border-white/10">
           <View>
-            <Text className="text-ash font-montserrat text-[10px] uppercase tracking-wider">
-              Ganancia Neta
+            <Text className="text-white/50 font-montserrat-bold text-[10px] uppercase tracking-wider">
+              Tu Ganancia Neta
             </Text>
             <Text
-              className="text-gold font-montserrat-bold text-lg mt-0.5"
+              className="text-white font-montserrat-bold text-2xl mt-0.5 tracking-tight"
               style={{ fontVariant: ['tabular-nums'] }}
             >
-              ${Number(trip.netEarnings || 0).toLocaleString('es-AR')} {trip.currency || 'ARS'}
+              ${Number(trip.netEarnings || 0).toLocaleString('es-AR')}
             </Text>
           </View>
 
           <View className="items-end">
-            <Text className="text-ash font-montserrat text-[10px] uppercase tracking-wider">
+            <Text className="text-white/50 font-montserrat text-[10px] uppercase tracking-wider">
               Tarifa Total
             </Text>
             <Text
-              className="text-platinum font-montserrat-medium text-xs mt-0.5"
+              className="text-white/70 font-montserrat-medium text-xs mt-0.5"
               style={{ fontVariant: ['tabular-nums'] }}
             >
               ${Number(trip.fare || 0).toLocaleString('es-AR')} {trip.currency || 'ARS'}
