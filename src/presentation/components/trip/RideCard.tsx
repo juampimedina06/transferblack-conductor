@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Linking,
   Share,
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
@@ -63,31 +62,51 @@ export interface RideCardProps {
 }
 
 // ============================================================================
-// SUB-COMPONENTES REUTILIZABLES MEJORADOS
+// SUB-COMPONENTES REUTILIZABLES (NATIVEWIND / TAILWIND)
 // ============================================================================
 
 /** Badge de estado sutil con punto pulsante */
 interface StatusBadgeProps {
   label: string;
-  color?: string;
+  variant?: 'gold' | 'emerald' | 'rose';
   pulse?: boolean;
 }
 
 export const StatusBadge: React.FC<StatusBadgeProps> = ({
   label,
-  color = THEME_COLORS.gold,
+  variant = 'gold',
   pulse = true,
-}) => (
-  <View
-    style={[styles.statusBadge, { borderColor: `${color}40`, backgroundColor: `${color}15` }]}
-    accessibilityRole="text"
-  >
-    {pulse && <View style={[styles.pulseDot, { backgroundColor: color, shadowColor: color }]} />}
-    <Text style={[styles.statusBadgeText, { color }]}>
-      {label}
-    </Text>
-  </View>
-);
+}) => {
+  const containerClasses = {
+    gold: 'border-gold/40 bg-gold/15',
+    emerald: 'border-emerald-500/40 bg-emerald-500/15',
+    rose: 'border-rose-500/40 bg-rose-500/15',
+  }[variant];
+
+  const dotClasses = {
+    gold: 'bg-gold',
+    emerald: 'bg-emerald-400',
+    rose: 'bg-rose-400',
+  }[variant];
+
+  const textClasses = {
+    gold: 'text-gold',
+    emerald: 'text-emerald-400',
+    rose: 'text-rose-400',
+  }[variant];
+
+  return (
+    <View
+      className={`flex-row items-center px-2.5 py-1 rounded-full border ${containerClasses}`}
+      accessibilityRole="text"
+    >
+      {pulse && <View className={`w-1.5 h-1.5 rounded-full mr-1.5 ${dotClasses}`} />}
+      <Text className={`font-montserrat-bold text-[10px] tracking-wider uppercase ${textClasses}`}>
+        {label}
+      </Text>
+    </View>
+  );
+};
 
 /** Fila con datos del pasajero, calificación y accesos de contacto */
 interface PassengerProfileRowProps {
@@ -124,23 +143,23 @@ export const PassengerProfileRow: React.FC<PassengerProfileRowProps> = ({
   };
 
   return (
-    <View style={styles.passengerRowContainer}>
-      <View style={styles.passengerInfoLeft}>
-        <View style={styles.avatarCircle}>
-          <Text style={styles.avatarText}>{avatarLetter}</Text>
+    <View className="flex-row items-center justify-between bg-white/[0.03] border border-white/[0.06] rounded-2xl p-3 mb-3">
+      <View className="flex-row items-center flex-1 mr-2.5">
+        <View className="w-10 h-10 rounded-full bg-gold/15 border border-gold/35 items-center justify-center mr-3">
+          <Text className="font-montserrat-bold text-base text-gold">{avatarLetter}</Text>
         </View>
 
-        <View style={styles.passengerTextCol}>
-          <Text numberOfLines={1} style={styles.passengerNameText}>
+        <View className="flex-1">
+          <Text numberOfLines={1} className="font-montserrat-bold text-sm text-white mb-0.5">
             {name}
           </Text>
-          <View style={styles.passengerMetaRow}>
-            <View style={styles.ratingBadge}>
+          <View className="flex-row items-center">
+            <View className="flex-row items-center bg-gold/15 px-1.5 py-0.5 rounded mr-1.5">
               <Ionicons name="star" size={11} color={THEME_COLORS.gold} />
-              <Text style={styles.ratingText}>{rating}</Text>
+              <Text className="font-montserrat-bold text-[10px] text-gold ml-1">{rating}</Text>
             </View>
             {preferences.length > 0 && (
-              <Text numberOfLines={1} style={styles.preferenceTag}>
+              <Text numberOfLines={1} className="font-montserrat text-[11px] text-ash flex-1">
                 · {preferences.slice(0, 2).join(', ')}
               </Text>
             )}
@@ -148,16 +167,16 @@ export const PassengerProfileRow: React.FC<PassengerProfileRowProps> = ({
         </View>
       </View>
 
-      <View style={styles.actionButtonsRow}>
+      <View className="flex-row items-center gap-2">
         <TouchableOpacity
           onPress={handleChat}
           activeOpacity={0.7}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityRole="button"
           accessibilityLabel="Chatear con el pasajero"
-          style={styles.circleActionButton}
+          className="w-9 h-9 rounded-full bg-white/[0.06] border border-white/10 items-center justify-center active:scale-95"
         >
-          <Ionicons name="chatbubble-ellipses-outline" size={19} color={THEME_COLORS.gold} />
+          <Ionicons name="chatbubble-ellipses-outline" size={18} color={THEME_COLORS.gold} />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -166,16 +185,16 @@ export const PassengerProfileRow: React.FC<PassengerProfileRowProps> = ({
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityRole="button"
           accessibilityLabel="Llamar al pasajero"
-          style={styles.circleActionButton}
+          className="w-9 h-9 rounded-full bg-white/[0.06] border border-white/10 items-center justify-center active:scale-95"
         >
-          <Ionicons name="call-outline" size={18} color="#E4E4E5" />
+          <Ionicons name="call-outline" size={17} color="#E4E4E5" />
         </TouchableOpacity>
       </View>
     </View>
   );
 };
 
-/** Fila de Dirección origen o destino con jerarquía visual de alto impacto */
+/** Fila de Dirección origen o destino con jerarquía visual */
 interface RouteAddressRowProps {
   type: 'pickup' | 'dropoff';
   address: string;
@@ -190,27 +209,35 @@ export const RouteAddressRow: React.FC<RouteAddressRowProps> = ({
   isSingleLine = false,
 }) => {
   const isPickup = type === 'pickup';
-  const iconColor = isPickup ? THEME_COLORS.gold : '#10B981';
 
   return (
-    <View style={styles.addressRowContainer}>
-      <View style={[styles.addressIconCircle, { backgroundColor: `${iconColor}18`, borderColor: `${iconColor}40` }]}>
+    <View className="flex-row items-center bg-white/[0.025] border border-white/[0.06] rounded-2xl p-3 mb-3">
+      <View
+        className={`w-8 h-8 rounded-full border items-center justify-center mr-3 ${
+          isPickup
+            ? 'bg-gold/15 border-gold/35'
+            : 'bg-emerald-500/15 border-emerald-500/35'
+        }`}
+      >
         <Ionicons
           name={isPickup ? 'radio-button-on' : 'location'}
           size={16}
-          color={iconColor}
+          color={isPickup ? THEME_COLORS.gold : '#10B981'}
         />
       </View>
 
-      <View style={styles.addressTextCol}>
-        <Text style={styles.addressTypeHeader}>
+      <View className="flex-1">
+        <Text className="font-montserrat-bold text-[9px] tracking-wider text-ash-muted mb-0.5">
           {isPickup ? 'PUNTO DE RETIRO' : 'DESTINO FINAL'}
         </Text>
-        <Text numberOfLines={isSingleLine ? 1 : 2} style={styles.addressMainText}>
+        <Text
+          numberOfLines={isSingleLine ? 1 : 2}
+          className="font-montserrat-semibold text-xs text-platinum leading-5"
+        >
           {address || (isPickup ? 'Punto de encuentro' : 'Destino fijado')}
         </Text>
         {subtitle && (
-          <Text numberOfLines={1} style={styles.addressSubText}>
+          <Text numberOfLines={1} className="font-montserrat text-[11px] text-ash mt-0.5">
             {subtitle}
           </Text>
         )}
@@ -232,13 +259,20 @@ export const TripProgressIndicator: React.FC<TripProgressIndicatorProps> = ({
   const clamped = Math.min(Math.max(percent, 0), 100);
 
   return (
-    <View style={styles.progressContainer}>
-      <View style={styles.progressHeaderRow}>
-        <Text style={styles.progressLabel}>PROGRESO DEL TRAYECTO</Text>
-        <Text style={styles.progressEta}>{etaText || `${Math.round(clamped)}%`}</Text>
+    <View className="bg-white/[0.025] border border-white/[0.06] rounded-2xl p-3 mb-3">
+      <View className="flex-row justify-between items-center mb-2">
+        <Text className="font-montserrat-bold text-[9.5px] tracking-wider text-ash-muted">
+          PROGRESO DEL TRAYECTO
+        </Text>
+        <Text className="font-montserrat-bold text-xs text-emerald-400">
+          {etaText || `${Math.round(clamped)}%`}
+        </Text>
       </View>
-      <View style={styles.progressTrack}>
-        <View style={[styles.progressBar, { width: `${clamped}%` }]} />
+      <View className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+        <View
+          className="h-full bg-emerald-400 rounded-full"
+          style={{ width: `${clamped}%` }}
+        />
       </View>
     </View>
   );
@@ -275,11 +309,15 @@ export const PinInputWidget: React.FC<PinInputWidgetProps> = ({
   };
 
   return (
-    <View style={[styles.pinWidgetContainer, isError && styles.pinWidgetError]}>
-      <Text style={styles.pinWidgetLabel}>
+    <View
+      className={`border rounded-2xl p-3 mb-3.5 items-center ${
+        isError ? 'border-red-500/40 bg-red-500/5' : 'bg-white/[0.03] border-white/10'
+      }`}
+    >
+      <Text className="font-montserrat-bold text-[10px] tracking-wider text-ash mb-2.5 text-center">
         PIN DE ABORDAJE (SOLICITAR AL PASAJERO)
       </Text>
-      <View style={styles.pinBoxesRow}>
+      <View className="flex-row gap-3">
         {digits.map((digit, i) => (
           <TextInput
             key={i}
@@ -292,11 +330,13 @@ export const PinInputWidget: React.FC<PinInputWidgetProps> = ({
             keyboardType="number-pad"
             maxLength={1}
             selectTextOnFocus
-            style={[
-              styles.pinBox,
-              digit ? styles.pinBoxFilled : null,
-              isError ? styles.pinBoxError : null,
-            ]}
+            className={`w-11 h-12 rounded-xl border-[1.5px] font-montserrat-bold text-xl text-white text-center ${
+              digit
+                ? 'border-gold bg-gold/10'
+                : isError
+                  ? 'border-red-500 bg-white/[0.04]'
+                  : 'border-white/15 bg-white/[0.04]'
+            }`}
           />
         ))}
       </View>
@@ -322,31 +362,34 @@ export const FareReceiptWidget: React.FC<FareReceiptWidgetProps> = ({
   const methodColor = methodInfo.isCash ? '#10B981' : THEME_COLORS.gold;
 
   return (
-    <View style={styles.fareReceiptCard}>
-      <View style={styles.fareReceiptTop}>
+    <View className="bg-gold/10 border border-gold/25 rounded-2xl p-3.5 mb-3">
+      <View className="flex-row justify-between items-center mb-3">
         <View>
-          <Text style={styles.fareReceiptLabel}>TOTAL COBRADO / A COBRAR</Text>
-          <Text style={styles.fareReceiptAmount}>
+          <Text className="font-montserrat-bold text-[9.5px] tracking-wider text-ash mb-0.5">
+            TOTAL COBRADO / A COBRAR
+          </Text>
+          <Text className="font-montserrat-bold text-2xl text-gold">
             ${amount.toLocaleString('es-AR', { minimumFractionDigits: 0 })}
           </Text>
         </View>
 
-        <View style={styles.paymentMethodPill}>
-          <Ionicons
-            name={methodInfo.icon}
-            size={14}
-            color={methodColor}
-          />
-          <Text style={[styles.paymentMethodText, { color: methodColor }]}>
+        <View className="flex-row items-center bg-white/5 px-2.5 py-1 rounded-lg gap-1.5 border border-white/10">
+          <Ionicons name={methodInfo.icon} size={14} color={methodColor} />
+          <Text
+            className="font-montserrat-semibold text-xs"
+            style={{ color: methodColor }}
+          >
             {methodInfo.label}
           </Text>
         </View>
       </View>
 
       {/* Calificación al pasajero */}
-      <View style={styles.ratingRowWrapper}>
-        <Text style={styles.ratingPromptText}>Calificar experiencia del pasajero:</Text>
-        <View style={styles.starsRow}>
+      <View className="border-t border-white/10 pt-2.5">
+        <Text className="font-montserrat-medium text-[11px] text-ash mb-1.5">
+          Calificar experiencia del pasajero:
+        </Text>
+        <View className="flex-row gap-2">
           {[1, 2, 3, 4, 5].map((star) => (
             <TouchableOpacity
               key={star}
@@ -356,7 +399,7 @@ export const FareReceiptWidget: React.FC<FareReceiptWidgetProps> = ({
               }}
               activeOpacity={0.7}
               hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
-              style={styles.starTouch}
+              className="p-0.5"
             >
               <Ionicons
                 name={star <= (ratingScore || 5) ? 'star' : 'star-outline'}
@@ -441,39 +484,45 @@ export const RideCard: React.FC<RideCardProps> = ({
   return (
     <Animated.View
       layout={LinearTransition.springify().damping(18).stiffness(120)}
-      style={styles.cardContainer}
+      className="w-full bg-obsidian-card rounded-[24px] px-[18px] pt-4 pb-[18px] border border-white/10 shadow-2xl"
       accessible={true}
       accessibilityRole="summary"
     >
       {/* ====================================================================
           1. HEADER UNIFICADO (Badge de Estado + ETA / Distancia destacada)
           ==================================================================== */}
-      <View style={styles.cardHeaderRow}>
-        <View style={styles.headerBadgeCol}>
+      <View className="flex-row items-center justify-between mb-3.5">
+        <View className="flex-1 items-start">
           {status === 'SEARCHING' && (
-            <StatusBadge label="BUSCANDO VIAJE" color={THEME_COLORS.gold} />
+            <StatusBadge label="BUSCANDO VIAJE" variant="gold" />
           )}
           {status === 'DRIVER_ASSIGNED' && (
-            <StatusBadge label="EN CAMINO AL RETIRO" color={THEME_COLORS.gold} />
+            <StatusBadge label="EN CAMINO AL RETIRO" variant="gold" />
           )}
           {status === 'ARRIVING' && (
             <StatusBadge
               label={isCourtesyExpired ? 'TIEMPO TARIFADO' : 'EN PUNTO DE RETIRO'}
-              color={isCourtesyExpired ? '#EF4444' : '#10B981'}
+              variant={isCourtesyExpired ? 'rose' : 'emerald'}
             />
           )}
           {status === 'IN_PROGRESS' && (
-            <StatusBadge label="VIAJE EN CURSO" color="#10B981" />
+            <StatusBadge label="VIAJE EN CURSO" variant="emerald" />
           )}
           {status === 'COMPLETED' && (
-            <StatusBadge label="VIAJE FINALIZADO" color={THEME_COLORS.gold} pulse={false} />
+            <StatusBadge label="VIAJE FINALIZADO" variant="gold" pulse={false} />
           )}
         </View>
 
         {(displayEta || displayDistance) && status !== 'COMPLETED' && (
-          <View style={styles.etaPillContainer}>
-            {displayEta && <Text style={styles.etaPillValue}>{displayEta}</Text>}
-            {displayDistance && <Text style={styles.etaPillSub}> · {displayDistance}</Text>}
+          <View className="flex-row items-center bg-white/5 px-2.5 py-1 rounded-full border border-white/10">
+            {displayEta && (
+              <Text className="font-montserrat-bold text-xs text-gold">{displayEta}</Text>
+            )}
+            {displayDistance && (
+              <Text className="font-montserrat-medium text-[11px] text-ash">
+                {' '}· {displayDistance}
+              </Text>
+            )}
           </View>
         )}
       </View>
@@ -487,11 +536,13 @@ export const RideCard: React.FC<RideCardProps> = ({
         <Animated.View
           entering={FadeIn.duration(200)}
           exiting={FadeOut.duration(150)}
-          style={styles.stateBody}
+          className="w-full"
         >
-          <View style={styles.searchingPulseContainer}>
+          <View className="flex-row items-center bg-gold/10 border border-gold/25 rounded-2xl p-3 mb-3">
             <ActivityIndicator size="small" color={THEME_COLORS.gold} />
-            <Text style={styles.searchingText}>Buscando mejores solicitudes en tu zona...</Text>
+            <Text className="font-montserrat-medium text-xs text-platinum ml-2.5 flex-1">
+              Buscando mejores solicitudes en tu zona...
+            </Text>
           </View>
 
           <RouteAddressRow
@@ -501,15 +552,17 @@ export const RideCard: React.FC<RideCardProps> = ({
             isSingleLine
           />
 
-          <View style={styles.footerActionsContainer}>
+          <View className="w-full mt-1 gap-2">
             <TouchableOpacity
               onPress={onCancel}
               activeOpacity={0.8}
               accessibilityRole="button"
               accessibilityLabel="Cancelar búsqueda de viaje"
-              style={styles.secondaryButton}
+              className="w-full h-12 rounded-2xl bg-white/5 border border-white/10 items-center justify-center active:bg-white/10"
             >
-              <Text style={styles.secondaryButtonText}>Pausar Conexión</Text>
+              <Text className="font-montserrat-semibold text-xs text-platinum">
+                Pausar Conexión
+              </Text>
             </TouchableOpacity>
           </View>
         </Animated.View>
@@ -520,7 +573,7 @@ export const RideCard: React.FC<RideCardProps> = ({
         <Animated.View
           entering={FadeIn.duration(200)}
           exiting={FadeOut.duration(150)}
-          style={styles.stateBody}
+          className="w-full"
         >
           <PassengerProfileRow
             name={displayName}
@@ -537,7 +590,7 @@ export const RideCard: React.FC<RideCardProps> = ({
             subtitle={displayEta ? `Tiempo estimado de llegada: ${displayEta}` : undefined}
           />
 
-          <View style={styles.footerActionsContainer}>
+          <View className="w-full mt-1 gap-2">
             <TouchableOpacity
               onPress={() => {
                 void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -547,12 +600,14 @@ export const RideCard: React.FC<RideCardProps> = ({
               activeOpacity={0.85}
               accessibilityRole="button"
               accessibilityLabel="Notificar llegada al punto de encuentro"
-              style={styles.primaryButton}
+              className="w-full h-12 rounded-2xl bg-gold items-center justify-center active:opacity-90 shadow-lg"
             >
               {isLoading ? (
                 <ActivityIndicator size="small" color="#0A0A0C" />
               ) : (
-                <Text style={styles.primaryButtonText}>NOTIFICAR LLEGADA AL RETIRO</Text>
+                <Text className="font-montserrat-bold text-xs text-obsidian tracking-wider">
+                  NOTIFICAR LLEGADA AL RETIRO
+                </Text>
               )}
             </TouchableOpacity>
 
@@ -562,9 +617,11 @@ export const RideCard: React.FC<RideCardProps> = ({
                 activeOpacity={0.7}
                 accessibilityRole="button"
                 accessibilityLabel="Cancelar viaje asignado"
-                style={styles.textCancelButton}
+                className="items-center justify-center py-1.5"
               >
-                <Text style={styles.textCancelButtonLabel}>Cancelar viaje</Text>
+                <Text className="font-montserrat-medium text-xs text-ash-muted">
+                  Cancelar viaje
+                </Text>
               </TouchableOpacity>
             )}
           </View>
@@ -576,7 +633,7 @@ export const RideCard: React.FC<RideCardProps> = ({
         <Animated.View
           entering={FadeIn.duration(200)}
           exiting={FadeOut.duration(150)}
-          style={styles.stateBody}
+          className="w-full"
         >
           <PassengerProfileRow
             name={displayName}
@@ -589,31 +646,30 @@ export const RideCard: React.FC<RideCardProps> = ({
 
           {/* Cronómetro de Cortesía */}
           <View
-            style={[
-              styles.waitingTimerCard,
-              isCourtesyExpired && styles.waitingTimerCardExpired,
-            ]}
+            className={`flex-row items-center justify-between p-3 rounded-2xl border mb-3 ${
+              isCourtesyExpired
+                ? 'bg-rose-500/10 border-rose-500/30'
+                : 'bg-gold/10 border-gold/25'
+            }`}
           >
-            <View style={styles.waitingTimerLeft}>
+            <View className="flex-row items-center">
               <Ionicons
                 name="timer-outline"
                 size={18}
-                color={isCourtesyExpired ? '#EF4444' : THEME_COLORS.gold}
+                color={isCourtesyExpired ? '#F43F5E' : THEME_COLORS.gold}
               />
               <Text
-                style={[
-                  styles.waitingTimerTitle,
-                  isCourtesyExpired && { color: '#EF4444' },
-                ]}
+                className={`font-montserrat-semibold text-xs ml-2 ${
+                  isCourtesyExpired ? 'text-rose-400' : 'text-gold'
+                }`}
               >
                 {isCourtesyExpired ? 'Tiempo tarifado por espera' : 'Tiempo de cortesía'}
               </Text>
             </View>
             <Text
-              style={[
-                styles.waitingTimerValue,
-                isCourtesyExpired && { color: '#EF4444' },
-              ]}
+              className={`font-montserrat-bold text-sm ${
+                isCourtesyExpired ? 'text-rose-400' : 'text-gold'
+              }`}
             >
               {waitingTimeText}
             </Text>
@@ -628,7 +684,7 @@ export const RideCard: React.FC<RideCardProps> = ({
             />
           )}
 
-          <View style={styles.footerActionsContainer}>
+          <View className="w-full mt-1 gap-2">
             <TouchableOpacity
               onPress={() => {
                 void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -638,19 +694,19 @@ export const RideCard: React.FC<RideCardProps> = ({
               activeOpacity={0.85}
               accessibilityRole="button"
               accessibilityLabel="Iniciar viaje con pasajero a bordo"
-              style={[
-                styles.primaryButton,
-                !canStart && styles.primaryButtonDisabled,
-              ]}
+              className={`w-full h-12 rounded-2xl items-center justify-center ${
+                canStart
+                  ? 'bg-gold active:opacity-90 shadow-lg'
+                  : 'bg-white/10 opacity-50'
+              }`}
             >
               {isLoading ? (
                 <ActivityIndicator size="small" color="#0A0A0C" />
               ) : (
                 <Text
-                  style={[
-                    styles.primaryButtonText,
-                    !canStart && styles.primaryButtonTextDisabled,
-                  ]}
+                  className={`font-montserrat-bold text-xs tracking-wider ${
+                    canStart ? 'text-obsidian' : 'text-zinc-500'
+                  }`}
                 >
                   INICIAR VIAJE
                 </Text>
@@ -661,9 +717,11 @@ export const RideCard: React.FC<RideCardProps> = ({
               <TouchableOpacity
                 onPress={onCancel}
                 activeOpacity={0.7}
-                style={styles.textCancelButton}
+                className="items-center justify-center py-1.5"
               >
-                <Text style={styles.textCancelButtonLabel}>Cancelar / Pasajero ausente</Text>
+                <Text className="font-montserrat-medium text-xs text-ash-muted">
+                  Cancelar / Pasajero ausente
+                </Text>
               </TouchableOpacity>
             )}
           </View>
@@ -675,7 +733,7 @@ export const RideCard: React.FC<RideCardProps> = ({
         <Animated.View
           entering={FadeIn.duration(200)}
           exiting={FadeOut.duration(150)}
-          style={styles.stateBody}
+          className="w-full"
         >
           <RouteAddressRow
             type="dropoff"
@@ -689,16 +747,16 @@ export const RideCard: React.FC<RideCardProps> = ({
           />
 
           {/* Fila de Seguridad y Contacto */}
-          <View style={styles.inTripMetaRow}>
+          <View className="flex-row gap-2.5 mb-3.5">
             <TouchableOpacity
               onPress={handleShare}
               activeOpacity={0.8}
               accessibilityRole="button"
               accessibilityLabel="Compartir viaje"
-              style={styles.pillSecondaryAction}
+              className="flex-1 flex-row items-center justify-center bg-white/[0.04] border border-white/10 rounded-xl h-10 gap-1.5 active:bg-white/10"
             >
               <Ionicons name="share-social-outline" size={15} color="#E4E4E5" />
-              <Text style={styles.pillSecondaryText}>Compartir</Text>
+              <Text className="font-montserrat-semibold text-xs text-platinum">Compartir</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -706,15 +764,15 @@ export const RideCard: React.FC<RideCardProps> = ({
               activeOpacity={0.8}
               accessibilityRole="button"
               accessibilityLabel="Chat con pasajero"
-              style={styles.pillSecondaryAction}
+              className="flex-1 flex-row items-center justify-center bg-white/[0.04] border border-white/10 rounded-xl h-10 gap-1.5 active:bg-white/10"
             >
               <Ionicons name="chatbubble-ellipses-outline" size={15} color={THEME_COLORS.gold} />
-              <Text style={styles.pillSecondaryText}>Chat</Text>
+              <Text className="font-montserrat-semibold text-xs text-platinum">Chat</Text>
             </TouchableOpacity>
           </View>
 
           {/* Deslizar para finalizar viaje */}
-          <View style={styles.sliderContainer}>
+          <View className="w-full mt-0.5">
             <SlideToComplete
               theme={theme}
               onComplete={() => {
@@ -734,7 +792,7 @@ export const RideCard: React.FC<RideCardProps> = ({
         <Animated.View
           entering={FadeIn.duration(200)}
           exiting={FadeOut.duration(150)}
-          style={styles.stateBody}
+          className="w-full"
         >
           <FareReceiptWidget
             amount={displayFare}
@@ -750,7 +808,7 @@ export const RideCard: React.FC<RideCardProps> = ({
             isSingleLine
           />
 
-          <View style={styles.footerActionsContainer}>
+          <View className="w-full mt-1 gap-2">
             <TouchableOpacity
               onPress={() => {
                 void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -759,9 +817,11 @@ export const RideCard: React.FC<RideCardProps> = ({
               activeOpacity={0.85}
               accessibilityRole="button"
               accessibilityLabel="Confirmar y volver al mapa"
-              style={styles.primaryButton}
+              className="w-full h-12 rounded-2xl bg-gold items-center justify-center active:opacity-90 shadow-lg"
             >
-              <Text style={styles.primaryButtonText}>CONFIRMAR Y FINALIZAR</Text>
+              <Text className="font-montserrat-bold text-xs text-obsidian tracking-wider">
+                CONFIRMAR Y FINALIZAR
+              </Text>
             </TouchableOpacity>
           </View>
         </Animated.View>
@@ -769,468 +829,3 @@ export const RideCard: React.FC<RideCardProps> = ({
     </Animated.View>
   );
 };
-
-// ============================================================================
-// ESTILOS LIMPIOS Y PULIDOS (Dark Mode Obsidian + Acentos Oro / Esmeralda)
-// ============================================================================
-
-const styles = StyleSheet.create({
-  cardContainer: {
-    backgroundColor: '#12131A',
-    borderRadius: 24,
-    paddingHorizontal: 18,
-    paddingTop: 16,
-    paddingBottom: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    elevation: 12,
-    width: '100%',
-  },
-  cardHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-  },
-  headerBadgeCol: {
-    flex: 1,
-    alignItems: 'flex-start',
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 4.5,
-    borderRadius: 100,
-    borderWidth: 1,
-  },
-  pulseDot: {
-    width: 6.5,
-    height: 6.5,
-    borderRadius: 3.5,
-    marginRight: 6.5,
-  },
-  statusBadgeText: {
-    fontFamily: 'Montserrat_700Bold',
-    fontSize: 10,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-  },
-  etaPillContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    paddingHorizontal: 10,
-    paddingVertical: 4.5,
-    borderRadius: 100,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  etaPillValue: {
-    fontFamily: 'Montserrat_700Bold',
-    fontSize: 12,
-    color: THEME_COLORS.gold,
-  },
-  etaPillSub: {
-    fontFamily: 'Montserrat_500Medium',
-    fontSize: 11,
-    color: '#A1A1AA',
-  },
-  stateBody: {
-    width: '100%',
-  },
-  searchingPulseContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(212, 175, 55, 0.08)',
-    borderColor: 'rgba(212, 175, 55, 0.25)',
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 12,
-    marginBottom: 12,
-  },
-  searchingText: {
-    fontFamily: 'Montserrat_500Medium',
-    fontSize: 12,
-    color: '#E4E4E5',
-    marginLeft: 10,
-    flex: 1,
-  },
-  passengerRowContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-    borderWidth: 1,
-    borderRadius: 18,
-    padding: 12,
-    marginBottom: 12,
-  },
-  passengerInfoLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    marginRight: 10,
-  },
-  avatarCircle: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: 'rgba(212, 175, 55, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(212, 175, 55, 0.35)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 11,
-  },
-  avatarText: {
-    fontFamily: 'Montserrat_700Bold',
-    fontSize: 16,
-    color: THEME_COLORS.gold,
-  },
-  passengerTextCol: {
-    flex: 1,
-  },
-  passengerNameText: {
-    fontFamily: 'Montserrat_700Bold',
-    fontSize: 14,
-    color: '#FFFFFF',
-    marginBottom: 2,
-  },
-  passengerMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  ratingBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(212, 175, 55, 0.12)',
-    paddingHorizontal: 6,
-    paddingVertical: 1.5,
-    borderRadius: 6,
-    marginRight: 6,
-  },
-  ratingText: {
-    fontFamily: 'Montserrat_700Bold',
-    fontSize: 10,
-    color: THEME_COLORS.gold,
-    marginLeft: 3,
-  },
-  preferenceTag: {
-    fontFamily: 'Montserrat_400Regular',
-    fontSize: 11,
-    color: '#A1A1AA',
-    flex: 1,
-  },
-  actionButtonsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  circleActionButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addressRowContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.025)',
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 12,
-    marginBottom: 12,
-  },
-  addressIconCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 11,
-  },
-  addressTextCol: {
-    flex: 1,
-  },
-  addressTypeHeader: {
-    fontFamily: 'Montserrat_700Bold',
-    fontSize: 9,
-    letterSpacing: 0.6,
-    color: '#71717A',
-    marginBottom: 2,
-  },
-  addressMainText: {
-    fontFamily: 'Montserrat_600SemiBold',
-    fontSize: 13,
-    color: '#E4E4E5',
-    lineHeight: 18,
-  },
-  addressSubText: {
-    fontFamily: 'Montserrat_400Regular',
-    fontSize: 11,
-    color: '#A1A1AA',
-    marginTop: 2,
-  },
-  waitingTimerCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(212, 175, 55, 0.08)',
-    borderColor: 'rgba(212, 175, 55, 0.25)',
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 12,
-    marginBottom: 12,
-  },
-  waitingTimerCardExpired: {
-    backgroundColor: 'rgba(239, 68, 68, 0.08)',
-    borderColor: 'rgba(239, 68, 68, 0.3)',
-  },
-  waitingTimerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  waitingTimerTitle: {
-    fontFamily: 'Montserrat_600SemiBold',
-    fontSize: 12,
-    color: THEME_COLORS.gold,
-    marginLeft: 8,
-  },
-  waitingTimerValue: {
-    fontFamily: 'Montserrat_700Bold',
-    fontSize: 15,
-    color: THEME_COLORS.gold,
-  },
-  pinWidgetContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 12,
-    marginBottom: 14,
-    alignItems: 'center',
-  },
-  pinWidgetError: {
-    borderColor: 'rgba(239, 68, 68, 0.4)',
-    backgroundColor: 'rgba(239, 68, 68, 0.05)',
-  },
-  pinWidgetLabel: {
-    fontFamily: 'Montserrat_700Bold',
-    fontSize: 10,
-    letterSpacing: 0.6,
-    color: '#A1A1AA',
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  pinBoxesRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  pinBox: {
-    width: 46,
-    height: 50,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
-    fontFamily: 'Montserrat_700Bold',
-    fontSize: 22,
-    color: '#FFFFFF',
-    textAlign: 'center',
-  },
-  pinBoxFilled: {
-    borderColor: THEME_COLORS.gold,
-    backgroundColor: 'rgba(212, 175, 55, 0.1)',
-  },
-  pinBoxError: {
-    borderColor: '#EF4444',
-  },
-  progressContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.025)',
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 12,
-    marginBottom: 12,
-  },
-  progressHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  progressLabel: {
-    fontFamily: 'Montserrat_700Bold',
-    fontSize: 9.5,
-    letterSpacing: 0.6,
-    color: '#71717A',
-  },
-  progressEta: {
-    fontFamily: 'Montserrat_700Bold',
-    fontSize: 12,
-    color: '#10B981',
-  },
-  progressTrack: {
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    overflow: 'hidden',
-  },
-  progressBar: {
-    height: '100%',
-    backgroundColor: '#10B981',
-    borderRadius: 3,
-  },
-  inTripMetaRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 14,
-  },
-  pillSecondaryAction: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    borderWidth: 1,
-    borderRadius: 14,
-    height: 40,
-    gap: 6,
-  },
-  pillSecondaryText: {
-    fontFamily: 'Montserrat_600SemiBold',
-    fontSize: 12,
-    color: '#E4E4E5',
-  },
-  sliderContainer: {
-    width: '100%',
-    marginTop: 2,
-  },
-  fareReceiptCard: {
-    backgroundColor: 'rgba(212, 175, 55, 0.06)',
-    borderColor: 'rgba(212, 175, 55, 0.25)',
-    borderWidth: 1,
-    borderRadius: 18,
-    padding: 14,
-    marginBottom: 12,
-  },
-  fareReceiptTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  fareReceiptLabel: {
-    fontFamily: 'Montserrat_700Bold',
-    fontSize: 9.5,
-    letterSpacing: 0.6,
-    color: '#A1A1AA',
-    marginBottom: 2,
-  },
-  fareReceiptAmount: {
-    fontFamily: 'Montserrat_700Bold',
-    fontSize: 26,
-    color: THEME_COLORS.gold,
-  },
-  paymentMethodPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-    borderRadius: 10,
-    gap: 5,
-  },
-  paymentMethodText: {
-    fontFamily: 'Montserrat_600SemiBold',
-    fontSize: 11,
-  },
-  ratingRowWrapper: {
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.08)',
-    paddingTop: 10,
-  },
-  ratingPromptText: {
-    fontFamily: 'Montserrat_500Medium',
-    fontSize: 11,
-    color: '#A1A1AA',
-    marginBottom: 6,
-  },
-  starsRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  starTouch: {
-    padding: 2,
-  },
-  footerActionsContainer: {
-    width: '100%',
-    marginTop: 4,
-    gap: 8,
-  },
-  primaryButton: {
-    width: '100%',
-    height: 52,
-    borderRadius: 16,
-    backgroundColor: THEME_COLORS.gold,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: THEME_COLORS.gold,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  primaryButtonDisabled: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  primaryButtonText: {
-    fontFamily: 'Montserrat_700Bold',
-    fontSize: 13,
-    color: '#0A0A0C',
-    letterSpacing: 0.6,
-  },
-  primaryButtonTextDisabled: {
-    color: '#71717A',
-  },
-  secondaryButton: {
-    width: '100%',
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  secondaryButtonText: {
-    fontFamily: 'Montserrat_600SemiBold',
-    fontSize: 12,
-    color: '#E4E4E5',
-  },
-  textCancelButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 6,
-  },
-  textCancelButtonLabel: {
-    fontFamily: 'Montserrat_500Medium',
-    fontSize: 12,
-    color: '#71717A',
-  },
-});
