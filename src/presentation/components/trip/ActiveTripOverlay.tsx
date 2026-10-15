@@ -18,6 +18,7 @@ import { useDriverTripStore } from '../../trip/store/useDriverTripStore';
 import { useCourtesyTimer } from '../../trip/hooks/useCourtesyTimer';
 import { RideCard, RideCardStatus } from './RideCard';
 import { CancelTripModal } from './CancelTripModal';
+import { FullScreenPinModal } from './ui/FullScreenPinModal';
 
 export interface ActiveTripOverlayProps {
   trip: Trip;
@@ -41,8 +42,14 @@ export const ActiveTripOverlay: React.FC<ActiveTripOverlayProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [pinDigits, setPinDigits] = useState<string[]>(['', '', '', '']);
   const [isPinError, setIsPinError] = useState(false);
+  const [isPinDismissed, setIsPinDismissed] = useState(false);
   const [isCancelModalVisible, setIsCancelModalVisible] = useState(false);
   const [ratingScore, setRatingScore] = useState(5);
+
+  // El modal de PIN a pantalla completa se muestra automáticamente en punto de retiro si requiere PIN
+  const isPinModalVisible = Boolean(
+    trip.status === 'driver_arrived' && trip.require_pin && !isPinDismissed
+  );
 
   const { formattedTime, isFinished: isCourtesyExpired } = useCourtesyTimer(5);
 
@@ -110,6 +117,7 @@ export const ActiveTripOverlay: React.FC<ActiveTripOverlayProps> = ({
       });
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       updateTripStatus('driver_arrived');
+      setIsPinDismissed(false);
     } catch (err: any) {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Error', err.message || 'No se pudo notificar la llegada al punto de retiro.');
@@ -143,6 +151,7 @@ export const ActiveTripOverlay: React.FC<ActiveTripOverlayProps> = ({
         boarding_pin: trip.require_pin ? pin : undefined,
       });
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setIsPinDismissed(false);
       updateTripStatus('in_progress');
     } catch (err: any) {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -200,8 +209,8 @@ export const ActiveTripOverlay: React.FC<ActiveTripOverlayProps> = ({
   return (
     <>
       <View
-        className="absolute bottom-0 left-0 right-0 z-40 px-3.5"
-        style={{ paddingBottom: Math.max(insets.bottom, 14) }}
+        className="absolute bottom-0 left-0 right-0 z-40 w-full"
+        style={{ paddingBottom: Math.max(insets.bottom, 0) }}
         onLayout={(e) => onHeightChange?.(e.nativeEvent.layout.height)}
         pointerEvents="box-none"
       >
@@ -222,6 +231,7 @@ export const ActiveTripOverlay: React.FC<ActiveTripOverlayProps> = ({
           pinDigits={pinDigits}
           isPinError={isPinError}
           onPinChange={setPinDigits}
+          onOpenPinModal={() => setIsPinDismissed(false)}
           progressPercent={trip.status === 'in_progress' ? 65 : 15}
           waitingTimeText={formattedTime}
           isCourtesyExpired={isCourtesyExpired}
@@ -237,6 +247,28 @@ export const ActiveTripOverlay: React.FC<ActiveTripOverlayProps> = ({
           onRatingScoreChange={setRatingScore}
         />
       </View>
+
+      <FullScreenPinModal
+        visible={
+          isPinModalVisible &&
+          trip.status === 'driver_arrived' &&
+          Boolean(trip.require_pin)
+        }
+        onClose={() => setIsPinDismissed(true)}
+        pinDigits={pinDigits}
+        onChangePin={(digits) => {
+          setPinDigits(digits);
+          if (isPinError) setIsPinError(false);
+        }}
+        onConfirmStart={async () => {
+          await handleStartTrip();
+        }}
+        isLoading={isLoading}
+        isError={isPinError}
+        passengerName={trip.passenger?.fullName}
+        passengerPhone={trip.passenger?.phone || undefined}
+        onChat={handleChat}
+      />
 
       <CancelTripModal
         visible={isCancelModalVisible}

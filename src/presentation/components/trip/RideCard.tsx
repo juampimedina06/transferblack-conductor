@@ -55,6 +55,7 @@ export interface RideCardProps {
   onCancel?: () => void;
   onCall?: () => void;
   onChat?: () => void;
+  onOpenPinModal?: () => void;
   onShareTrip?: () => void;
   onConfirmCompleted?: () => void;
   ratingScore?: number;
@@ -167,27 +168,29 @@ export const PassengerProfileRow: React.FC<PassengerProfileRowProps> = ({
         </View>
       </View>
 
-      <View className="flex-row items-center gap-2">
-        <TouchableOpacity
-          onPress={handleChat}
-          activeOpacity={0.7}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          accessibilityRole="button"
-          accessibilityLabel="Chatear con el pasajero"
-          className="w-9 h-9 rounded-full bg-white/[0.06] border border-white/10 items-center justify-center active:scale-95"
-        >
-          <Ionicons name="chatbubble-ellipses-outline" size={18} color={THEME_COLORS.gold} />
-        </TouchableOpacity>
+      <View className="flex-row items-center gap-2.5">
+        {onChat && (
+          <TouchableOpacity
+            onPress={handleChat}
+            activeOpacity={0.8}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            accessibilityRole="button"
+            accessibilityLabel="Chatear con el pasajero"
+            className="w-12 h-12 rounded-2xl bg-gold/15 border border-gold/30 items-center justify-center active:scale-95 shadow-sm"
+          >
+            <Ionicons name="chatbubble-ellipses" size={20} color={THEME_COLORS.gold} />
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity
           onPress={handleCall}
-          activeOpacity={0.7}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          activeOpacity={0.8}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           accessibilityRole="button"
           accessibilityLabel="Llamar al pasajero"
-          className="w-9 h-9 rounded-full bg-white/[0.06] border border-white/10 items-center justify-center active:scale-95"
+          className="w-12 h-12 rounded-2xl bg-white/[0.08] border border-white/20 items-center justify-center active:scale-95 shadow-sm"
         >
-          <Ionicons name="call-outline" size={17} color="#E4E4E5" />
+          <Ionicons name="call" size={20} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
     </View>
@@ -445,6 +448,7 @@ export const RideCard: React.FC<RideCardProps> = ({
   onCancel,
   onCall,
   onChat,
+  onOpenPinModal,
   onShareTrip,
   onConfirmCompleted,
   ratingScore = 5,
@@ -484,10 +488,14 @@ export const RideCard: React.FC<RideCardProps> = ({
   return (
     <Animated.View
       layout={LinearTransition.springify().damping(18).stiffness(120)}
-      className="w-full bg-obsidian-card rounded-[24px] px-[18px] pt-4 pb-[18px] border border-white/10 shadow-2xl"
+      className="w-full bg-obsidian-card rounded-t-[28px] rounded-b-none px-5 pt-3 pb-6 border-t border-white/10 shadow-2xl"
       accessible={true}
       accessibilityRole="summary"
     >
+      {/* Handle indicador de Bottom Sheet */}
+      <View className="items-center pb-2.5">
+        <View className="w-10 h-1 rounded-full bg-white/20" />
+      </View>
       {/* ====================================================================
           1. HEADER UNIFICADO (Badge de Estado + ETA / Distancia destacada)
           ==================================================================== */}
@@ -675,43 +683,121 @@ export const RideCard: React.FC<RideCardProps> = ({
             </Text>
           </View>
 
-          {/* Validación de PIN */}
-          {isPinRequired && onPinChange && (
-            <PinInputWidget
-              digits={pinDigits}
-              onChange={onPinChange}
-              isError={isPinError}
-            />
+          {/* Validación de PIN: Banner destacado interactivo estilo Uber */}
+          {isPinRequired && (
+            <TouchableOpacity
+              onPress={() => {
+                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                onOpenPinModal?.();
+              }}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="Abrir pantalla para ingresar PIN del viaje"
+              className={`p-3.5 rounded-2xl border mb-3 flex-row items-center justify-between ${
+                isPinError
+                  ? 'bg-rose-500/10 border-rose-500/35'
+                  : isPinComplete
+                    ? 'bg-emerald-500/10 border-emerald-500/35'
+                    : 'bg-gold/10 border-gold/30'
+              }`}
+            >
+              <View className="flex-row items-center flex-1 mr-3">
+                <View
+                  className={`w-10 h-10 rounded-xl items-center justify-center mr-3 border ${
+                    isPinError
+                      ? 'bg-rose-500/15 border-rose-500/30'
+                      : isPinComplete
+                        ? 'bg-emerald-500/15 border-emerald-500/30'
+                        : 'bg-gold/15 border-gold/30'
+                  }`}
+                >
+                  <Ionicons
+                    name={isPinComplete ? 'shield-checkmark' : 'keypad'}
+                    size={20}
+                    color={
+                      isPinError
+                        ? '#F43F5E'
+                        : isPinComplete
+                          ? '#10B981'
+                          : THEME_COLORS.gold
+                    }
+                  />
+                </View>
+
+                <View className="flex-1">
+                  <Text className="font-montserrat-bold text-[10px] tracking-wider uppercase text-ash mb-0.5">
+                    {isPinComplete ? 'PIN VALIDADO' : 'PIN DE ABORDAJE REQUERIDO'}
+                  </Text>
+                  <Text className="font-montserrat-semibold text-xs text-white">
+                    {isPinComplete
+                      ? `Código: ${pinDigits.join(' ')}`
+                      : 'Pedir 4 dígitos al pasajero'}
+                  </Text>
+                </View>
+              </View>
+
+              <View className="flex-row items-center bg-white/10 px-3 py-1.5 rounded-xl border border-white/10">
+                <Text className="font-montserrat-bold text-xs text-gold mr-1">
+                  {isPinComplete ? 'Cambiar' : 'Ingresar'}
+                </Text>
+                <Ionicons name="chevron-forward" size={14} color={THEME_COLORS.gold} />
+              </View>
+            </TouchableOpacity>
           )}
 
           <View className="w-full mt-1 gap-2">
             <TouchableOpacity
               onPress={() => {
+                if (!canStart) {
+                  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  onOpenPinModal?.();
+                  return;
+                }
                 void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                 onStartTrip?.();
               }}
-              disabled={isLoading || !canStart}
+              disabled={isLoading}
               activeOpacity={0.85}
               accessibilityRole="button"
-              accessibilityLabel="Iniciar viaje con pasajero a bordo"
-              className={`w-full h-12 rounded-2xl items-center justify-center ${
+              accessibilityLabel={
                 canStart
-                  ? 'bg-gold active:opacity-90 shadow-lg'
-                  : 'bg-white/10 opacity-50'
+                  ? 'Iniciar viaje con pasajero a bordo'
+                  : 'Ingresar PIN para iniciar viaje'
+              }
+              className={`w-full h-13 rounded-2xl items-center justify-center shadow-lg ${
+                canStart
+                  ? 'bg-gold active:opacity-90'
+                  : 'bg-gold/20 border border-gold/40 active:bg-gold/30'
               }`}
             >
               {isLoading ? (
                 <ActivityIndicator size="small" color="#0A0A0C" />
               ) : (
-                <Text
-                  className={`font-montserrat-bold text-xs tracking-wider ${
-                    canStart ? 'text-obsidian' : 'text-zinc-500'
-                  }`}
-                >
-                  INICIAR VIAJE
-                </Text>
+                <View className="flex-row items-center">
+                  {!canStart && (
+                    <Ionicons
+                      name="keypad"
+                      size={17}
+                      color={THEME_COLORS.gold}
+                      style={{ marginRight: 8 }}
+                    />
+                  )}
+                  <Text
+                    className={`font-montserrat-bold text-xs tracking-wider ${
+                      canStart ? 'text-obsidian' : 'text-gold'
+                    }`}
+                  >
+                    {canStart ? 'INICIAR VIAJE' : 'INGRESAR PIN PARA INICIAR'}
+                  </Text>
+                </View>
               )}
             </TouchableOpacity>
+
+            {isPinRequired && !isPinComplete && (
+              <Text className="font-montserrat text-[11px] text-ash text-center mt-0.5">
+                El destino se revelará una vez validado el PIN a bordo.
+              </Text>
+            )}
 
             {onCancel && (
               <TouchableOpacity
