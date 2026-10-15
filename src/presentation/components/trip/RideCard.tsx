@@ -42,6 +42,7 @@ export interface RideCardProps {
   pickupAddress?: string;
   dropoffAddress?: string;
   fareAmount?: number;
+  earningsAmount?: number;
   paymentMethod?: 'cash' | 'transfer' | 'card' | string;
   requirePin?: boolean;
   pinDigits?: string[];
@@ -252,9 +253,10 @@ export const RouteAddressRow: React.FC<RouteAddressRowProps> = ({
   );
 };
 
-/** Resumen de cobro final con monto destacado en dorado */
+/** Resumen de cobro final con monto destacado en grande y ganancia más chica */
 interface FareReceiptWidgetProps {
   amount: number;
+  earningsAmount?: number;
   paymentMethod?: string;
   ratingScore?: number;
   onRatingScoreChange?: (score: number) => void;
@@ -262,26 +264,31 @@ interface FareReceiptWidgetProps {
 
 export const FareReceiptWidget: React.FC<FareReceiptWidgetProps> = ({
   amount,
+  earningsAmount,
   paymentMethod = 'cash',
   ratingScore = 5,
   onRatingScoreChange,
 }) => {
   const methodInfo = getPaymentMethodInfo(paymentMethod);
   const methodColor = methodInfo.isCash ? '#10B981' : THEME_COLORS.gold;
+  const netEarnings = earningsAmount ?? Math.round(amount * 0.8);
 
   return (
     <View className="py-2 mb-3 border-b border-white/[0.08] pb-3.5">
-      <View className="flex-row justify-between items-center mb-3">
-        <View>
+      <View className="flex-row justify-between items-start mb-3">
+        <View className="flex-1 mr-3">
           <Text className="font-montserrat-bold text-[10px] tracking-wider text-ash-muted uppercase mb-0.5">
-            Total a cobrar
+            {methodInfo.isCash ? 'Total a cobrar al pasajero' : 'Total del viaje'}
           </Text>
-          <Text className="font-montserrat-bold text-3xl text-gold">
+          <Text className="font-montserrat-bold text-4xl text-white">
             ${amount.toLocaleString('es-AR', { minimumFractionDigits: 0 })}
+          </Text>
+          <Text className="font-montserrat-semibold text-xs text-gold mt-1">
+            Tu ganancia neta: ${netEarnings.toLocaleString('es-AR', { minimumFractionDigits: 0 })}
           </Text>
         </View>
 
-        <View className="flex-row items-center bg-white/10 px-3 py-1.5 rounded-xl border border-white/15 gap-1.5">
+        <View className="flex-row items-center bg-white/10 px-3 py-1.5 rounded-xl border border-white/15 gap-1.5 mt-1">
           <Ionicons name={methodInfo.icon} size={15} color={methodColor} />
           <Text
             className="font-montserrat-semibold text-xs"
@@ -338,6 +345,7 @@ export const RideCard: React.FC<RideCardProps> = ({
   pickupAddress,
   dropoffAddress,
   fareAmount = 0,
+  earningsAmount,
   paymentMethod = 'cash',
   requirePin = false,
   pinDigits = ['', '', '', ''],
@@ -776,6 +784,7 @@ export const RideCard: React.FC<RideCardProps> = ({
         >
           <FareReceiptWidget
             amount={displayFare}
+            earningsAmount={earningsAmount ?? trip?.driver_earnings}
             paymentMethod={paymentMethod}
             ratingScore={ratingScore}
             onRatingScoreChange={onRatingScoreChange}

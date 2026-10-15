@@ -108,6 +108,7 @@ export const ActiveTripOverlay: React.FC<ActiveTripOverlayProps> = ({
 
   const baseFare = Number(trip.final_fare || trip.estimated_fare || 0);
   const totalFare = baseFare + tollsAmount;
+  const netEarnings = trip.driver_earnings || (Math.max(0, baseFare * 0.8) + tollsAmount);
 
   // Handlers de ciclo de vida del viaje
   const handleArrived = async () => {
@@ -236,6 +237,7 @@ export const ActiveTripOverlay: React.FC<ActiveTripOverlayProps> = ({
           pickupAddress={trip.pickup?.address}
           dropoffAddress={trip.dropoff?.address}
           fareAmount={totalFare}
+          earningsAmount={netEarnings}
           paymentMethod={trip.payment_method}
           requirePin={trip.require_pin}
           pinDigits={pinDigits}

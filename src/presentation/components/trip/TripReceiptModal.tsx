@@ -166,42 +166,50 @@ export const TripReceiptModal = ({ trip, visible }: TripReceiptModalProps) => {
                 variant="success"
                 className="w-full rounded-2xl p-4 mb-4 flex-row items-center border border-emerald-500/40"
               >
-                <View className="w-12 h-12 rounded-xl bg-emerald-500/20 items-center justify-center mr-3 border border-emerald-500/40">
-                  <Ionicons name="cash" size={26} color="#10B981" />
+                <View className="w-14 h-14 rounded-2xl bg-emerald-500/20 items-center justify-center mr-3.5 border border-emerald-500/40">
+                  <Ionicons name="cash" size={30} color="#10B981" />
                 </View>
                 <View className="flex-1">
                   <Text className="text-emerald-400 font-montserrat-bold text-xs uppercase tracking-wider">
-                    Cobrar en efectivo al pasajero
+                    Total a cobrar en efectivo
                   </Text>
                   <Text
-                    className="text-white font-montserrat-bold text-2xl mt-0.5"
+                    className="text-white font-montserrat-bold text-4xl mt-0.5"
                     style={{ fontVariant: ['tabular-nums'] }}
                   >
-                    ${totalAmountToCollect.toFixed(2)}
+                    ${totalAmountToCollect.toLocaleString('es-AR', { minimumFractionDigits: 0 })}
                   </Text>
-                  <Text className="text-emerald-300/80 font-montserrat text-[11px]">
+                  <Text className="text-emerald-300/80 font-montserrat text-xs mt-0.5">
                     {tollsAmount > 0
-                      ? `Incluye $${tollsAmount.toFixed(2)} en peajes/extras`
-                      : 'Cobrá el total antes de que el pasajero descienda'}
+                      ? `Incluye $${tollsAmount.toLocaleString('es-AR', { minimumFractionDigits: 0 })} en peajes/extras`
+                      : 'Cobrá el total al pasajero antes de que descienda'}
                   </Text>
                 </View>
               </LiquidGlassContainer>
             ) : (
               <LiquidGlassContainer
                 variant="default"
-                className="w-full rounded-2xl p-3.5 mb-4 flex-row items-center border border-white/10"
+                className="w-full rounded-2xl p-4 mb-4 border border-white/10"
               >
-                <View className="w-10 h-10 rounded-xl bg-white/10 items-center justify-center mr-3">
-                  <Ionicons name="card-outline" size={22} color={THEME_COLORS.platinum} />
+                <View className="flex-row items-center mb-1">
+                  <View className="w-10 h-10 rounded-xl bg-white/10 items-center justify-center mr-3">
+                    <Ionicons name="card-outline" size={22} color={THEME_COLORS.platinum} />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-platinum font-montserrat-bold text-xs uppercase tracking-wider">
+                      Total del Servicio Acreditado
+                    </Text>
+                    <Text
+                      className="text-white font-montserrat-bold text-4xl mt-0.5"
+                      style={{ fontVariant: ['tabular-nums'] }}
+                    >
+                      ${totalAmountToCollect.toLocaleString('es-AR', { minimumFractionDigits: 0 })}
+                    </Text>
+                  </View>
                 </View>
-                <View className="flex-1">
-                  <Text className="text-platinum font-montserrat-bold text-xs uppercase tracking-wider">
-                    Pago Electrónico Acreditado
-                  </Text>
-                  <Text className="text-ash font-montserrat text-[11px] mt-0.5">
-                    No cobrar al pasajero. Acreditado en tu Bóveda.
-                  </Text>
-                </View>
+                <Text className="text-emerald-400 font-montserrat-semibold text-xs mt-1">
+                  Pago electrónico acreditado. No cobrar al pasajero.
+                </Text>
               </LiquidGlassContainer>
             )}
 
@@ -210,15 +218,20 @@ export const TripReceiptModal = ({ trip, visible }: TripReceiptModalProps) => {
               variant="gold"
               className="w-full rounded-[24px] p-5 mb-5 shadow-2xl"
             >
-              <View className="items-center mb-4">
-                <Text className="text-ash font-montserrat-bold text-[10px] tracking-widest uppercase mb-1">
-                  GANANCIA NETA FINAL
-                </Text>
+              <View className="flex-row items-center justify-between mb-3 bg-white/[0.04] p-3 rounded-xl border border-white/10">
+                <View>
+                  <Text className="text-ash font-montserrat-bold text-[10px] tracking-widest uppercase">
+                    GANANCIA NETA
+                  </Text>
+                  <Text className="text-ash font-montserrat text-[10px]">
+                    (Acreditada en tu saldo)
+                  </Text>
+                </View>
                 <Text
-                  className="text-gold font-montserrat-bold text-4xl"
+                  className="text-gold font-montserrat-bold text-2xl"
                   style={{ fontVariant: ['tabular-nums'] }}
                 >
-                  ${netEarnings.toFixed(2)}
+                  ${netEarnings.toLocaleString('es-AR', { minimumFractionDigits: 0 })}
                 </Text>
               </View>
 
