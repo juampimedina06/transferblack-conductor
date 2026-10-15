@@ -24,6 +24,8 @@ import { Button } from '../../../presentation/components/ui/Button';
 import { AmbientGlow } from '../../../presentation/components/ui/AmbientGlow';
 
 import { useAuthStore } from '../../../presentation/auth/store/useAuthStore';
+import { useRateLimit } from '../../../presentation/auth/hooks/useRateLimit';
+import { RateLimitBanner } from '../../../presentation/components/ui/RateLimitBanner';
 
 const verifySchema = z.object({
   token: z.string().length(6, 'El código debe tener 6 dígitos').regex(/^\d+$/, 'Solo números'),
@@ -38,6 +40,12 @@ export default function VerifyEmailScreen(): React.JSX.Element {
   const inputRef = useRef<TextInput>(null);
   const markEmailAsVerified = useAuthStore((state) => state.markEmailAsVerified);
   const logout = useAuthStore((state) => state.logout);
+  const {
+    isRateLimited,
+    secondsLeft,
+    rateLimitMessage,
+    handleRateLimitError,
+  } = useRateLimit();
 
   const handleBack = async (): Promise<void> => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -80,6 +88,9 @@ export default function VerifyEmailScreen(): React.JSX.Element {
       router.replace('/(home)' as any);
     } catch (error: unknown) {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      if (handleRateLimitError(error)) {
+        return;
+      }
       if (error instanceof AuthError) {
         if (error.status === 400 && error.details?.attempts_remaining !== undefined) {
           Alert.alert('Error', `PIN incorrecto. Intentos restantes: ${error.details.attempts_remaining}`);
@@ -109,6 +120,9 @@ export default function VerifyEmailScreen(): React.JSX.Element {
       setCooldown(60);
       setValue('token', '');
     } catch (error: unknown) {
+      if (handleRateLimitError(error)) {
+        return;
+      }
       if (error instanceof AuthError) {
         const retryInSeconds = typeof error.details?.retry_in_seconds === 'number' ? error.details.retry_in_seconds : undefined;
         if (error.status === 429 && retryInSeconds) {
@@ -232,11 +246,14 @@ export default function VerifyEmailScreen(): React.JSX.Element {
             name="token"
             render={({ field: { value } }) => (
               <View className="mt-4">
+                {isRateLimited ? (
+                  <RateLimitBanner message={rateLimitMessage} secondsLeft={secondsLeft} />
+                ) : null}
                 <Button
-                  label="Validar Identidad"
+                  label={isRateLimited ? `Esperá ${secondsLeft}s` : 'Validar Identidad'}
                   onPress={handleSubmit(onSubmit)}
                   isLoading={isLoading}
-                  disabled={value.length < 6 || isLoading}
+                  disabled={value.length < 6 || isLoading || isRateLimited}
                 />
               </View>
             )}
@@ -245,14 +262,14 @@ export default function VerifyEmailScreen(): React.JSX.Element {
           {/* Resend Cooldown Section */}
           <View className="mt-8 flex-row justify-center items-center">
             <Text className="text-ash font-montserrat text-sm">¿No recibiste el código? </Text>
-            {cooldown > 0 ? (
+            {isRateLimited || cooldown > 0 ? (
               <Text className="text-white font-montserrat-bold text-sm">
-                Reenviar en {formatCooldown(cooldown)}
+                Reenviar en {formatCooldown(isRateLimited ? Math.max(cooldown, secondsLeft) : cooldown)}
               </Text>
             ) : (
               <TouchableOpacity
                 onPress={handleResend}
-                disabled={isLoading}
+                disabled={isLoading || isRateLimited}
                 accessibilityRole="button"
                 accessibilityLabel="Reenviar código de verificación"
               >

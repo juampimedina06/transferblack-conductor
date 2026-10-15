@@ -63,6 +63,8 @@ export interface ResetPasswordResponse {
 
 export interface ApiErrorDetail {
   attempts_remaining?: number;
+  retry_after_seconds?: number;
+  retry_in_seconds?: number;
   [key: string]: unknown;
 }
 
@@ -80,12 +82,26 @@ export class AuthError extends Error {
   status?: number;
   code?: string;
   details?: ApiErrorDetail;
+  retryAfterSeconds?: number;
 
-  constructor(message: string, status?: number, code?: string, details?: ApiErrorDetail) {
+  constructor(
+    message: string,
+    status?: number,
+    code?: string,
+    details?: ApiErrorDetail,
+    retryAfterSeconds?: number
+  ) {
     super(message);
     this.name = 'AuthError';
     this.status = status;
     this.code = code;
     this.details = details;
+    this.retryAfterSeconds =
+      retryAfterSeconds ??
+      (typeof details?.retry_after_seconds === 'number'
+        ? details.retry_after_seconds
+        : typeof details?.retry_in_seconds === 'number'
+        ? details.retry_in_seconds
+        : undefined);
   }
 }

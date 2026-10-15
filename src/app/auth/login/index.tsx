@@ -6,9 +6,11 @@ import { Controller, useForm } from 'react-hook-form';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import * as z from 'zod';
 import { authActions } from '../../../core/auth/action/auth.actions';
+import { useRateLimit } from '../../../presentation/auth/hooks/useRateLimit';
 import { AmbientGlow } from '../../../presentation/components/ui/AmbientGlow';
 import { Button } from '../../../presentation/components/ui/Button';
 import { Input } from '../../../presentation/components/ui/Input';
+import { RateLimitBanner } from '../../../presentation/components/ui/RateLimitBanner';
 import { useAuthStore } from '../../../presentation/auth/store/useAuthStore';
 
 const loginSchema = z.object({
@@ -21,6 +23,12 @@ type LoginFormData = z.infer<typeof loginSchema>;
 export default function LoginScreen(): React.JSX.Element {
   const [isLoading, setIsLoading] = useState(false);
   const setSession = useAuthStore((state) => state.setSession);
+  const {
+    isRateLimited,
+    secondsLeft,
+    rateLimitMessage,
+    handleRateLimitError,
+  } = useRateLimit();
 
   const { control, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -51,6 +59,9 @@ export default function LoginScreen(): React.JSX.Element {
 
       router.replace('/(home)' as any);
     } catch (error: unknown) {
+      if (handleRateLimitError(error)) {
+        return;
+      }
       const message = error instanceof Error ? error.message : 'Ocurrió un error al iniciar sesión';
       Alert.alert('Error', message);
     } finally {
@@ -129,8 +140,17 @@ export default function LoginScreen(): React.JSX.Element {
           </Link>
         </View>
 
+        {isRateLimited ? (
+          <RateLimitBanner message={rateLimitMessage} secondsLeft={secondsLeft} />
+        ) : null}
+
         <View className="mt-2">
-          <Button label="Entrar a mi cuenta" onPress={handleSubmit(onSubmit)} isLoading={isLoading} />
+          <Button
+            label={isRateLimited ? `Esperá ${secondsLeft}s` : 'Entrar a mi cuenta'}
+            onPress={handleSubmit(onSubmit)}
+            isLoading={isLoading}
+            disabled={isLoading || isRateLimited}
+          />
         </View>
 
         <View className="mt-8 flex-row justify-center items-center">

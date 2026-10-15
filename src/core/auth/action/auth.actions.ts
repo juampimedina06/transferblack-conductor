@@ -14,14 +14,40 @@ const handleApiError = (error: unknown, fallbackMessage: string): never => {
   if (error instanceof AuthError) {
     throw error;
   }
-  if (isAxiosError<ApiErrorResponse>(error) && error.response?.data?.error) {
-    const apiError = error.response.data.error;
-    throw new AuthError(
-      apiError.message || fallbackMessage,
-      error.response.status,
-      apiError.code,
-      apiError.details
-    );
+  if (isAxiosError<ApiErrorResponse>(error)) {
+    const status = error.response?.status;
+    const apiError = error.response?.data?.error;
+    const rawRetryAfter =
+      typeof error.response?.headers?.get === 'function'
+        ? error.response.headers.get('retry-after')
+        : error.response?.headers?.['retry-after'] ?? error.response?.headers?.['Retry-After'];
+    const parsedHeader = rawRetryAfter ? parseInt(String(rawRetryAfter), 10) : NaN;
+    const retryAfter =
+      !isNaN(parsedHeader) && parsedHeader > 0
+        ? parsedHeader
+        : (error as any).retryAfterSeconds ??
+          (apiError?.details?.retry_after_seconds as number | undefined) ??
+          (status === 429 ? 60 : undefined);
+
+    if (apiError) {
+      throw new AuthError(
+        apiError.message || fallbackMessage,
+        status,
+        apiError.code || (status === 429 ? 'RATE_LIMIT_EXCEEDED' : undefined),
+        apiError.details,
+        retryAfter
+      );
+    }
+
+    if (status === 429) {
+      throw new AuthError(
+        `Demasiados intentos. Esperá ${retryAfter ?? 60} segundos antes de volver a intentar.`,
+        429,
+        'RATE_LIMIT_EXCEEDED',
+        { retry_after_seconds: retryAfter ?? 60 },
+        retryAfter ?? 60
+      );
+    }
   }
   if (error instanceof Error) {
     throw new AuthError(error.message);
@@ -109,6 +135,17 @@ export const authActions = {
       return data;
     } catch (error: unknown) {
       return handleApiError(error, 'Error al restablecer la contraseña.');
+    }
+  },
+
+  async sendOtp(email: string): Promise<{ sent: boolean }> {
+    try {
+      const { data } = await transferApi.post<{ data: { sent: boolean } }>('/auth/send-otp', {
+        email: email.trim().toLowerCase(),
+      });
+      return data.data;
+    } catch (error: unknown) {
+      return handleApiError(error, 'Error al solicitar el código de verificación.');
     }
   },
 };

@@ -26,6 +26,8 @@ import {
 import { useForgotPasswordStore } from '../../presentation/auth/store/useForgotPasswordStore';
 import { Button } from '../../presentation/components/ui/Button';
 import { AmbientGlow } from '../../presentation/components/ui/AmbientGlow';
+import { useRateLimit } from '../../presentation/auth/hooks/useRateLimit';
+import { RateLimitBanner } from '../../presentation/components/ui/RateLimitBanner';
 
 export default function ForgotPasswordVerifyScreen(): React.JSX.Element {
   const [isLoading, setIsLoading] = useState(false);
@@ -35,6 +37,12 @@ export default function ForgotPasswordVerifyScreen(): React.JSX.Element {
 
   const email = useForgotPasswordStore((state) => state.email);
   const setResetToken = useForgotPasswordStore((state) => state.setResetToken);
+  const {
+    isRateLimited,
+    secondsLeft,
+    rateLimitMessage,
+    handleRateLimitError,
+  } = useRateLimit();
 
   const { control, handleSubmit, setValue } = useForm<VerifyPinFormData>({
     resolver: zodResolver(verifyPinSchema),
@@ -82,6 +90,10 @@ export default function ForgotPasswordVerifyScreen(): React.JSX.Element {
       router.push('/forgot-password/reset' as any);
     } catch (error: unknown) {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      if (handleRateLimitError(error)) {
+        setValue('code', '');
+        return;
+      }
       if (error instanceof AuthError) {
         if (error.code === 'VERIFICATION_CODE_LOCKED' || error.status === 429) {
           Alert.alert(
@@ -121,7 +133,7 @@ export default function ForgotPasswordVerifyScreen(): React.JSX.Element {
   };
 
   const handleResend = async (): Promise<void> => {
-    if (cooldown > 0 || isLoading) return;
+    if (cooldown > 0 || isLoading || isRateLimited) return;
     try {
       setIsLoading(true);
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -130,6 +142,9 @@ export default function ForgotPasswordVerifyScreen(): React.JSX.Element {
       setValue('code', '');
       Alert.alert('Código reenviado', 'Revisá tu casilla de correo para ver el nuevo código.');
     } catch (error: unknown) {
+      if (handleRateLimitError(error)) {
+        return;
+      }
       const message = error instanceof Error ? error.message : 'No se pudo reenviar el código';
       Alert.alert('Error', message);
     } finally {
@@ -245,11 +260,14 @@ export default function ForgotPasswordVerifyScreen(): React.JSX.Element {
             name="code"
             render={({ field: { value } }) => (
               <View className="mt-4">
+                {isRateLimited ? (
+                  <RateLimitBanner message={rateLimitMessage} secondsLeft={secondsLeft} />
+                ) : null}
                 <Button
-                  label="Verificar"
+                  label={isRateLimited ? `Esperá ${secondsLeft}s` : 'Verificar'}
                   onPress={handleSubmit(onSubmit)}
                   isLoading={isLoading}
-                  disabled={value.length < 6 || isLoading}
+                  disabled={value.length < 6 || isLoading || isRateLimited}
                 />
               </View>
             )}
@@ -258,14 +276,14 @@ export default function ForgotPasswordVerifyScreen(): React.JSX.Element {
           {/* Resend Cooldown Section */}
           <View className="mt-8 flex-row justify-center items-center">
             <Text className="text-ash font-montserrat text-sm">¿No recibiste el código? </Text>
-            {cooldown > 0 ? (
+            {isRateLimited || cooldown > 0 ? (
               <Text className="text-white font-montserrat-bold text-sm">
-                Reenviar en {formatCooldown(cooldown)}
+                Reenviar en {formatCooldown(isRateLimited ? Math.max(cooldown, secondsLeft) : cooldown)}
               </Text>
             ) : (
               <TouchableOpacity
                 onPress={handleResend}
-                disabled={isLoading}
+                disabled={isLoading || isRateLimited}
                 accessibilityRole="button"
                 accessibilityLabel="Reenviar código de verificación"
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}

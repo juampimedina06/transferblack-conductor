@@ -21,13 +21,21 @@ import {
   ForgotPasswordEmailFormData,
 } from '../../presentation/auth/schemas/forgot-password.schema';
 import { useForgotPasswordStore } from '../../presentation/auth/store/useForgotPasswordStore';
+import { useRateLimit } from '../../presentation/auth/hooks/useRateLimit';
 import { Button } from '../../presentation/components/ui/Button';
 import { Input } from '../../presentation/components/ui/Input';
 import { AmbientGlow } from '../../presentation/components/ui/AmbientGlow';
+import { RateLimitBanner } from '../../presentation/components/ui/RateLimitBanner';
 
 export default function ForgotPasswordRequestScreen(): React.JSX.Element {
   const [isLoading, setIsLoading] = useState(false);
   const setEmail = useForgotPasswordStore((state) => state.setEmail);
+  const {
+    isRateLimited,
+    secondsLeft,
+    rateLimitMessage,
+    handleRateLimitError,
+  } = useRateLimit();
 
   const {
     control,
@@ -50,10 +58,6 @@ export default function ForgotPasswordRequestScreen(): React.JSX.Element {
       setIsLoading(true);
       setEmail(data.email);
       await authActions.forgotPassword(data.email);
-    } catch {
-      // Por seguridad y anti-enumeración, siempre avanzamos al paso 2
-    } finally {
-      setIsLoading(false);
       Alert.alert(
         'Código enviado',
         'Si el correo está registrado en TransferBlack, recibirás un código de 6 dígitos para restablecer tu contraseña.',
@@ -67,6 +71,26 @@ export default function ForgotPasswordRequestScreen(): React.JSX.Element {
           },
         ]
       );
+    } catch (error: unknown) {
+      if (handleRateLimitError(error)) {
+        return;
+      }
+      // Por seguridad y anti-enumeración ante otros errores, siempre avanzamos al paso 2
+      Alert.alert(
+        'Código enviado',
+        'Si el correo está registrado en TransferBlack, recibirás un código de 6 dígitos para restablecer tu contraseña.',
+        [
+          {
+            text: 'Continuar',
+            onPress: () => {
+              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              router.push('/forgot-password/verify' as any);
+            },
+          },
+        ]
+      );
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -130,10 +154,14 @@ export default function ForgotPasswordRequestScreen(): React.JSX.Element {
             />
 
             <View className="mt-6">
+              {isRateLimited ? (
+                <RateLimitBanner message={rateLimitMessage} secondsLeft={secondsLeft} />
+              ) : null}
               <Button
-                label="Enviar código"
+                label={isRateLimited ? `Esperá ${secondsLeft}s` : 'Enviar código'}
                 onPress={handleSubmit(onSubmit)}
                 isLoading={isLoading}
+                disabled={isLoading || isRateLimited}
               />
             </View>
           </View>

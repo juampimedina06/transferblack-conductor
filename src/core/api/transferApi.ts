@@ -119,6 +119,41 @@ transferApi.interceptors.response.use(
       }
     }
 
+    if (status === 429) {
+      const headers = error.response?.headers;
+      const rawRetryAfter =
+        typeof headers?.get === 'function'
+          ? headers.get('retry-after')
+          : headers?.['retry-after'] ?? headers?.['Retry-After'];
+
+      const parsedSeconds = rawRetryAfter ? parseInt(String(rawRetryAfter), 10) : NaN;
+      const retryAfterSeconds =
+        !isNaN(parsedSeconds) && parsedSeconds > 0
+          ? parsedSeconds
+          : error.response?.data?.error?.details?.retry_after_seconds ?? 60;
+
+      (error as any).retryAfterSeconds = retryAfterSeconds;
+
+      if (!error.response.data) {
+        error.response.data = {};
+      }
+      if (!error.response.data.error) {
+        error.response.data.error = {
+          code: 'RATE_LIMIT_EXCEEDED',
+          message: `Demasiados intentos. Esperá ${retryAfterSeconds} segundos antes de volver a intentar.`,
+          details: { retry_after_seconds: retryAfterSeconds },
+        };
+      } else {
+        if (!error.response.data.error.code) {
+          error.response.data.error.code = 'RATE_LIMIT_EXCEEDED';
+        }
+        if (!error.response.data.error.details) {
+          error.response.data.error.details = {};
+        }
+        error.response.data.error.details.retry_after_seconds = retryAfterSeconds;
+      }
+    }
+
     const errorCode =
       error.response?.data?.error?.code ||
       error.response?.data?.code ||
