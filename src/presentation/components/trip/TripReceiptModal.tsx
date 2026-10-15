@@ -12,9 +12,8 @@ import {
   ScrollView,
   Switch,
   Dimensions,
-  StyleSheet,
 } from 'react-native';
-import { BlurView } from 'expo-blur';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Trip, getPaymentMethodInfo } from '../../../core/trip/interface/trip.interface';
@@ -137,91 +136,84 @@ export const TripReceiptModal = ({ trip, visible }: TripReceiptModalProps) => {
   const screenHeight = Dimensions.get('window').height;
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={finishAndClose}>
-      <View className="flex-1 bg-black/60 justify-end">
-        <View
-          style={{ height: Math.round(screenHeight * 0.52), maxHeight: Math.round(screenHeight * 0.55) }}
-          className="w-full bg-[#0A0B10] rounded-t-[32px] border-t border-white/20 shadow-2xl relative overflow-hidden"
+    <Modal visible={visible} animationType="fade" transparent={false} onRequestClose={finishAndClose}>
+      <SafeAreaView className="flex-1 bg-obsidian">
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          className="flex-1"
         >
-          {/* Blur Glass Layer */}
-          <BlurView
-            intensity={Platform.OS === 'ios' ? 70 : 90}
-            tint="dark"
-            style={StyleSheet.absoluteFill}
-          />
-          <View
-            pointerEvents="none"
-            style={StyleSheet.absoluteFill}
-            className="bg-[#0A0B10]/95"
-          />
-
-          {/* Top highlight line */}
-          <View
-            pointerEvents="none"
-            className="absolute top-0 left-8 right-8 h-[1px] bg-white/30 rounded-full"
-          />
-
-          {/* Drag Handle */}
-          <View className="w-10 h-1 bg-white/25 rounded-full self-center mt-3 mb-2" />
-
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            className="flex-1"
+          <ScrollView
+            contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingVertical: 14 }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
           >
-            <ScrollView
-              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingTop: 4, paddingBottom: 24 }}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-            >
-              {/* Header compacto */}
-              <View className="flex-row items-center justify-between mb-3 mt-1">
-                <View className="flex-row items-center">
-                  <View className="w-8 h-8 rounded-full bg-emerald-500/20 items-center justify-center mr-2.5 border border-emerald-500/40">
-                    <Ionicons name="checkmark-circle" size={18} color="#10B981" />
-                  </View>
-                  <Text className="text-white font-montserrat-bold text-lg tracking-tight">
-                    Viaje Completado
-                  </Text>
-                </View>
-                <Text className="text-ash font-montserrat text-xs">
-                  {isCash ? 'Cobro en Efectivo' : 'Pago Electrónico'}
-                </Text>
-              </View>
+            {/* Header del recibo */}
+            <View className="items-center mb-4 mt-1">
+              <LiquidGlassContainer
+                variant="gold"
+                className="w-14 h-14 rounded-full items-center justify-center mb-2"
+              >
+                <Ionicons name="checkmark-circle" size={32} color={THEME_COLORS.gold} />
+              </LiquidGlassContainer>
+              <Text className="text-white font-montserrat-bold text-2xl tracking-tight">
+                Viaje Completado
+              </Text>
+              <Text className="text-ash font-montserrat text-xs mt-0.5">
+                Desglose transparente y cobro verificado
+              </Text>
+            </View>
 
-            {/* In-Cabin Cash / Payment Instruction Banner */}
+            {/* In-Cabin Cash Banner: TARJETA VERDE QUE CUBRE LA MITAD DE LA PANTALLA */}
             {isCash ? (
               <LiquidGlassContainer
                 variant="success"
-                className="w-full rounded-2xl p-4 mb-4 flex-row items-center border border-emerald-500/40"
+                className="w-full rounded-[28px] p-6 mb-5 items-center justify-between border-2 border-emerald-500/50 shadow-2xl shadow-emerald-950/70"
+                style={{ minHeight: Math.round(screenHeight * 0.46) }}
               >
-                <View className="w-14 h-14 rounded-2xl bg-emerald-500/20 items-center justify-center mr-3.5 border border-emerald-500/40">
-                  <Ionicons name="cash" size={30} color="#10B981" />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-emerald-400 font-montserrat-bold text-xs uppercase tracking-wider">
-                    Total a cobrar en efectivo
+                {/* Badge superior */}
+                <View className="flex-row items-center bg-emerald-500/20 px-4 py-1.5 rounded-full border border-emerald-500/40">
+                  <View className="w-2.5 h-2.5 rounded-full bg-emerald-400 mr-2" />
+                  <Text className="text-emerald-400 font-montserrat-bold text-xs uppercase tracking-widest">
+                    Cobro en Efectivo
                   </Text>
+                </View>
+
+                {/* Ícono grande en cápsula esmeralda */}
+                <View className="w-20 h-20 rounded-3xl bg-emerald-500/20 items-center justify-center my-3 border border-emerald-500/40">
+                  <Ionicons name="cash" size={46} color="#10B981" />
+                </View>
+
+                {/* Título de cobro */}
+                <View className="items-center w-full">
+                  <Text className="text-emerald-300 font-montserrat-bold text-xs uppercase tracking-widest text-center mb-1">
+                    Total a cobrar al pasajero
+                  </Text>
+                  {/* Monto Gigante */}
                   <Text
-                    className="text-white font-montserrat-bold text-4xl mt-0.5"
+                    className="text-white font-montserrat-bold text-6xl text-center my-1 tracking-tight"
                     style={{ fontVariant: ['tabular-nums'] }}
                   >
                     ${totalAmountToCollect.toLocaleString('es-AR', { minimumFractionDigits: 0 })}
                   </Text>
-                  <Text className="text-emerald-300/80 font-montserrat text-xs mt-0.5">
+                </View>
+
+                {/* Mensaje instructivo para el conductor */}
+                <View className="bg-emerald-950/70 border border-emerald-500/35 rounded-2xl px-4 py-3 w-full">
+                  <Text className="text-emerald-200 font-montserrat-medium text-xs text-center leading-4">
                     {tollsAmount > 0
-                      ? `Incluye $${tollsAmount.toLocaleString('es-AR', { minimumFractionDigits: 0 })} en peajes/extras`
-                      : 'Cobrá el total al pasajero antes de que descienda'}
+                      ? `Incluye $${tollsAmount.toLocaleString('es-AR', { minimumFractionDigits: 0 })} en peajes y extras declarados. Cobrá el total antes de que descienda.`
+                      : 'Cobrá este importe al pasajero antes de que descienda del vehículo.'}
                   </Text>
                 </View>
               </LiquidGlassContainer>
             ) : (
               <LiquidGlassContainer
                 variant="default"
-                className="w-full rounded-2xl p-4 mb-4 border border-white/10"
+                className="w-full rounded-[24px] p-5 mb-5 border border-white/10"
               >
-                <View className="flex-row items-center mb-1">
-                  <View className="w-10 h-10 rounded-xl bg-white/10 items-center justify-center mr-3">
-                    <Ionicons name="card-outline" size={22} color={THEME_COLORS.platinum} />
+                <View className="flex-row items-center mb-2">
+                  <View className="w-12 h-12 rounded-2xl bg-white/10 items-center justify-center mr-3.5">
+                    <Ionicons name="card-outline" size={24} color={THEME_COLORS.platinum} />
                   </View>
                   <View className="flex-1">
                     <Text className="text-platinum font-montserrat-bold text-xs uppercase tracking-wider">
@@ -450,8 +442,7 @@ export const TripReceiptModal = ({ trip, visible }: TripReceiptModalProps) => {
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
-      </View>
-    </View>
+      </SafeAreaView>
 
       {/* Modal dedicado de reporte de incidente y daños */}
       <IncidentReportModal
