@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
+  Dimensions,
   Linking,
   Platform,
   StyleSheet,
@@ -370,6 +371,7 @@ export const RideCard: React.FC<RideCardProps> = ({
 }) => {
   const insets = useSafeAreaInsets();
   const effectiveBottomInset = bottomInset ?? insets.bottom;
+  const screenHeight = Dimensions.get('window').height;
   const theme = getTripOfferTheme(true);
 
   // Derivación de datos combinando props directas o del objeto trip
@@ -775,12 +777,13 @@ export const RideCard: React.FC<RideCardProps> = ({
         </Animated.View>
       )}
 
-      {/* ESTADO 5: COMPLETED (Viaje finalizado con resumen de cobro) */}
+      {/* ESTADO 5: COMPLETED (Viaje finalizado con cobro al pasajero cubriendo la mitad de la pantalla) */}
       {status === 'COMPLETED' && (
         <Animated.View
           entering={FadeIn.duration(200)}
           exiting={FadeOut.duration(150)}
-          className="w-full"
+          className="w-full justify-between"
+          style={{ minHeight: Math.round(screenHeight * 0.48) }}
         >
           <FareReceiptWidget
             amount={displayFare}

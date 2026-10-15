@@ -11,8 +11,10 @@ import {
   Platform,
   ScrollView,
   Switch,
+  Dimensions,
+  StyleSheet,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Trip, getPaymentMethodInfo } from '../../../core/trip/interface/trip.interface';
@@ -132,33 +134,59 @@ export const TripReceiptModal = ({ trip, visible }: TripReceiptModalProps) => {
     }
   };
 
+  const screenHeight = Dimensions.get('window').height;
+
   return (
-    <Modal visible={visible} animationType="fade" transparent={false}>
-      <SafeAreaView className="flex-1 bg-obsidian">
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          className="flex-1"
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={finishAndClose}>
+      <View className="flex-1 bg-black/60 justify-end">
+        <View
+          style={{ height: Math.round(screenHeight * 0.52), maxHeight: Math.round(screenHeight * 0.55) }}
+          className="w-full bg-[#0A0B10] rounded-t-[32px] border-t border-white/20 shadow-2xl relative overflow-hidden"
         >
-          <ScrollView
-            contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingVertical: 16 }}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
+          {/* Blur Glass Layer */}
+          <BlurView
+            intensity={Platform.OS === 'ios' ? 70 : 90}
+            tint="dark"
+            style={StyleSheet.absoluteFill}
+          />
+          <View
+            pointerEvents="none"
+            style={StyleSheet.absoluteFill}
+            className="bg-[#0A0B10]/95"
+          />
+
+          {/* Top highlight line */}
+          <View
+            pointerEvents="none"
+            className="absolute top-0 left-8 right-8 h-[1px] bg-white/30 rounded-full"
+          />
+
+          {/* Drag Handle */}
+          <View className="w-10 h-1 bg-white/25 rounded-full self-center mt-3 mb-2" />
+
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            className="flex-1"
           >
-            {/* Header - Success Icon with Glow */}
-            <View className="items-center mb-5 mt-2">
-              <LiquidGlassContainer
-                variant="gold"
-                className="w-16 h-16 rounded-full items-center justify-center mb-3"
-              >
-                <Ionicons name="checkmark-circle" size={36} color={THEME_COLORS.gold} />
-              </LiquidGlassContainer>
-              <Text className="text-white font-montserrat-bold text-2xl tracking-tight">
-                Viaje Completado
-              </Text>
-              <Text className="text-ash font-montserrat text-xs mt-0.5">
-                Desglose transparente y cobro verificado
-              </Text>
-            </View>
+            <ScrollView
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingTop: 4, paddingBottom: 24 }}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              {/* Header compacto */}
+              <View className="flex-row items-center justify-between mb-3 mt-1">
+                <View className="flex-row items-center">
+                  <View className="w-8 h-8 rounded-full bg-emerald-500/20 items-center justify-center mr-2.5 border border-emerald-500/40">
+                    <Ionicons name="checkmark-circle" size={18} color="#10B981" />
+                  </View>
+                  <Text className="text-white font-montserrat-bold text-lg tracking-tight">
+                    Viaje Completado
+                  </Text>
+                </View>
+                <Text className="text-ash font-montserrat text-xs">
+                  {isCash ? 'Cobro en Efectivo' : 'Pago Electrónico'}
+                </Text>
+              </View>
 
             {/* In-Cabin Cash / Payment Instruction Banner */}
             {isCash ? (
@@ -422,24 +450,25 @@ export const TripReceiptModal = ({ trip, visible }: TripReceiptModalProps) => {
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
+      </View>
+    </View>
 
-        {/* Modal dedicado de reporte de incidente y daños */}
-        <IncidentReportModal
-          visible={isIncidentModalVisible}
-          tripId={trip.id}
-          passengerId={trip?.passenger?.phone || trip?.id}
-          passengerName={passengerName}
-          onClose={() => setIsIncidentModalVisible(false)}
-          onReportSuccess={() => {
-            setBlockPassenger(true);
-            Alert.alert(
-              'Reporte Recibido',
-              'El incidente fue registrado. El pasajero fue bloqueado de tu cuenta.',
-              [{ text: 'Entendido' }]
-            );
-          }}
-        />
-      </SafeAreaView>
+      {/* Modal dedicado de reporte de incidente y daños */}
+      <IncidentReportModal
+        visible={isIncidentModalVisible}
+        tripId={trip.id}
+        passengerId={trip?.passenger?.phone || trip?.id}
+        passengerName={passengerName}
+        onClose={() => setIsIncidentModalVisible(false)}
+        onReportSuccess={() => {
+          setBlockPassenger(true);
+          Alert.alert(
+            'Reporte Recibido',
+            'El incidente fue registrado. El pasajero fue bloqueado de tu cuenta.',
+            [{ text: 'Entendido' }]
+          );
+        }}
+      />
     </Modal>
   );
 };
