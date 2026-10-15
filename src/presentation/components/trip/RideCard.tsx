@@ -1,11 +1,10 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Linking,
   Platform,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -146,14 +145,14 @@ export const PassengerProfileRow: React.FC<PassengerProfileRowProps> = ({
   };
 
   return (
-    <View className="flex-row items-center justify-between bg-white/[0.05] border border-white/[0.12] rounded-2xl p-3 mb-3 shadow-sm">
+    <View className="flex-row items-center justify-between py-1.5 mb-3 border-b border-white/[0.08] pb-3">
       <View className="flex-row items-center flex-1 mr-2.5">
-        <View className="w-10 h-10 rounded-full bg-gold/15 border border-gold/35 items-center justify-center mr-3">
+        <View className="w-11 h-11 rounded-full bg-gold/15 border border-gold/40 items-center justify-center mr-3">
           <Text className="font-montserrat-bold text-base text-gold">{avatarLetter}</Text>
         </View>
 
         <View className="flex-1">
-          <Text numberOfLines={1} className="font-montserrat-bold text-sm text-white mb-0.5">
+          <Text numberOfLines={1} className="font-montserrat-bold text-base text-white mb-0.5">
             {name}
           </Text>
           <View className="flex-row items-center">
@@ -178,9 +177,9 @@ export const PassengerProfileRow: React.FC<PassengerProfileRowProps> = ({
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             accessibilityRole="button"
             accessibilityLabel="Chatear con el pasajero"
-            className="w-12 h-12 rounded-2xl bg-gold/15 border border-gold/30 items-center justify-center active:scale-95 shadow-sm"
+            className="w-11 h-11 rounded-2xl bg-gold/15 border border-gold/30 items-center justify-center active:scale-95 shadow-sm"
           >
-            <Ionicons name="chatbubble-ellipses" size={20} color={THEME_COLORS.gold} />
+            <Ionicons name="chatbubble-ellipses" size={19} color={THEME_COLORS.gold} />
           </TouchableOpacity>
         )}
 
@@ -190,16 +189,16 @@ export const PassengerProfileRow: React.FC<PassengerProfileRowProps> = ({
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           accessibilityRole="button"
           accessibilityLabel="Llamar al pasajero"
-          className="w-12 h-12 rounded-2xl bg-white/[0.08] border border-white/20 items-center justify-center active:scale-95 shadow-sm"
+          className="w-11 h-11 rounded-2xl bg-white/[0.08] border border-white/20 items-center justify-center active:scale-95 shadow-sm"
         >
-          <Ionicons name="call" size={20} color="#FFFFFF" />
+          <Ionicons name="call" size={19} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
     </View>
   );
 };
 
-/** Fila de Dirección origen o destino con jerarquía visual */
+/** Fila de Dirección origen o destino con jerarquía visual limpia sin cajitas */
 interface RouteAddressRowProps {
   type: 'pickup' | 'dropoff';
   address: string;
@@ -216,7 +215,7 @@ export const RouteAddressRow: React.FC<RouteAddressRowProps> = ({
   const isPickup = type === 'pickup';
 
   return (
-    <View className="flex-row items-center bg-white/[0.05] border border-white/[0.12] rounded-2xl p-3 mb-3 shadow-sm">
+    <View className="flex-row items-center py-2 mb-3">
       <View
         className={`w-8 h-8 rounded-full border items-center justify-center mr-3 ${
           isPickup
@@ -232,118 +231,20 @@ export const RouteAddressRow: React.FC<RouteAddressRowProps> = ({
       </View>
 
       <View className="flex-1">
-        <Text className="font-montserrat-bold text-[9px] tracking-wider text-ash-muted mb-0.5">
-          {isPickup ? 'PUNTO DE RETIRO' : 'DESTINO FINAL'}
+        <Text className="font-montserrat-bold text-[9px] tracking-wider text-ash-muted mb-0.5 uppercase">
+          {isPickup ? 'Punto de retiro' : 'Destino final'}
         </Text>
         <Text
           numberOfLines={isSingleLine ? 1 : 2}
-          className="font-montserrat-semibold text-xs text-platinum leading-5"
+          className="font-montserrat-semibold text-sm text-platinum leading-5"
         >
           {address || (isPickup ? 'Punto de encuentro' : 'Destino fijado')}
         </Text>
         {subtitle && (
-          <Text numberOfLines={1} className="font-montserrat text-[11px] text-ash mt-0.5">
+          <Text numberOfLines={1} className="font-montserrat text-xs text-ash mt-0.5">
             {subtitle}
           </Text>
         )}
-      </View>
-    </View>
-  );
-};
-
-/** Indicador dinámico de progreso hacia el destino */
-interface TripProgressIndicatorProps {
-  percent: number; // 0-100
-  etaText?: string;
-}
-
-export const TripProgressIndicator: React.FC<TripProgressIndicatorProps> = ({
-  percent,
-  etaText,
-}) => {
-  const clamped = Math.min(Math.max(percent, 0), 100);
-
-  return (
-    <View className="bg-white/[0.05] border border-white/[0.12] rounded-2xl p-3 mb-3 shadow-sm">
-      <View className="flex-row justify-between items-center mb-2">
-        <Text className="font-montserrat-bold text-[9.5px] tracking-wider text-ash-muted">
-          PROGRESO DEL TRAYECTO
-        </Text>
-        <Text className="font-montserrat-bold text-xs text-emerald-400">
-          {etaText || `${Math.round(clamped)}%`}
-        </Text>
-      </View>
-      <View className="h-1.5 rounded-full bg-white/10 overflow-hidden">
-        <View
-          className="h-full bg-emerald-400 rounded-full"
-          style={{ width: `${clamped}%` }}
-        />
-      </View>
-    </View>
-  );
-};
-
-/** Casillas numéricas estilizadas para ingreso de PIN */
-interface PinInputWidgetProps {
-  digits: string[];
-  onChange: (digits: string[]) => void;
-  isError?: boolean;
-}
-
-export const PinInputWidget: React.FC<PinInputWidgetProps> = ({
-  digits,
-  onChange,
-  isError = false,
-}) => {
-  const inputsRef = useRef<TextInput[]>([]);
-
-  const handleChange = (text: string, index: number) => {
-    const next = [...digits];
-    next[index] = text.slice(-1);
-    onChange(next);
-
-    if (text && index < 3) {
-      inputsRef.current[index + 1]?.focus();
-    }
-  };
-
-  const handleKeyPress = (e: any, index: number) => {
-    if (e.nativeEvent.key === 'Backspace' && !digits[index] && index > 0) {
-      inputsRef.current[index - 1]?.focus();
-    }
-  };
-
-  return (
-    <View
-      className={`border rounded-2xl p-3 mb-3.5 items-center ${
-        isError ? 'border-red-500/40 bg-red-500/5' : 'bg-white/[0.03] border-white/10'
-      }`}
-    >
-      <Text className="font-montserrat-bold text-[10px] tracking-wider text-ash mb-2.5 text-center">
-        PIN DE ABORDAJE (SOLICITAR AL PASAJERO)
-      </Text>
-      <View className="flex-row gap-3">
-        {digits.map((digit, i) => (
-          <TextInput
-            key={i}
-            ref={(ref) => {
-              if (ref) inputsRef.current[i] = ref;
-            }}
-            value={digit}
-            onChangeText={(txt) => handleChange(txt, i)}
-            onKeyPress={(e) => handleKeyPress(e, i)}
-            keyboardType="number-pad"
-            maxLength={1}
-            selectTextOnFocus
-            className={`w-11 h-12 rounded-xl border-[1.5px] font-montserrat-bold text-xl text-white text-center ${
-              digit
-                ? 'border-gold bg-gold/10'
-                : isError
-                  ? 'border-red-500 bg-white/[0.04]'
-                  : 'border-white/15 bg-white/[0.04]'
-            }`}
-          />
-        ))}
       </View>
     </View>
   );
@@ -367,19 +268,19 @@ export const FareReceiptWidget: React.FC<FareReceiptWidgetProps> = ({
   const methodColor = methodInfo.isCash ? '#10B981' : THEME_COLORS.gold;
 
   return (
-    <View className="bg-gold/10 border border-gold/25 rounded-2xl p-3.5 mb-3">
+    <View className="py-2 mb-3 border-b border-white/[0.08] pb-3.5">
       <View className="flex-row justify-between items-center mb-3">
         <View>
-          <Text className="font-montserrat-bold text-[9.5px] tracking-wider text-ash mb-0.5">
-            TOTAL COBRADO / A COBRAR
+          <Text className="font-montserrat-bold text-[10px] tracking-wider text-ash-muted uppercase mb-0.5">
+            Total a cobrar
           </Text>
-          <Text className="font-montserrat-bold text-2xl text-gold">
+          <Text className="font-montserrat-bold text-3xl text-gold">
             ${amount.toLocaleString('es-AR', { minimumFractionDigits: 0 })}
           </Text>
         </View>
 
-        <View className="flex-row items-center bg-white/5 px-2.5 py-1 rounded-lg gap-1.5 border border-white/10">
-          <Ionicons name={methodInfo.icon} size={14} color={methodColor} />
+        <View className="flex-row items-center bg-white/10 px-3 py-1.5 rounded-xl border border-white/15 gap-1.5">
+          <Ionicons name={methodInfo.icon} size={15} color={methodColor} />
           <Text
             className="font-montserrat-semibold text-xs"
             style={{ color: methodColor }}
@@ -390,11 +291,11 @@ export const FareReceiptWidget: React.FC<FareReceiptWidgetProps> = ({
       </View>
 
       {/* Calificación al pasajero */}
-      <View className="border-t border-white/10 pt-2.5">
-        <Text className="font-montserrat-medium text-[11px] text-ash mb-1.5">
-          Calificar experiencia del pasajero:
+      <View className="pt-1">
+        <Text className="font-montserrat-medium text-xs text-ash mb-2">
+          Calificá la experiencia del pasajero:
         </Text>
-        <View className="flex-row gap-2">
+        <View className="flex-row gap-2.5">
           {[1, 2, 3, 4, 5].map((star) => (
             <TouchableOpacity
               key={star}
@@ -404,11 +305,11 @@ export const FareReceiptWidget: React.FC<FareReceiptWidgetProps> = ({
               }}
               activeOpacity={0.7}
               hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
-              className="p-0.5"
+              className="p-1"
             >
               <Ionicons
                 name={star <= (ratingScore || 5) ? 'star' : 'star-outline'}
-                size={22}
+                size={26}
                 color={THEME_COLORS.gold}
               />
             </TouchableOpacity>
@@ -557,9 +458,9 @@ export const RideCard: React.FC<RideCardProps> = ({
           exiting={FadeOut.duration(150)}
           className="w-full"
         >
-          <View className="flex-row items-center bg-gold/10 border border-gold/25 rounded-2xl p-3 mb-3">
+          <View className="flex-row items-center py-2 mb-3 border-b border-white/[0.08] pb-3">
             <ActivityIndicator size="small" color={THEME_COLORS.gold} />
-            <Text className="font-montserrat-medium text-xs text-platinum ml-2.5 flex-1">
+            <Text className="font-montserrat-medium text-xs text-platinum ml-3 flex-1">
               Buscando mejores solicitudes en tu zona...
             </Text>
           </View>
@@ -663,18 +564,12 @@ export const RideCard: React.FC<RideCardProps> = ({
             onChat={onChat}
           />
 
-          {/* Cronómetro de Cortesía */}
-          <View
-            className={`flex-row items-center justify-between p-3 rounded-2xl border mb-3 ${
-              isCourtesyExpired
-                ? 'bg-rose-500/10 border-rose-500/30'
-                : 'bg-gold/10 border-gold/25'
-            }`}
-          >
+          {/* Cronómetro de Cortesía integrado limpiamente */}
+          <View className="flex-row items-center justify-between py-1.5 px-0.5 mb-2.5">
             <View className="flex-row items-center">
               <Ionicons
                 name="timer-outline"
-                size={18}
+                size={16}
                 color={isCourtesyExpired ? '#F43F5E' : THEME_COLORS.gold}
               />
               <Text
@@ -694,7 +589,7 @@ export const RideCard: React.FC<RideCardProps> = ({
             </Text>
           </View>
 
-          {/* Validación de PIN: Banner destacado interactivo estilo Uber */}
+          {/* Validación de PIN */}
           {isPinRequired && (
             <TouchableOpacity
               onPress={() => {
@@ -704,55 +599,25 @@ export const RideCard: React.FC<RideCardProps> = ({
               activeOpacity={0.8}
               accessibilityRole="button"
               accessibilityLabel="Abrir pantalla para ingresar PIN del viaje"
-              className={`p-3.5 rounded-2xl border mb-3 flex-row items-center justify-between ${
-                isPinError
-                  ? 'bg-rose-500/10 border-rose-500/35'
-                  : isPinComplete
-                    ? 'bg-emerald-500/10 border-emerald-500/35'
-                    : 'bg-gold/10 border-gold/30'
-              }`}
+              className="flex-row items-center justify-between py-2.5 px-3.5 rounded-2xl bg-white/[0.06] border border-white/15 mb-3"
             >
-              <View className="flex-row items-center flex-1 mr-3">
-                <View
-                  className={`w-10 h-10 rounded-xl items-center justify-center mr-3 border ${
-                    isPinError
-                      ? 'bg-rose-500/15 border-rose-500/30'
-                      : isPinComplete
-                        ? 'bg-emerald-500/15 border-emerald-500/30'
-                        : 'bg-gold/15 border-gold/30'
-                  }`}
-                >
-                  <Ionicons
-                    name={isPinComplete ? 'shield-checkmark' : 'keypad'}
-                    size={20}
-                    color={
-                      isPinError
-                        ? '#F43F5E'
-                        : isPinComplete
-                          ? '#10B981'
-                          : THEME_COLORS.gold
-                    }
-                  />
-                </View>
-
-                <View className="flex-1">
-                  <Text className="font-montserrat-bold text-[10px] tracking-wider uppercase text-ash mb-0.5">
-                    {isPinComplete ? 'PIN VALIDADO' : 'PIN DE ABORDAJE REQUERIDO'}
-                  </Text>
-                  <Text className="font-montserrat-semibold text-xs text-white">
-                    {isPinComplete
-                      ? `Código: ${pinDigits.join(' ')}`
-                      : 'Pedir 4 dígitos al pasajero'}
-                  </Text>
-                </View>
-              </View>
-
-              <View className="flex-row items-center bg-white/10 px-3 py-1.5 rounded-xl border border-white/10">
-                <Text className="font-montserrat-bold text-xs text-gold mr-1">
-                  {isPinComplete ? 'Cambiar' : 'Ingresar'}
+              <View className="flex-row items-center flex-1 mr-2">
+                <Ionicons
+                  name={isPinComplete ? 'shield-checkmark' : 'keypad'}
+                  size={18}
+                  color={isPinComplete ? '#10B981' : THEME_COLORS.gold}
+                  style={{ marginRight: 10 }}
+                />
+                <Text className="font-montserrat-medium text-xs text-white">
+                  {isPinComplete
+                    ? `PIN validado: ${pinDigits.join(' ')}`
+                    : 'PIN de abordaje requerido'}
                 </Text>
-                <Ionicons name="chevron-forward" size={14} color={THEME_COLORS.gold} />
               </View>
+
+              <Text className="font-montserrat-bold text-xs text-gold">
+                {isPinComplete ? 'Cambiar' : 'Ingresar'}
+              </Text>
             </TouchableOpacity>
           )}
 
