@@ -127,7 +127,7 @@ export const ScheduledTripCard = ({ trip, onPress }: ScheduledTripCardProps) => 
         </View>
 
         {/* Route Trajectory estilo TripOfferCard */}
-        <View className="mb-4 pt-1 border-t border-white/10 pt-2.5">
+        <View className="mb-4 border-t border-white/10 pt-2.5">
           {/* Origen */}
           <View className="flex-row items-center mb-2.5">
             <View className="w-6 h-6 rounded-full bg-white/15 border border-white/40 items-center justify-center mr-3">
