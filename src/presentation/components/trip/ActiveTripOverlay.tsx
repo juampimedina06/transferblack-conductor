@@ -220,12 +220,12 @@ export const ActiveTripOverlay: React.FC<ActiveTripOverlayProps> = ({
     <>
       <View
         className="absolute bottom-0 left-0 right-0 z-40 w-full"
-        style={{ paddingBottom: Math.max(insets.bottom, 0) }}
         onLayout={(e) => onHeightChange?.(e.nativeEvent.layout.height)}
         pointerEvents="box-none"
       >
         <RideCard
           status={cardStatus}
+          bottomInset={insets.bottom}
           trip={trip}
           etaText={etaText}
           distanceText={distanceText}

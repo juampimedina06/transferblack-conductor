@@ -16,6 +16,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { THEME_COLORS } from '../../../core/constants/theme';
 import { Trip, getPaymentMethodInfo } from '../../../core/trip/interface/trip.interface';
@@ -61,6 +62,7 @@ export interface RideCardProps {
   onConfirmCompleted?: () => void;
   ratingScore?: number;
   onRatingScoreChange?: (score: number) => void;
+  bottomInset?: number;
 }
 
 // ============================================================================
@@ -356,7 +358,10 @@ export const RideCard: React.FC<RideCardProps> = ({
   onConfirmCompleted,
   ratingScore = 5,
   onRatingScoreChange,
+  bottomInset,
 }) => {
+  const insets = useSafeAreaInsets();
+  const effectiveBottomInset = bottomInset ?? insets.bottom;
   const theme = getTripOfferTheme(true);
 
   // Derivación de datos combinando props directas o del objeto trip
@@ -378,7 +383,8 @@ export const RideCard: React.FC<RideCardProps> = ({
   return (
     <Animated.View
       layout={LinearTransition.springify().damping(18).stiffness(120)}
-      className="w-full overflow-hidden rounded-t-[28px] rounded-b-none px-5 pt-3 pb-6 border-t border-x border-white/20 shadow-2xl"
+      className="w-full overflow-hidden rounded-t-[32px] rounded-b-none px-5 pt-3.5 border-t border-white/20 shadow-2xl"
+      style={{ paddingBottom: Math.max(effectiveBottomInset, 24) }}
       accessible={true}
       accessibilityRole="summary"
     >
