@@ -71,6 +71,22 @@ export const ActiveTripOverlay: React.FC<ActiveTripOverlayProps> = ({
 
   const durationMin = trip.dropoff?.durationMinutes || 10;
   const distanceText = useMemo(() => {
+    // Si el viaje está en curso, calculamos la distancia restante exacta desde la posición actual del conductor al destino
+    if (
+      cardStatus === 'IN_PROGRESS' &&
+      location?.latitude &&
+      trip.dropoff?.latitude &&
+      trip.dropoff?.longitude
+    ) {
+      return calculateTripDistanceKm(
+        location.latitude,
+        location.longitude,
+        trip.dropoff.latitude,
+        trip.dropoff.longitude,
+        durationMin
+      );
+    }
+
     return calculateTripDistanceKm(
       trip.pickup?.latitude,
       trip.pickup?.longitude,
@@ -78,13 +94,7 @@ export const ActiveTripOverlay: React.FC<ActiveTripOverlayProps> = ({
       trip.dropoff?.longitude,
       durationMin
     );
-  }, [
-    trip.pickup?.latitude,
-    trip.pickup?.longitude,
-    trip.dropoff?.latitude,
-    trip.dropoff?.longitude,
-    durationMin,
-  ]);
+  }, [cardStatus, location, trip, durationMin]);
 
   const etaText = useMemo(() => {
     if (cardStatus === 'DRIVER_ASSIGNED') {

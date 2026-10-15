@@ -1,9 +1,8 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Linking,
   Platform,
-  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -470,23 +469,10 @@ export const RideCard: React.FC<RideCardProps> = ({
   const displayFare = fareAmount || Number(trip?.final_fare || trip?.estimated_fare || 0);
   const isPinRequired = requirePin ?? trip?.require_pin ?? false;
 
+  const [isFinishActionExpanded, setIsFinishActionExpanded] = useState(false);
+
   const isPinComplete = pinDigits.every((d) => d.length > 0);
   const canStart = !isPinRequired || isPinComplete;
-
-  const handleShare = async () => {
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (onShareTrip) {
-      onShareTrip();
-      return;
-    }
-    try {
-      await Share.share({
-        message: `Viaje en curso TransferBlack hacia ${displayDropoff}. Estado: ${status}`,
-      });
-    } catch {
-      // Ignorar cancelaciones
-    }
-  };
 
   return (
     <Animated.View
@@ -544,7 +530,9 @@ export const RideCard: React.FC<RideCardProps> = ({
           )}
         </View>
 
-        {(displayEta || displayDistance) && status !== 'COMPLETED' && (
+        {(displayEta || displayDistance) &&
+          status !== 'COMPLETED' &&
+          status !== 'IN_PROGRESS' && (
           <View className="flex-row items-center bg-white/5 px-2.5 py-1 rounded-full border border-white/10">
             {displayEta && (
               <Text className="font-montserrat-bold text-xs text-gold">{displayEta}</Text>
@@ -837,62 +825,74 @@ export const RideCard: React.FC<RideCardProps> = ({
         </Animated.View>
       )}
 
-      {/* ESTADO 4: IN_PROGRESS (En viaje hacia el destino) */}
+      {/* ESTADO 4: IN_PROGRESS (Ultra simple, enfocado en navegación y mapa despejado) */}
       {status === 'IN_PROGRESS' && (
         <Animated.View
           entering={FadeIn.duration(200)}
           exiting={FadeOut.duration(150)}
           className="w-full"
         >
-          <RouteAddressRow
-            type="dropoff"
-            address={displayDropoff}
-            subtitle={displayEta ? `Llegada estimada: ${displayEta}` : undefined}
-          />
+          {/* Tarjeta interactiva: al tocarla se expande/colapsa el slider para finalizar */}
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => {
+              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setIsFinishActionExpanded((prev) => !prev);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={
+              isFinishActionExpanded
+                ? 'Ocultar acción para finalizar viaje'
+                : 'Mostrar deslizador para finalizar viaje'
+            }
+            className="w-full items-center py-1"
+          >
+            {/* KM que faltan en el centro bien destacados */}
+            <Text className="font-montserrat-bold text-4xl text-white tracking-tight mb-1 text-center">
+              {displayDistance || '0.0 km'}
+            </Text>
 
-          <TripProgressIndicator
-            percent={progressPercent}
-            etaText={displayEta ? `ETA: ${displayEta}` : undefined}
-          />
-
-          {/* Fila de Seguridad y Contacto */}
-          <View className="flex-row gap-2.5 mb-3.5">
-            <TouchableOpacity
-              onPress={handleShare}
-              activeOpacity={0.8}
-              accessibilityRole="button"
-              accessibilityLabel="Compartir viaje"
-              className="flex-1 flex-row items-center justify-center bg-white/[0.04] border border-white/10 rounded-xl h-10 gap-1.5 active:bg-white/10"
+            {/* Dirección de destino y ETA sutil en el centro */}
+            <Text
+              numberOfLines={1}
+              className="font-montserrat-medium text-xs text-ash text-center max-w-[90%] mb-2.5"
             >
-              <Ionicons name="share-social-outline" size={15} color="#E4E4E5" />
-              <Text className="font-montserrat-semibold text-xs text-platinum">Compartir</Text>
-            </TouchableOpacity>
+              Hacia {displayDropoff} {displayEta ? `· ${displayEta}` : ''}
+            </Text>
 
-            <TouchableOpacity
-              onPress={onChat}
-              activeOpacity={0.8}
-              accessibilityRole="button"
-              accessibilityLabel="Chat con pasajero"
-              className="flex-1 flex-row items-center justify-center bg-white/[0.04] border border-white/10 rounded-xl h-10 gap-1.5 active:bg-white/10"
+            {/* Pill indicador para expandir / finalizar */}
+            <View className="flex-row items-center px-3.5 py-1.5 rounded-full bg-white/10 border border-white/15">
+              <Ionicons
+                name={isFinishActionExpanded ? 'chevron-down' : 'flag'}
+                size={13}
+                color={THEME_COLORS.gold}
+                style={{ marginRight: 6 }}
+              />
+              <Text className="font-montserrat-bold text-[11px] tracking-wide text-platinum uppercase">
+                {isFinishActionExpanded ? 'Ocultar acción' : 'Tocá para finalizar viaje'}
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          {/* Deslizador para finalizar que aparece al apretar la tarjeta */}
+          {isFinishActionExpanded && (
+            <Animated.View
+              entering={FadeIn.duration(200)}
+              exiting={FadeOut.duration(150)}
+              className="w-full mt-3 pt-3 border-t border-white/10"
             >
-              <Ionicons name="chatbubble-ellipses-outline" size={15} color={THEME_COLORS.gold} />
-              <Text className="font-montserrat-semibold text-xs text-platinum">Chat</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Deslizar para finalizar viaje */}
-          <View className="w-full mt-0.5">
-            <SlideToComplete
-              theme={theme}
-              onComplete={() => {
-                void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                onCompleteTrip?.();
-              }}
-              isLoading={isLoading}
-              label="DESLIZAR AL FINALIZAR"
-              loadingLabel="FINALIZANDO VIAJE..."
-            />
-          </View>
+              <SlideToComplete
+                theme={theme}
+                onComplete={() => {
+                  void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                  onCompleteTrip?.();
+                }}
+                isLoading={isLoading}
+                label="DESLIZAR AL FINALIZAR"
+                loadingLabel="FINALIZANDO VIAJE..."
+              />
+            </Animated.View>
+          )}
         </Animated.View>
       )}
 
