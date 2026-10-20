@@ -17,6 +17,10 @@ import { useWalletStore } from '../../../presentation/wallet/store/useWalletStor
 import * as Haptics from 'expo-haptics';
 import { LiquidGlassContainer } from '../../../presentation/components/ui/LiquidGlassContainer';
 import { AmbientGlow } from '../../../presentation/components/ui/AmbientGlow';
+import {
+  MIN_IMMEDIATE_PAYOUT_AMOUNT,
+  getNormalizedPayoutStatusMeta,
+} from '../../../core/wallet/utils/wallet.utils';
 
 const getTransactionMeta = (type: string, amount: number) => {
   switch (type) {
@@ -154,12 +158,11 @@ export default function WalletScreen() {
     : 0;
   const debtLimit = summary?.debt_limit ? parseFloat(summary.debt_limit) : 50000;
   const hasPendingPayout = !!summary?.pending_payout;
-  const canWithdraw = availableBalance > 0 && !hasPendingPayout;
+  const canWithdraw = availableBalance > MIN_IMMEDIATE_PAYOUT_AMOUNT && !hasPendingPayout;
 
-  const pendingPayoutStatusText =
-    summary?.pending_payout?.status === 'approved'
-      ? 'En proceso de transferencia'
-      : 'Pendiente de aprobación';
+  const pendingPayoutMeta = summary?.pending_payout
+    ? getNormalizedPayoutStatusMeta(summary.pending_payout.status)
+    : null;
 
   return (
     <SafeAreaView className="flex-1 bg-obsidian" edges={['top', 'bottom']}>
@@ -228,7 +231,7 @@ export default function WalletScreen() {
         )}
 
         {/* Pending Payout Banner */}
-        {summary?.pending_payout && (
+        {summary?.pending_payout && pendingPayoutMeta && (
           <TouchableOpacity
             activeOpacity={0.85}
             onPress={() => {
@@ -241,10 +244,14 @@ export default function WalletScreen() {
               className="rounded-2xl p-4 mb-5 border border-amber-500/40"
             >
               <View className="flex-row items-center justify-between mb-1">
-                <View className="flex-row items-center">
-                  <Ionicons name="time-outline" size={18} color="#F59E0B" />
-                  <Text className="text-amber-400 font-montserrat-semibold text-xs ml-2">
-                    Retiro en curso • {pendingPayoutStatusText}
+                <View className="flex-row items-center flex-1 mr-2">
+                  <Ionicons
+                    name={pendingPayoutMeta.iconName}
+                    size={18}
+                    color={pendingPayoutMeta.iconColor}
+                  />
+                  <Text className={`font-montserrat-semibold text-xs ml-2 ${pendingPayoutMeta.textColor}`}>
+                    Retiro en curso • {pendingPayoutMeta.label} ({pendingPayoutMeta.sublabel})
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={16} color="#F59E0B" />
@@ -254,10 +261,29 @@ export default function WalletScreen() {
                 className="text-white font-montserrat-bold text-3xl my-1"
                 style={{ fontVariant: ['tabular-nums'] }}
               >
-                ${parseFloat(summary.pending_payout.amount).toFixed(2)}
+                ${parseFloat(summary.pending_payout.amount).toFixed(2)}{' '}
+                <Text className="text-ash text-sm font-montserrat">{summary.currency || 'ARS'}</Text>
               </Text>
-              <Text className="text-ash text-xs font-montserrat">
-                Solicitud enviada el {formatDate(summary.pending_payout.requested_at)}. Tocá para ver el estado.
+
+              {summary.pending_payout.fee_amount && parseFloat(summary.pending_payout.fee_amount) > 0 && (
+                <Text className="text-ash text-xs font-montserrat mb-1">
+                  Comisión: ${parseFloat(summary.pending_payout.fee_amount).toFixed(2)} • Neto:{' '}
+                  <Text className="text-emerald-400 font-montserrat-semibold">
+                    ${parseFloat(summary.pending_payout.net_amount || summary.pending_payout.amount).toFixed(2)}
+                  </Text>
+                </Text>
+              )}
+
+              {summary.pending_payout.is_outside_hours && (
+                <View className="bg-amber-500/15 border border-amber-500/30 rounded-lg px-2.5 py-1 mb-1 self-start">
+                  <Text className="text-amber-300 font-montserrat-medium text-[11px]">
+                    Agendado para las 08:00 hs (fuera de horario operativo)
+                  </Text>
+                </View>
+              )}
+
+              <Text className="text-ash text-xs font-montserrat mt-0.5">
+                Solicitud enviada el {formatDate(summary.pending_payout.requested_at || summary.pending_payout.created_at || '')}. Tocá para ver el historial.
               </Text>
             </LiquidGlassContainer>
           </TouchableOpacity>
@@ -480,6 +506,31 @@ export default function WalletScreen() {
           </LiquidGlassContainer>
         )}
 
+        {/* Tarjeta Informativa: Retiro Semanal Automático */}
+        <LiquidGlassContainer
+          variant="default"
+          className="rounded-2xl p-4 mb-5 border border-white/10"
+        >
+          <View className="flex-row items-center justify-between mb-2">
+            <View className="flex-row items-center flex-1 mr-2">
+              <View className="w-8 h-8 rounded-xl bg-gold/15 items-center justify-center border border-gold/30 mr-2.5">
+                <Ionicons name="calendar-outline" size={17} color={THEME_COLORS.gold} />
+              </View>
+              <Text className="text-white font-montserrat-bold text-sm">
+                Retiro Semanal Automático
+              </Text>
+            </View>
+            <View className="bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+              <Text className="text-emerald-400 font-montserrat-bold text-[10px] uppercase">
+                Sin costo
+              </Text>
+            </View>
+          </View>
+          <Text className="text-ash font-montserrat text-xs leading-relaxed">
+            Se ejecuta todos los lunes a las 16:00 hs sin costo adicional. Tiempo de acreditación bancaria: 24 a 48 hs hábiles.
+          </Text>
+        </LiquidGlassContainer>
+
         {/* 56px Ergonomic Withdraw Button */}
         {hasPendingPayout ? (
           <LiquidGlassContainer
@@ -505,11 +556,11 @@ export default function WalletScreen() {
               canWithdraw ? 'bg-gold active:opacity-90 shadow-gold/20' : 'bg-charcoal/60 opacity-50'
             }`}
             accessibilityRole="button"
-            accessibilityLabel="Solicitar retiro de saldo"
+            accessibilityLabel="Solicitar retiro inmediato de saldo"
           >
             <Ionicons
-              name="cash-outline"
-              size={22}
+              name="flash-outline"
+              size={20}
               color={canWithdraw ? THEME_COLORS.obsidian : THEME_COLORS.ash}
             />
             <Text
@@ -519,7 +570,9 @@ export default function WalletScreen() {
             >
               {availableBalance <= 0
                 ? 'Sin saldo disponible para retirar'
-                : 'Solicitar Retiro'}
+                : availableBalance <= MIN_IMMEDIATE_PAYOUT_AMOUNT
+                ? 'Saldo mín. para retiro inmediato: > $500'
+                : 'Solicitar Retiro Inmediato'}
             </Text>
           </TouchableOpacity>
         )}

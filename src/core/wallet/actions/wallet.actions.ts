@@ -4,6 +4,7 @@ import type {
   DriverPayoutMethod,
   DriverWalletSummary,
   PayoutRequestItem,
+  PayoutType,
   PayoutsHistoryResponseDto,
   SavePayoutMethodPayload,
   WalletTransactionsResponseDto,
@@ -47,13 +48,17 @@ export const savePayoutMethod = async (
   }
 };
 
-export const requestPayout = async (amount: number | string): Promise<PayoutRequestItem> => {
+export const requestPayout = async (
+  amount: number | string,
+  type: PayoutType = 'immediate'
+): Promise<PayoutRequestItem> => {
   try {
     const numAmount = typeof amount === 'number' ? amount : parseFloat(amount);
     const formattedAmount = numAmount.toFixed(2);
 
     const response = await transferApi.post<{ data: PayoutRequestItem }>('/driver/payouts', {
       amount: formattedAmount,
+      type,
     });
     return response.data.data;
   } catch (error) {
@@ -68,6 +73,9 @@ export const requestPayout = async (amount: number | string): Promise<PayoutRequ
       }
       if (code === 'OPEN_PAYOUT_REQUEST_EXISTS') {
         throw new Error(message || 'Ya tienes una solicitud de retiro abierta');
+      }
+      if (code === 'MIN_PAYOUT_AMOUNT') {
+        throw new Error(message || 'El monto debe ser superior a $500 ARS para retiro inmediato');
       }
       throw new Error(message || 'Error al solicitar el retiro');
     }
