@@ -12,6 +12,7 @@ import type {
   DriverWalletSummary,
   Pagination,
   PayoutRequestItem,
+  PayoutType,
   SavePayoutMethodPayload,
   WalletTransactionItemDto,
 } from '../../../core/wallet/interface/wallet.interface';
@@ -39,7 +40,7 @@ interface WalletState {
   fetchPayoutMethod: () => Promise<DriverPayoutMethod | null>;
   savePayoutMethod: (payload: SavePayoutMethodPayload) => Promise<DriverPayoutMethod>;
   fetchPayoutsHistory: (page?: number, limit?: number) => Promise<void>;
-  submitPayout: (amount: number | string) => Promise<PayoutRequestItem>;
+  submitPayout: (amount: number | string, type?: PayoutType) => Promise<PayoutRequestItem>;
   clearWallet: () => void;
 }
 
@@ -127,10 +128,10 @@ export const useWalletStore = create<WalletState>((set) => ({
     }
   },
 
-  submitPayout: async (amount: number | string) => {
+  submitPayout: async (amount: number | string, type: PayoutType = 'immediate') => {
     set({ isSubmittingPayout: true, error: null });
     try {
-      const payoutItem = await requestPayout(amount);
+      const payoutItem = await requestPayout(amount, type);
 
       // Refresh wallet summary, transactions and history in parallel
       const [summaryRes, txData, payoutsData] = await Promise.allSettled([

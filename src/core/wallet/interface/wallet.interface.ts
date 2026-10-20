@@ -1,5 +1,15 @@
 export type PayoutAccountType = 'CBU' | 'CVU';
-export type PayoutRequestStatus = 'requested' | 'approved' | 'paid' | 'rejected';
+export type PayoutRequestStatus =
+  | 'pending'
+  | 'processing'
+  | 'completed'
+  | 'failed'
+  | 'requested'
+  | 'approved'
+  | 'paid'
+  | 'rejected';
+
+export type PayoutType = 'immediate' | 'weekly';
 
 export interface DriverPayoutMethod {
   id: string;
@@ -23,25 +33,32 @@ export interface SavePayoutMethodPayload {
 
 export interface CreatePayoutPayload {
   amount: string; // Formato decimal con hasta 2 decimales. Ej: "85000.00" o "1500"
+  type?: PayoutType;
 }
 
 export interface PayoutRequestItem {
   id: string;
-  driver_id: string;
+  driver_id?: string;
+  type?: PayoutType;
   amount: string;
-  currency: string;
+  fee_amount?: string;
+  net_amount?: string;
+  currency?: string;
   status: PayoutRequestStatus;
-  payment_method: PayoutAccountType | null;
-  destination_alias: string | null;
-  destination_cbu_cvu: string | null;
-  account_holder_name: string | null;
-  account_holder_document: string | null;
-  receipt_url: string | null;
-  requested_at: string;
-  resolved_at: string | null;
-  resolved_by_user_id: string | null;
-  rejection_reason: string | null;
-  transfer_reference: string | null;
+  scheduled_for?: string | null;
+  is_outside_hours?: boolean;
+  payment_method?: PayoutAccountType | null;
+  destination_alias?: string | null;
+  destination_cbu_cvu?: string | null;
+  account_holder_name?: string | null;
+  account_holder_document?: string | null;
+  receipt_url?: string | null;
+  requested_at?: string;
+  created_at?: string;
+  resolved_at?: string | null;
+  resolved_by_user_id?: string | null;
+  rejection_reason?: string | null;
+  transfer_reference?: string | null;
 }
 
 export type PayoutRequestResponseDto = PayoutRequestItem;

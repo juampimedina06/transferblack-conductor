@@ -17,57 +17,11 @@ import { THEME_COLORS } from '../../../core/constants/theme';
 import { useWalletStore } from '../../../presentation/wallet/store/useWalletStore';
 import * as Haptics from 'expo-haptics';
 import { LiquidGlassContainer } from '../../../presentation/components/ui/LiquidGlassContainer';
-import type {
-  PayoutRequestItem,
-  PayoutRequestStatus,
-} from '../../../core/wallet/interface/wallet.interface';
+import type { PayoutRequestItem } from '../../../core/wallet/interface/wallet.interface';
+import { getNormalizedPayoutStatusMeta } from '../../../core/wallet/utils/wallet.utils';
 
-const getStatusBadge = (status: PayoutRequestStatus) => {
-  switch (status) {
-    case 'requested':
-      return {
-        label: 'Pendiente',
-        bgColor: 'bg-amber-500/15',
-        borderColor: 'border-amber-500/40',
-        textColor: 'text-amber-400',
-        icon: 'time-outline' as const,
-      };
-    case 'approved':
-      return {
-        label: 'En Proceso',
-        bgColor: 'bg-blue-500/15',
-        borderColor: 'border-blue-500/40',
-        textColor: 'text-blue-400',
-        icon: 'hourglass-outline' as const,
-      };
-    case 'paid':
-      return {
-        label: 'Pagado',
-        bgColor: 'bg-emerald-500/15',
-        borderColor: 'border-emerald-500/40',
-        textColor: 'text-emerald-400',
-        icon: 'checkmark-circle-outline' as const,
-      };
-    case 'rejected':
-      return {
-        label: 'Rechazado',
-        bgColor: 'bg-red-500/15',
-        borderColor: 'border-red-500/40',
-        textColor: 'text-red-400',
-        icon: 'close-circle-outline' as const,
-      };
-    default:
-      return {
-        label: status,
-        bgColor: 'bg-charcoal/40',
-        borderColor: 'border-charcoal',
-        textColor: 'text-platinum',
-        icon: 'ellipse-outline' as const,
-      };
-  }
-};
-
-const formatDate = (dateStr: string) => {
+const formatDate = (dateStr?: string | null) => {
+  if (!dateStr) return '';
   try {
     const d = new Date(dateStr);
     return d.toLocaleDateString('es-AR', {
@@ -118,7 +72,7 @@ export default function PayoutHistoryScreen() {
     setLoadingMore(false);
   };
 
-  const handleOpenReceipt = (url: string | null) => {
+  const handleOpenReceipt = (url?: string | null) => {
     if (!url) return;
     Linking.canOpenURL(url).then((supported) => {
       if (supported) {
@@ -131,36 +85,58 @@ export default function PayoutHistoryScreen() {
 
   const renderPayoutItem = useCallback(
     ({ item }: { item: PayoutRequestItem }) => {
-      const badge = getStatusBadge(item.status);
-      const formattedAmount = parseFloat(item.amount).toFixed(2);
+      const badge = getNormalizedPayoutStatusMeta(item.status);
+      const grossAmount = parseFloat(item.amount);
+      const feeAmount = item.fee_amount ? parseFloat(item.fee_amount) : 0;
+      const netAmount = item.net_amount
+        ? parseFloat(item.net_amount)
+        : feeAmount > 0
+        ? grossAmount - feeAmount
+        : grossAmount;
+      const isFailed = badge.isFailed;
+      const isPaid = item.status === 'completed' || item.status === 'paid';
+      const isPending = item.status === 'pending' || item.status === 'requested';
+      const isImmediate = item.type === 'immediate';
 
       return (
         <LiquidGlassContainer
           variant="default"
           className="rounded-2xl p-5 mb-4 border border-white/10"
         >
-          {/* Header Card: Fecha y Status */}
+          {/* Header Card: Fecha, Tipo y Status Normalizado */}
           <View className="flex-row justify-between items-center mb-3">
-            <Text className="text-ash font-montserrat text-xs">
-              {formatDate(item.requested_at)}
-            </Text>
+            <View className="flex-row items-center flex-1 mr-2">
+              <Text className="text-ash font-montserrat text-xs">
+                {formatDate(item.requested_at || item.created_at)}
+              </Text>
+              {item.type && (
+                <View
+                  className={`ml-2 px-2 py-0.5 rounded-full border ${
+                    isImmediate
+                      ? 'bg-gold/15 border-gold/30'
+                      : 'bg-white/10 border-white/15'
+                  }`}
+                >
+                  <Text
+                    className={`font-montserrat-semibold text-[10px] ${
+                      isImmediate ? 'text-gold' : 'text-platinum'
+                    }`}
+                  >
+                    {isImmediate ? 'Inmediato' : 'Semanal'}
+                  </Text>
+                </View>
+              )}
+            </View>
 
+            {/* Badge de Estado Normalizado */}
             <View
-              className={`flex-row items-center px-2.5 py-1 rounded-full border ${badge.bgColor} ${badge.borderColor}`}
+              className={`flex-row items-center px-2.5 py-1 rounded-full border ${badge.badgeBg} ${badge.badgeBorder}`}
             >
               <Ionicons
-                name={badge.icon}
+                name={badge.iconName}
                 size={14}
                 className="mr-1"
-                color={
-                  item.status === 'paid'
-                    ? '#10B981'
-                    : item.status === 'rejected'
-                    ? '#EF4444'
-                    : item.status === 'approved'
-                    ? '#3B82F6'
-                    : '#F59E0B'
-                }
+                color={badge.iconColor}
               />
               <Text className={`font-montserrat-semibold text-xs ml-1 ${badge.textColor}`}>
                 {badge.label}
@@ -168,17 +144,53 @@ export default function PayoutHistoryScreen() {
             </View>
           </View>
 
-          {/* Monto */}
-          <Text
-            className="text-white font-montserrat-bold text-3xl mb-3"
-            style={{ fontVariant: ['tabular-nums'] }}
-          >
-            ${formattedAmount}{' '}
-            <Text className="text-ash text-sm font-montserrat">{item.currency || 'ARS'}</Text>
-          </Text>
+          {/* Monto Principal */}
+          <View className="mb-3">
+            <Text
+              className="text-white font-montserrat-bold text-3xl"
+              style={{ fontVariant: ['tabular-nums'] }}
+            >
+              ${grossAmount.toFixed(2)}{' '}
+              <Text className="text-ash text-sm font-montserrat">{item.currency || 'ARS'}</Text>
+            </Text>
+
+            {/* Desglose de Comisión y Neto si existe comisión */}
+            {feeAmount > 0 ? (
+              <View className="mt-2 bg-black/40 border border-white/5 rounded-xl p-2.5">
+                <View className="flex-row justify-between items-center mb-1">
+                  <Text className="text-ash text-[11px] font-montserrat">Comisión por retiro inmediato:</Text>
+                  <Text
+                    className="text-red-400 font-montserrat-semibold text-[11px]"
+                    style={{ fontVariant: ['tabular-nums'] }}
+                  >
+                    -${feeAmount.toFixed(2)} ARS
+                  </Text>
+                </View>
+                <View className="flex-row justify-between items-center">
+                  <Text className="text-white font-montserrat-medium text-xs">Monto neto acreditado:</Text>
+                  <Text
+                    className="text-emerald-400 font-montserrat-bold text-xs"
+                    style={{ fontVariant: ['tabular-nums'] }}
+                  >
+                    ${netAmount.toFixed(2)} ARS
+                  </Text>
+                </View>
+              </View>
+            ) : null}
+          </View>
+
+          {/* Aviso si fue fuera de horario y está pendiente */}
+          {isPending && (item.is_outside_hours || item.scheduled_for) && (
+            <View className="bg-amber-500/10 border border-amber-500/25 rounded-xl p-2.5 mb-3 flex-row items-center">
+              <Ionicons name="time-outline" size={16} color="#F59E0B" />
+              <Text className="text-amber-200/95 font-montserrat-medium text-xs ml-2 flex-1">
+                Agendado para procesamiento a partir de las 08:00 hs.
+              </Text>
+            </View>
+          )}
 
           {/* Destino */}
-          <View className="pt-2 mb-2">
+          <View className="pt-1 mb-2">
             <Text className="text-ash font-montserrat text-[10px] uppercase tracking-wider mb-0.5">
               Destino
             </Text>
@@ -193,23 +205,31 @@ export default function PayoutHistoryScreen() {
             )}
           </View>
 
-          {/* Motivo de rechazo */}
-          {item.status === 'rejected' && item.rejection_reason && (
-            <View className="bg-red-500/10 border border-red-500/30 rounded-2xl p-3 mt-2 flex-row items-start">
-              <Ionicons name="alert-circle-outline" size={18} color="#EF4444" className="mt-0.5" />
-              <View className="ml-2 flex-1">
-                <Text className="text-red-400 font-montserrat-semibold text-xs mb-0.5">
-                  Motivo de rechazo:
+          {/* Motivo de rechazo y aclaración de reintegro de saldo */}
+          {isFailed && (
+            <View className="bg-red-500/10 border border-red-500/30 rounded-2xl p-3.5 mt-2">
+              <View className="flex-row items-center mb-1">
+                <Ionicons name="close-circle" size={17} color="#EF4444" />
+                <Text className="text-red-400 font-montserrat-bold text-xs ml-1.5">
+                  Solicitud Rechazada
                 </Text>
-                <Text className="text-red-200/90 font-montserrat text-xs leading-relaxed">
-                  {item.rejection_reason}
+              </View>
+              {item.rejection_reason && (
+                <Text className="text-red-200/90 font-montserrat text-xs leading-relaxed mb-2">
+                  Motivo: {item.rejection_reason}
+                </Text>
+              )}
+              <View className="flex-row items-center bg-red-500/15 border border-red-500/25 px-2.5 py-1.5 rounded-xl">
+                <Ionicons name="refresh-outline" size={14} color="#F87171" />
+                <Text className="text-red-200 font-montserrat-semibold text-[11px] ml-1.5 flex-1">
+                  El saldo fue reintegrado a tu saldo disponible.
                 </Text>
               </View>
             </View>
           )}
 
-          {/* Referencia de transferencia y comprobante */}
-          {item.status === 'paid' && (
+          {/* Referencia de transferencia y comprobante para pagados */}
+          {isPaid && (
             <View className="mt-2 pt-2 border-t border-white/10">
               {item.transfer_reference && (
                 <View className="flex-row items-center justify-between mb-1">
