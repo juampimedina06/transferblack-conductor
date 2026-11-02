@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Platform, StyleSheet, View, ViewProps } from "react-native";
 import MapView, { PROVIDER_GOOGLE, Polyline, Marker } from "react-native-maps";
 import { Ionicons } from "@expo/vector-icons";
 import { THEME_COLORS } from "../../core/constants/theme";
 import { LatLng } from "../../core/location/interface/latLng.interface";
+import { getNavigationBearing } from "../../core/location/utils/navigationBearing";
 import { MapControlsDock } from "../components/maps/MapControlsDock";
 import { useLocationStore } from "./store/useLocationStore";
 import { useDriverTripStore } from "../trip/store/useDriverTripStore";
@@ -52,6 +53,19 @@ export const CustomMap = ({
   const activePickup = activeTrip?.pickup || currentOffer?.pickup;
   const activeDropoff = activeTrip?.dropoff || currentOffer?.dropoff;
   const activeRouteGeometry = activeTrip?.routeGeometry || currentOffer?.routeGeometry;
+  const rawTargetDestination = activeTrip?.status === "in_progress" ? activeDropoff : activePickup;
+  const targetDestination = useMemo<LatLng | null>(() => {
+    if (
+      rawTargetDestination?.latitude != null &&
+      rawTargetDestination?.longitude != null
+    ) {
+      return {
+        latitude: rawTargetDestination.latitude,
+        longitude: rawTargetDestination.longitude,
+      };
+    }
+    return null;
+  }, [rawTargetDestination]);
 
   const {
     lastKnownLocation,
@@ -142,43 +156,57 @@ export const CustomMap = ({
     });
   }, [shouldFitCamera, fitCoords]);
 
-  const moveCameraToLocation = (latLng: LatLng) => {
+  const moveCameraToLocation = useCallback((latLng: LatLng) => {
     if (!mapRef.current) return;
     mapRef.current.animateCamera({
       center: latLng,
     });
-  };
+  }, []);
 
-  const moveCameraToDriverNavigation = (latLng: LatLng, heading?: number | null) => {
-    if (!mapRef.current) return;
-    mapRef.current.animateCamera(
-      {
-        center: latLng,
-        zoom: 17.5,
-        pitch: 35,
-        heading: typeof heading === "number" && heading >= 0 ? heading : 0,
-        altitude: 400,
-      },
-      { duration: 1000 }
-    );
-  };
+  const moveCameraToDriverNavigation = useCallback(
+    (latLng: LatLng, headingOverride?: number | null) => {
+      if (!mapRef.current) return;
+      const optimalHeading =
+        typeof headingOverride === "number" && headingOverride >= 0
+          ? headingOverride
+          : getNavigationBearing(
+              latLng,
+              offerRouteCoordinates,
+              targetDestination,
+              lastKnownReading?.heading,
+              lastKnownReading?.speed
+            );
 
-  // Al aceptar el viaje: cambiar la vista, activar seguimiento y acercar la cámara al chofer (modo Uber)
+      mapRef.current.animateCamera(
+        {
+          center: latLng,
+          zoom: 17.5,
+          pitch: 45,
+          heading: optimalHeading,
+          altitude: 350,
+        },
+        { duration: 1000 }
+      );
+    },
+    [offerRouteCoordinates, targetDestination, lastKnownReading?.heading, lastKnownReading?.speed]
+  );
+
+  // Al aceptar el viaje: cambiar la vista, activar seguimiento y acercar la cámara al chofer orientando hacia la ruta
   useEffect(() => {
     const tripId = isTripActive ? activeTrip?.id ?? null : null;
     if (isTripActive && tripId && tripId !== prevActiveTripIdRef.current) {
       setIsFollowingUser(true);
       if (lastKnownLocation) {
-        moveCameraToDriverNavigation(lastKnownLocation, lastKnownReading?.heading);
+        moveCameraToDriverNavigation(lastKnownLocation);
       }
     }
     prevActiveTripIdRef.current = tripId;
-  }, [isTripActive, activeTrip?.id, lastKnownLocation, lastKnownReading?.heading]);
+  }, [isTripActive, activeTrip?.id, lastKnownLocation, moveCameraToDriverNavigation]);
 
   const moveToCurrentLocation = async () => {
     const target = lastKnownLocation || initialLocation;
     if (isTripActive) {
-      moveCameraToDriverNavigation(target, lastKnownReading?.heading);
+      moveCameraToDriverNavigation(target);
     } else {
       moveCameraToLocation(target);
     }
@@ -189,7 +217,7 @@ export const CustomMap = ({
     if (!freshLocation) return;
 
     if (isTripActive) {
-      moveCameraToDriverNavigation(freshLocation, lastKnownReading?.heading);
+      moveCameraToDriverNavigation(freshLocation);
     } else {
       moveCameraToLocation(freshLocation);
     }
@@ -206,12 +234,19 @@ export const CustomMap = ({
   useEffect(() => {
     if (lastKnownLocation && isFollowingUser && !currentOffer) {
       if (isTripActive) {
-        moveCameraToDriverNavigation(lastKnownLocation, lastKnownReading?.heading);
+        moveCameraToDriverNavigation(lastKnownLocation);
       } else {
         moveCameraToLocation(lastKnownLocation);
       }
     }
-  }, [lastKnownLocation, isFollowingUser, currentOffer, isTripActive, lastKnownReading?.heading]);
+  }, [
+    lastKnownLocation,
+    isFollowingUser,
+    currentOffer,
+    isTripActive,
+    moveCameraToLocation,
+    moveCameraToDriverNavigation,
+  ]);
 
   return (
     <View style={[styles.container, rest.style]} {...rest}>
