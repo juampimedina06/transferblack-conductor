@@ -19,7 +19,7 @@ export function popNextValidOffer(
 
   while (remaining.length > 0) {
     const candidate = remaining.shift()!;
-    const baseTtl = candidate.offer.ttlSeconds || 15;
+    const baseTtl = candidate.offer.ttlSeconds || 30;
 
     if (candidate.offer.expiresAt) {
       const expMs = new Date(candidate.offer.expiresAt).getTime();

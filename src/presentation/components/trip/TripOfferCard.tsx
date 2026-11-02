@@ -71,7 +71,7 @@ export const TripOfferCard: React.FC<TripOfferCardProps> = ({
     [baseTheme]
   );
 
-  const ttlSeconds = offer?.ttlSeconds || 25;
+  const ttlSeconds = offer?.ttlSeconds || 30;
   const [secondsLeft, setSecondsLeft] = useState(ttlSeconds);
 
   const { progress } = useOfferTimer(
@@ -83,10 +83,12 @@ export const TripOfferCard: React.FC<TripOfferCardProps> = ({
   );
 
   useEffect(() => {
-    if (!offer?.expiresAt) return;
+    const targetExpiresAtMs = offer?.expiresAt
+      ? new Date(offer.expiresAt).getTime()
+      : Date.now() + ttlSeconds * 1000;
 
     const updateSeconds = () => {
-      const remainingMs = new Date(offer.expiresAt!).getTime() - Date.now();
+      const remainingMs = targetExpiresAtMs - Date.now();
       const sec = Math.max(0, Math.ceil(remainingMs / 1000));
       setSecondsLeft(sec);
     };
@@ -94,9 +96,9 @@ export const TripOfferCard: React.FC<TripOfferCardProps> = ({
     updateSeconds();
     const interval = setInterval(updateSeconds, 1000);
     return () => clearInterval(interval);
-  }, [offer?.expiresAt, ttlSeconds]);
+  }, [offer?.expiresAt, offer?.offerId, ttlSeconds]);
 
-  const remainingSeconds = offer?.expiresAt ? secondsLeft : ttlSeconds;
+  const remainingSeconds = secondsLeft;
   const isUrgent = remainingSeconds <= 5;
 
   useEffect(() => {
