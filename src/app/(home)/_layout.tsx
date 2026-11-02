@@ -84,7 +84,7 @@ export default function HomeLayout() {
 
       try {
         const response = await transferApi.get('/users/me');
-        if (isCancelled) return;
+        if (isCancelled || !useAuthStore.getState().isAuthenticated) return;
         const profile = response.data.data;
 
         useAuthStore.getState().updateUser(response.data);
@@ -145,7 +145,7 @@ export default function HomeLayout() {
   }, [user?.id, isAuthenticated, pathname]);
 
   // Guard de seguridad: si no hay usuario ni sesión autenticada, redirigir al login
-  if (!isAuthenticated && !user) {
+  if (!isAuthenticated || !user) {
     return <Redirect href="/auth/login" />;
   }
 

@@ -256,11 +256,14 @@ class PushNotificationService {
    */
   async revoke(): Promise<void> {
     try {
-      if (this.currentDeviceToken) {
-        await revokeDriverPushToken(this.currentDeviceToken).catch(() => {});
-      } else {
-        await revokeDriverPushToken().catch(() => {});
-      }
+      const revokePromise = this.currentDeviceToken
+        ? revokeDriverPushToken(this.currentDeviceToken)
+        : revokeDriverPushToken();
+
+      await Promise.race([
+        revokePromise,
+        new Promise((resolve) => setTimeout(resolve, 3000)),
+      ]).catch(() => {});
 
       await offerAlarmService.stop();
       if (Notifications?.dismissAllNotificationsAsync) {

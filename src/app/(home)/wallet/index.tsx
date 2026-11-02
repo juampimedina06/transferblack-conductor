@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
@@ -11,16 +12,15 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME_COLORS } from '../../../core/constants/theme';
-import { PayoutModal } from '../../../presentation/components/wallet/PayoutModal';
-import { useWalletStore } from '../../../presentation/wallet/store/useWalletStore';
-import * as Haptics from 'expo-haptics';
-import { LiquidGlassContainer } from '../../../presentation/components/ui/LiquidGlassContainer';
-import { AmbientGlow } from '../../../presentation/components/ui/AmbientGlow';
-import { SkeletonBox } from '../../../presentation/components/ui/SkeletonBox';
 import {
   MIN_IMMEDIATE_PAYOUT_AMOUNT,
   getNormalizedPayoutStatusMeta,
 } from '../../../core/wallet/utils/wallet.utils';
+import { AmbientGlow } from '../../../presentation/components/ui/AmbientGlow';
+import { LiquidGlassContainer } from '../../../presentation/components/ui/LiquidGlassContainer';
+import { SkeletonBox } from '../../../presentation/components/ui/SkeletonBox';
+import { PayoutModal } from '../../../presentation/components/wallet/PayoutModal';
+import { useWalletStore } from '../../../presentation/wallet/store/useWalletStore';
 
 const getTransactionMeta = (type: string, amount: number) => {
   switch (type) {
@@ -328,11 +328,10 @@ export default function WalletScreen() {
 
         {/* Balance Card con diseño obsidian y disponible diferenciado */}
         <View
-          className={`rounded-3xl p-6 mb-5 border relative overflow-hidden ${
-            isRestricted
+          className={`rounded-3xl p-6 mb-5 border relative overflow-hidden ${isRestricted
               ? 'bg-red-950/40 border-red-500/40'
               : 'bg-obsidian-card border-gold/30'
-          }`}
+            }`}
           style={{
             shadowColor: '#000',
             shadowOffset: { width: 0, height: 8 },
@@ -589,9 +588,8 @@ export default function WalletScreen() {
             }}
             disabled={!canWithdraw}
             activeOpacity={0.85}
-            className={`w-full h-14 rounded-2xl flex-row justify-center items-center mb-6 shadow-lg shadow-black ${
-              canWithdraw ? 'bg-gold active:opacity-90 shadow-gold/20' : 'bg-charcoal/60 opacity-50'
-            }`}
+            className={`w-full h-14 rounded-2xl flex-row justify-center items-center mb-6 shadow-lg shadow-black ${canWithdraw ? 'bg-gold active:opacity-90 shadow-gold/20' : 'bg-charcoal/60 opacity-50'
+              }`}
             accessibilityRole="button"
             accessibilityLabel="Solicitar retiro inmediato de saldo"
           >
@@ -601,15 +599,14 @@ export default function WalletScreen() {
               color={canWithdraw ? THEME_COLORS.obsidian : THEME_COLORS.ash}
             />
             <Text
-              className={`font-montserrat-bold text-base ml-2 ${
-                canWithdraw ? 'text-obsidian' : 'text-ash'
-              }`}
+              className={`font-montserrat-bold text-base ml-2 ${canWithdraw ? 'text-obsidian' : 'text-ash'
+                }`}
             >
               {availableBalance <= 0
                 ? 'Sin saldo disponible para retirar'
                 : availableBalance <= MIN_IMMEDIATE_PAYOUT_AMOUNT
-                ? 'Saldo mín. para retiro inmediato: > $500'
-                : 'Solicitar Retiro Inmediato'}
+                  ? 'Saldo mín. para retiro inmediato: > $500'
+                  : 'Solicitar Retiro Inmediato'}
             </Text>
           </TouchableOpacity>
         )}
@@ -644,20 +641,18 @@ export default function WalletScreen() {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     setActiveFilter(tab.id as TransactionFilter);
                   }}
-                  className={`h-9 px-4 rounded-full border items-center justify-center ${
-                    isActive
+                  className={`h-9 px-4 rounded-full border items-center justify-center ${isActive
                       ? 'bg-gold border-gold'
                       : 'bg-white/5 border-white/10'
-                  }`}
+                    }`}
                   accessibilityRole="button"
                   accessibilityLabel={`Filtrar por ${tab.label}`}
                 >
                   <Text
-                    className={`text-xs ${
-                      isActive
+                    className={`text-xs ${isActive
                         ? 'text-obsidian font-montserrat-bold'
                         : 'text-ash font-montserrat-medium'
-                    }`}
+                      }`}
                   >
                     {tab.label}
                   </Text>
@@ -692,9 +687,8 @@ export default function WalletScreen() {
                 return (
                   <View
                     key={tx.id}
-                    className={`p-4 flex-row items-center justify-between ${
-                      !isLast ? 'border-b border-white/5' : ''
-                    }`}
+                    className={`p-4 flex-row items-center justify-between ${!isLast ? 'border-b border-white/5' : ''
+                      }`}
                   >
                     <View className="flex-row items-center flex-1 mr-3">
                       <View
@@ -718,9 +712,8 @@ export default function WalletScreen() {
                     </View>
 
                     <Text
-                      className={`font-montserrat-bold text-sm ${
-                        isPositive ? 'text-emerald-400' : 'text-red-400'
-                      }`}
+                      className={`font-montserrat-bold text-sm ${isPositive ? 'text-emerald-400' : 'text-red-400'
+                        }`}
                       style={{ fontVariant: ['tabular-nums'] }}
                     >
                       {isPositive

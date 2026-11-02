@@ -34,11 +34,11 @@ export const authStorage = {
 
   async removeTokens() {
     try {
-      await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY);
-      await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
+      await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY).catch(() => {});
+      await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY).catch(() => {});
     } catch (error) {
-      console.error('Error removing tokens:', error);
-      throw new Error('Error al cerrar sesión');
+      console.warn('Error removing tokens:', error);
+
     }
   }
 };

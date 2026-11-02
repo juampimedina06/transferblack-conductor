@@ -23,8 +23,9 @@ import { ProfileSkeleton } from '@/presentation/components/profile/ProfileSkelet
 import { VehicleCard } from '@/presentation/components/profile/VehicleCard';
 import { ProfileOptionItem } from '@/presentation/components/profile/ProfileOptionItem';
 import { DriverDocumentsModal } from '@/presentation/components/compliance/DriverDocumentsModal';
+import { DeleteAccountModal } from '@/presentation/components/profile/DeleteAccountModal';
 import { usePushNotifications } from '@/presentation/hooks/usePushNotifications';
-import { pushNotificationService } from '@/core/push/services/pushNotificationService';
+
 
 export default function DriverProfileScreen() {
   const user = useAuthStore((state) => state.user);
@@ -34,6 +35,7 @@ export default function DriverProfileScreen() {
 
   const [isLoggingOut, setIsLoggingOut] = useState<boolean>(false);
   const [isDocsModalVisible, setIsDocsModalVisible] = useState<boolean>(false);
+  const [isDeleteModalVisible, setIsDeleteModalVisible] = useState<boolean>(false);
 
   // Hook para acceder al estado y acciones de notificaciones push sin duplicar listeners globales
   const { isRegistered: isPushRegistered, syncDeviceToken, expoPushToken, isExpoGoOnAndroid } =
@@ -89,10 +91,7 @@ export default function DriverProfileScreen() {
         useDriverTripStore.getState().setActiveTrip(null);
       }
 
-      // 3. Revocar push token en backend
-      await pushNotificationService.revoke();
-
-      // 4. Invalidar Refresh Token en la API y purgar credenciales de SecureStore + Zustand
+      // 3. Invalidar Refresh Token en la API y purgar credenciales de SecureStore + Zustand (ejecuta cleanup de push, socket y stores)
       await logout();
 
       // 5. Redirección limpia al Stack de Login impidiendo volver atrás
@@ -335,8 +334,8 @@ export default function DriverProfileScreen() {
               </View>
             </View>
 
-            {/* Botón de Cierre de Sesión */}
-            <View className="pt-2">
+            {/* Acciones de Cuenta */}
+            <View className="pt-2 space-y-3">
               <TouchableOpacity
                 activeOpacity={0.8}
                 onPress={handleLogoutPress}
@@ -350,6 +349,19 @@ export default function DriverProfileScreen() {
                   {isLoggingOut ? 'Cerrando sesión...' : 'Cerrar Sesión'}
                 </Text>
               </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => setIsDeleteModalVisible(true)}
+                disabled={isLoggingOut}
+                accessibilityRole="button"
+                accessibilityLabel="Eliminar cuenta"
+                className="w-full py-2.5 items-center justify-center"
+              >
+                <Text className="text-zinc-500 font-montserrat-medium text-xs">
+                  Eliminar cuenta
+                </Text>
+              </TouchableOpacity>
             </View>
           </ScrollView>
         )}
@@ -358,6 +370,11 @@ export default function DriverProfileScreen() {
       <DriverDocumentsModal
         visible={isDocsModalVisible}
         onClose={() => setIsDocsModalVisible(false)}
+      />
+
+      <DeleteAccountModal
+        visible={isDeleteModalVisible}
+        onClose={() => setIsDeleteModalVisible(false)}
       />
     </View>
   );

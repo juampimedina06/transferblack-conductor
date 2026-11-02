@@ -6,7 +6,7 @@ import { DEFAULT_TELEMETRY_CONFIG } from '../../src/core/location/constants/tele
 import {
   LocationReading,
   TelemetryConfig,
-  TelemetryDetectorState,
+
 } from '../../src/core/location/interface/telemetry.interface';
 import { initialTelemetryDetectorState } from '../../src/core/location/utils/telemetryEventDetector';
 
@@ -133,6 +133,29 @@ describe('processTelemetryTick (Telemetry Tick Engine)', () => {
     });
     expect(result.emittedPayload?.event).toBeUndefined();
     expect(result.updatedHistory).toHaveLength(1);
+  });
+
+  it('rounds floating point timestamps from native GPS to integers for backend Zod validation', () => {
+    const floatTimestampReading: LocationReading = {
+      latitude: -31.4201,
+      longitude: -64.1802,
+      accuracy: 8,
+      speed: 12.5,
+      heading: 45,
+      timestamp: 1730524595123.456,
+    };
+
+    const result = processTelemetryTick(
+      floatTimestampReading,
+      [],
+      initialTelemetryDetectorState,
+      TEST_CONFIG,
+      activeTripId,
+      true,
+    );
+
+    expect(result.emittedPayload?.timestamp).toBe(1730524595123);
+    expect(Number.isInteger(result.emittedPayload?.timestamp)).toBe(true);
   });
 
   it('detects and marks event: "stop" when vehicle is stationary for 5 seconds and does not duplicate', () => {

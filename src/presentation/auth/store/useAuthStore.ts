@@ -66,15 +66,23 @@ export const useAuthStore = create<AuthState>()(
                   'Content-Type': 'application/json',
                   ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
                 },
-                timeout: 5000,
+                timeout: 3000,
               }
             );
           }
         } catch (error) {
           console.warn('Error invalidando refresh token en backend:', error);
         } finally {
-          await authStorage.removeTokens();
-          await pushDeviceStorage.clear();
+          try {
+            await authStorage.removeTokens();
+          } catch (e) {
+            console.warn('Error purgando tokens:', e);
+          }
+          try {
+            await pushDeviceStorage.clear();
+          } catch (e) {
+            console.warn('Error limpiando push storage:', e);
+          }
           for (const cb of logoutCleanupCallbacks) {
             try {
               await cb();

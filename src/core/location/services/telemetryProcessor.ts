@@ -66,7 +66,7 @@ export const processTelemetryTick = (
     typeof currentReading.timestamp === 'number' &&
     !isNaN(currentReading.timestamp) &&
     currentReading.timestamp > 0
-      ? currentReading.timestamp
+      ? Math.round(currentReading.timestamp)
       : Date.now();
   const cutoff = readingTimestamp - 15000;
   const updatedHistory = [

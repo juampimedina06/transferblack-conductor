@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getDriverMe } from '../../src/core/driver/actions/driver.actions';
+import { getDriverMe, deleteDriverAccount } from '../../src/core/driver/actions/driver.actions';
 import { transferApi } from '../../src/core/api/transferApi';
 
 vi.mock('../../src/core/api/transferApi', () => ({
   transferApi: {
     get: vi.fn(),
+    delete: vi.fn(),
   },
 }));
 
@@ -67,6 +68,59 @@ describe('Driver Actions', () => {
       const result = await getDriverMe();
       expect(transferApi.get).toHaveBeenCalledWith('/driver/me');
       expect(result.vehicle).toBeNull();
+    });
+  });
+
+  describe('deleteDriverAccount', () => {
+    it('calls DELETE /driver/me with password and optional reason', async () => {
+      const mockResponse = {
+        status: 'success' as const,
+        message: 'Cuenta de conductor eliminada correctamente',
+      };
+
+      (transferApi.delete as any).mockResolvedValueOnce({
+        data: mockResponse,
+      });
+
+      const result = await deleteDriverAccount({
+        password: 'SecurePassword123!',
+        reason: 'Ya no dispongo de tiempo para conducir',
+      });
+
+      expect(transferApi.delete).toHaveBeenCalledWith('/driver/me', {
+        data: {
+          password: 'SecurePassword123!',
+          reason: 'Ya no dispongo de tiempo para conducir',
+        },
+      });
+      expect(result.status).toBe('success');
+      expect(result.message).toContain('eliminada correctamente');
+    });
+
+    it('handles backend rejection when driver has debt or active trip', async () => {
+      (transferApi.delete as any).mockRejectedValueOnce({
+        response: {
+          status: 409,
+          data: {
+            error: {
+              code: 'CANNOT_DELETE_ACTIVE_TRIP',
+              message: 'No podés eliminar tu cuenta mientras tengas un viaje en curso',
+            },
+          },
+        },
+      });
+
+      await expect(
+        deleteDriverAccount({
+          password: 'Password123',
+        })
+      ).rejects.toEqual(
+        expect.objectContaining({
+          response: expect.objectContaining({
+            status: 409,
+          }),
+        })
+      );
     });
   });
 });

@@ -38,3 +38,13 @@ export interface DriverMeData {
 export interface DriverMeResponse {
   data: DriverMeData;
 }
+
+export interface DeleteDriverAccountDto {
+  password: string;
+  reason?: string;
+}
+
+export interface DeleteDriverAccountResponse {
+  status: 'success' | 'error';
+  message: string;
+}
