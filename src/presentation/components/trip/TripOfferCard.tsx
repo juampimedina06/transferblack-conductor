@@ -27,6 +27,7 @@ import { useOfferTimer } from '../../trip/hooks/useOfferTimer';
 import { CountdownRing } from './ui/CountdownRing';
 import { getTripOfferTheme } from './theme/tripOfferTheme';
 import { AmbientGlow } from '../ui/AmbientGlow';
+import { AppleIntelligenceOfferAura } from './ui/AppleIntelligenceOfferAura';
 
 export interface TripOfferCardProps {
   offer: TripOfferPayload;
@@ -159,41 +160,42 @@ export const TripOfferCard: React.FC<TripOfferCardProps> = ({
   }
 
   return (
-    <Animated.View
-      onLayout={(e) => onHeightChange?.(e.nativeEvent.layout.height)}
-      entering={reduceMotion ? FadeIn : FadeInDown.springify().damping(16).mass(0.9)}
-      exiting={reduceMotion ? undefined : FadeOutDown.duration(200)}
-      className="absolute bottom-0 left-0 right-0 w-full z-50 overflow-hidden rounded-t-[34px] border-t border-gold/55 shadow-2xl px-5 pt-3"
-      style={{ paddingBottom: Math.max(bottomInset, 22) }}
-    >
-      {/* Capa Liquid Glass de desenfoque */}
-      <BlurView
-        intensity={Platform.OS === 'ios' ? 75 : 90}
-        tint="dark"
-        style={StyleSheet.absoluteFill}
-      />
-      <View
-        pointerEvents="none"
-        style={StyleSheet.absoluteFill}
-        className="bg-[#090A0F]/92"
-      />
+    <>
+      {/* Aura perimetral de pantalla completa estilo Apple Intelligence */}
+      <AppleIntelligenceOfferAura isUrgent={isUrgent} variant="screen" />
 
-      {/* Ambient Champagne Gold Glow */}
-      <AmbientGlow
-        position="top"
-        height={220}
-        opacity={isUrgent ? 0.22 : 0.18}
-        color={isUrgent ? '#F43F5E' : THEME_COLORS.gold}
-      />
+      <Animated.View
+        onLayout={(e) => onHeightChange?.(e.nativeEvent.layout.height)}
+        entering={reduceMotion ? FadeIn : FadeInDown.springify().damping(16).mass(0.9)}
+        exiting={reduceMotion ? undefined : FadeOutDown.duration(200)}
+        className="absolute bottom-0 left-0 right-0 w-full z-50 overflow-hidden rounded-t-[34px] shadow-2xl px-5 pt-3"
+        style={{ paddingBottom: Math.max(bottomInset, 22) }}
+      >
+        {/* Capa Liquid Glass de desenfoque */}
+        <BlurView
+          intensity={Platform.OS === 'ios' ? 75 : 90}
+          tint="dark"
+          style={StyleSheet.absoluteFill}
+        />
+        <View
+          pointerEvents="none"
+          style={StyleSheet.absoluteFill}
+          className="bg-[#090A0F]/92"
+        />
 
-      {/* Resplandor especular superior en Oro */}
-      <View
-        pointerEvents="none"
-        className="absolute top-0 left-10 right-10 h-[1.5px] bg-gold/65 rounded-full"
-      />
+        {/* Ambient Champagne Gold Glow */}
+        <AmbientGlow
+          position="top"
+          height={220}
+          opacity={isUrgent ? 0.22 : 0.18}
+          color={isUrgent ? '#F43F5E' : THEME_COLORS.gold}
+        />
 
-      {/* Handle indicador */}
-      <View className="w-11 h-1 rounded-full bg-white/25 self-center mb-3" />
+        {/* Border-shadow difuminado y en movimiento alrededor del contorno de la tarjeta */}
+        <AppleIntelligenceOfferAura isUrgent={isUrgent} variant="card" />
+
+        {/* Handle indicador */}
+        <View className="w-11 h-1 rounded-full bg-white/25 self-center mb-3" />
 
       {/* ====================================================================
           1. HEADER CON BADGE VIP Y ANILLO DE CUENTA REGRESIVA EN ORO
@@ -433,6 +435,7 @@ export const TripOfferCard: React.FC<TripOfferCardProps> = ({
           <Ionicons name="close" size={24} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
-    </Animated.View>
+      </Animated.View>
+    </>
   );
 };
