@@ -22,6 +22,7 @@ interface DriverStatusState {
   setDispatchSuspendedUntil: (timestamp: string | null) => void;
   setConsecutiveCancellations: (count: number) => void;
   setCompliance: (compliance: Partial<DriverCompliance>) => void;
+  resetDriverStatus: () => void;
   initSocketListeners: () => () => void;
 }
 
@@ -87,12 +88,21 @@ export const useDriverStatusStore = create<DriverStatusState>()(
         }));
       },
 
+      resetDriverStatus: () => {
+        set({
+          consecutiveCancellations: 0,
+          dispatchSuspendedUntil: null,
+          compliance: defaultCompliance,
+          documents: [],
+          isLoading: false,
+        });
+      },
+
       initSocketListeners: () => {
         if (!socket) return () => {};
 
         const handleSuspended = (payload: { dispatchSuspendedUntil?: string }) => {
           if (payload?.dispatchSuspendedUntil) {
-            console.log('🛑 [Socket] Despacho suspendido temporalmente hasta:', payload.dispatchSuspendedUntil);
             set({ dispatchSuspendedUntil: payload.dispatchSuspendedUntil });
           }
         };
@@ -101,7 +111,6 @@ export const useDriverStatusStore = create<DriverStatusState>()(
           status?: DriverCompliance['status'];
           blockingDocuments?: string[];
         }) => {
-          console.log('📋 [Socket] Compliance documental actualizado:', payload);
           if (payload?.status) {
             get().setCompliance({
               status: payload.status,

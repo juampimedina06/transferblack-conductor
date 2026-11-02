@@ -1,4 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import {
+  useDriverTripStore,
+  popNextValidOffer,
+  QueuedTripOffer,
+} from '../../src/presentation/trip/store/useDriverTripStore';
+import { TripOfferPayload } from '../../src/core/trip/interface/trip.interface';
 
 vi.mock('@react-native-async-storage/async-storage', () => {
   let store: Record<string, string> = {};
@@ -17,13 +23,6 @@ vi.mock('@react-native-async-storage/async-storage', () => {
     },
   };
 });
-
-import {
-  useDriverTripStore,
-  popNextValidOffer,
-  QueuedTripOffer,
-} from '../../src/presentation/trip/store/useDriverTripStore';
-import { TripOfferPayload } from '../../src/core/trip/interface/trip.interface';
 
 const createMockOffer = (tripId: string, ttlSeconds: number = 15): TripOfferPayload => ({
   tripId,
@@ -59,7 +58,7 @@ describe('popNextValidOffer helper', () => {
     expect(result.remainingQueue).toEqual([]);
   });
 
-  it('returns candidate with its full TTL preserved when dequeued', () => {
+  it('returns candidate with its full TTL preserved when dequeued without expiresAt', () => {
     const queue: QueuedTripOffer[] = [
       {
         offer: createMockOffer('trip-1', 15),
@@ -71,6 +70,42 @@ describe('popNextValidOffer helper', () => {
     expect(result.nextOffer).not.toBeNull();
     expect(result.nextOffer?.tripId).toBe('trip-1');
     expect(result.nextOffer?.ttlSeconds).toBe(15); // Full 15s
+    expect(result.remainingQueue).toHaveLength(0);
+  });
+
+  it('defaults TTL to 30 seconds when ttlSeconds is not set on offer', () => {
+    const queue: QueuedTripOffer[] = [
+      {
+        offer: {
+          ...createMockOffer('trip-default-ttl', 0),
+          ttlSeconds: undefined as unknown as number,
+        },
+        receivedAt: Date.now(),
+      },
+    ];
+
+    const result = popNextValidOffer(queue);
+    expect(result.nextOffer).not.toBeNull();
+    expect(result.nextOffer?.ttlSeconds).toBe(30);
+  });
+
+  it('skips offers whose expiresAt has already passed or has < 3s remaining', () => {
+    const expiredOffer: TripOfferPayload = {
+      ...createMockOffer('trip-expired', 15),
+      expiresAt: new Date(Date.now() + 1_000).toISOString(), // 1s left (< 3s)
+    };
+    const validOffer: TripOfferPayload = {
+      ...createMockOffer('trip-valid', 15),
+      expiresAt: new Date(Date.now() + 12_000).toISOString(),
+    };
+
+    const queue: QueuedTripOffer[] = [
+      { offer: expiredOffer, receivedAt: Date.now() - 14_000 },
+      { offer: validOffer, receivedAt: Date.now() - 3_000 },
+    ];
+
+    const result = popNextValidOffer(queue);
+    expect(result.nextOffer?.tripId).toBe('trip-valid');
     expect(result.remainingQueue).toHaveLength(0);
   });
 

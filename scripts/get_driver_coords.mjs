@@ -1,25 +1,26 @@
-import pg from 'pg';
-const { Client } = pg;
-
-const client = new Client({
-  connectionString: 'postgresql://postgres.oqdbvkazqomfvfwkkwca:transfer-black123!@aws-0-sa-east-1.pooler.supabase.com:6543/postgres',
-  ssl: { rejectUnauthorized: false }
-});
-
 async function run() {
-  await client.connect();
-  const res = await client.query(`
-    SELECT dl.driver_id, 
-           ST_X(dl.location::geometry) as lng, 
-           ST_Y(dl.location::geometry) as lat,
-           dl.updated_at,
-           dp.availability_status
-    FROM app.driver_locations dl
-    JOIN app.driver_profiles dp ON dp.id = dl.driver_id
-    WHERE dl.driver_id = '645b08f9-93b5-48a9-93d8-ec376107c57e'
-  `);
-  console.log('Driver location in DB:', JSON.stringify(res.rows, null, 2));
-  await client.end();
+  const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://transfer-black-api.onrender.com/api/v1';
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@transferblack.com';
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  const driverId = process.env.DRIVER_ID || '645b08f9-93b5-48a9-93d8-ec376107c57e';
+
+  if (!adminPassword) {
+    throw new Error('Missing ADMIN_PASSWORD environment variable.');
+  }
+
+  const loginRes = await fetch(`${apiUrl}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: adminEmail, password: adminPassword }),
+  });
+  const loginData = await loginRes.json();
+  const token = loginData.data?.tokens?.access_token;
+
+  const res = await fetch(`${apiUrl}/admin/drivers/${driverId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  console.log('Driver status & location:', JSON.stringify(data, null, 2));
 }
 
 run().catch(console.error);

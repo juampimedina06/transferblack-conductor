@@ -4,9 +4,13 @@ import {
   Platform,
   StatusBar,
   Alert,
+  View,
+  Text,
+  TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/presentation/auth/store/useAuthStore';
 import { useDriverTripStore } from '@/presentation/trip/store/useDriverTripStore';
 import { useChatMessages } from '@/hooks/chat/useChatMessages';
@@ -49,6 +53,7 @@ const ChatView: React.FC<ChatViewProps> = ({ trip, driverUserId }) => {
   const {
     messages,
     isLoading,
+    isError,
     isFetchingNextPage,
     hasNextPage,
     fetchNextPage,
@@ -110,11 +115,6 @@ const ChatView: React.FC<ChatViewProps> = ({ trip, driverUserId }) => {
     return () => clearInterval(interval);
   }, [isConnected, catchUp]);
 
-  // Mark read when messages change and screen is active
-  useEffect(() => {
-    markRead();
-  }, [messages, markRead]);
-
   // ── Send ────────────────────────────────────────────────────────────────────
   const { sendMessage, retryMessage } = useSendMessage({
     tripId,
@@ -157,15 +157,37 @@ const ChatView: React.FC<ChatViewProps> = ({ trip, driverUserId }) => {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={0}
       >
-        <ChatMessageList
-          messages={messages}
-          driverUserId={driverUserId}
-          isLoading={isLoading}
-          isFetchingNextPage={isFetchingNextPage}
-          hasNextPage={!!hasNextPage}
-          onLoadMore={handleLoadMore}
-          onRetry={handleRetry}
-        />
+        {isError && messages.length === 0 ? (
+          <View className="flex-1 items-center justify-center px-6">
+            <View className="w-12 h-12 rounded-full bg-red-950/60 border border-red-500/30 items-center justify-center mb-3">
+              <Ionicons name="alert-circle-outline" size={28} color="#EF4444" />
+            </View>
+            <Text className="text-white font-montserrat-bold text-sm mb-1 text-center">
+              No se pudieron cargar los mensajes
+            </Text>
+            <Text className="text-zinc-400 font-montserrat text-xs text-center mb-4">
+              Verificá tu conexión a internet e intentá nuevamente.
+            </Text>
+            <TouchableOpacity
+              onPress={() => catchUp()}
+              accessibilityRole="button"
+              accessibilityLabel="Reintentar carga de mensajes"
+              className="bg-zinc-800 border border-zinc-700 px-5 py-2.5 rounded-xl"
+            >
+              <Text className="text-white font-montserrat-semibold text-xs">Reintentar</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <ChatMessageList
+            messages={messages}
+            driverUserId={driverUserId}
+            isLoading={isLoading}
+            isFetchingNextPage={isFetchingNextPage}
+            hasNextPage={!!hasNextPage}
+            onLoadMore={handleLoadMore}
+            onRetry={handleRetry}
+          />
+        )}
 
         <ChatQuickReplies
           disabled={blockedReason !== null}

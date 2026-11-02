@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Platform, StyleSheet, View, ViewProps } from "react-native";
 import MapView, { PROVIDER_GOOGLE, Polyline, Marker } from "react-native-maps";
 import { Ionicons } from "@expo/vector-icons";
 import { THEME_COLORS } from "../../core/constants/theme";
 import { LatLng } from "../../core/location/interface/latLng.interface";
+import { getNavigationBearing } from "../../core/location/utils/navigationBearing";
 import { MapControlsDock } from "../components/maps/MapControlsDock";
 import { useLocationStore } from "./store/useLocationStore";
 import { useDriverTripStore } from "../trip/store/useDriverTripStore";
@@ -42,17 +43,33 @@ export const CustomMap = ({
   const mapRef = useRef<MapView>(null);
   const [isFollowingUser, setIsFollowingUser] = useState(true);
   const [isPolyline, setIsPolyline] = useState(true);
-
+  const prevActiveTripIdRef = useRef<string | null>(null);
 
   const currentOffer = useDriverTripStore((state) => state.currentOffer);
   const activeTrip = useDriverTripStore((state) => state.activeTrip);
 
+  const isTripActive = Boolean(activeTrip && activeTrip.status !== "completed");
+
   const activePickup = activeTrip?.pickup || currentOffer?.pickup;
   const activeDropoff = activeTrip?.dropoff || currentOffer?.dropoff;
   const activeRouteGeometry = activeTrip?.routeGeometry || currentOffer?.routeGeometry;
+  const rawTargetDestination = activeTrip?.status === "in_progress" ? activeDropoff : activePickup;
+  const targetDestination = useMemo<LatLng | null>(() => {
+    if (
+      rawTargetDestination?.latitude != null &&
+      rawTargetDestination?.longitude != null
+    ) {
+      return {
+        latitude: rawTargetDestination.latitude,
+        longitude: rawTargetDestination.longitude,
+      };
+    }
+    return null;
+  }, [rawTargetDestination]);
 
   const {
     lastKnownLocation,
+    lastKnownReading,
     userLocationList,
     watchLocation,
     clearWatchLocation,
@@ -95,7 +112,7 @@ export const CustomMap = ({
     return [];
   }, [activeRouteGeometry, activePickup, activeDropoff]);
 
-  // Ajustar la cámara a las coordenadas de la oferta o del viaje activo
+  // Ajustar la cámara a las coordenadas de la oferta para evaluarla antes de aceptar
   const fitCoords = useMemo<LatLng[]>(() => {
     const coords: LatLng[] = [];
 
@@ -120,13 +137,10 @@ export const CustomMap = ({
     return coords;
   }, [activePickup, activeDropoff, lastKnownLocation]);
 
-  const shouldFitCamera = !!((currentOffer || activeTrip) && fitCoords.length > 0);
+  // Solo encuadra a toda la ruta cuando hay una oferta entrante antes de aceptarla
+  const shouldFitCamera = !!(currentOffer && !isTripActive && fitCoords.length > 0);
   const [wasFittingForOffer, setWasFittingForOffer] = useState(shouldFitCamera);
 
-  // Mientras la cámara encuadra la oferta el auto-follow queda apagado. Se ajusta
-  // durante el render para que el efecto se dedique a tocar el mapa, que sí es
-  // un sistema externo. Antes se apagaba en cada tick de GPS, sobreescribiendo
-  // que el usuario volviera a activar el seguimiento a mano.
   if (shouldFitCamera !== wasFittingForOffer) {
     setWasFittingForOffer(shouldFitCamera);
     if (shouldFitCamera) {
@@ -142,25 +156,71 @@ export const CustomMap = ({
     });
   }, [shouldFitCamera, fitCoords]);
 
-  const moveCameraToLocation = (latLng: LatLng) => {
+  const moveCameraToLocation = useCallback((latLng: LatLng) => {
     if (!mapRef.current) return;
     mapRef.current.animateCamera({
       center: latLng,
     });
-  };
+  }, []);
+
+  const moveCameraToDriverNavigation = useCallback(
+    (latLng: LatLng, headingOverride?: number | null) => {
+      if (!mapRef.current) return;
+      const optimalHeading =
+        typeof headingOverride === "number" && headingOverride >= 0
+          ? headingOverride
+          : getNavigationBearing(
+              latLng,
+              offerRouteCoordinates,
+              targetDestination,
+              lastKnownReading?.heading,
+              lastKnownReading?.speed
+            );
+
+      mapRef.current.animateCamera(
+        {
+          center: latLng,
+          zoom: 17.5,
+          pitch: 45,
+          heading: optimalHeading,
+          altitude: 350,
+        },
+        { duration: 1000 }
+      );
+    },
+    [offerRouteCoordinates, targetDestination, lastKnownReading?.heading, lastKnownReading?.speed]
+  );
+
+  // Al aceptar el viaje: cambiar la vista, activar seguimiento y acercar la cámara al chofer orientando hacia la ruta
+  useEffect(() => {
+    const tripId = isTripActive ? activeTrip?.id ?? null : null;
+    if (isTripActive && tripId && tripId !== prevActiveTripIdRef.current) {
+      setIsFollowingUser(true);
+      if (lastKnownLocation) {
+        moveCameraToDriverNavigation(lastKnownLocation);
+      }
+    }
+    prevActiveTripIdRef.current = tripId;
+  }, [isTripActive, activeTrip?.id, lastKnownLocation, moveCameraToDriverNavigation]);
 
   const moveToCurrentLocation = async () => {
-    if (!lastKnownLocation) {
-      moveCameraToLocation(initialLocation);
+    const target = lastKnownLocation || initialLocation;
+    if (isTripActive) {
+      moveCameraToDriverNavigation(target);
     } else {
-      moveCameraToLocation(lastKnownLocation);
+      moveCameraToLocation(target);
     }
 
-    const location = await getLocation();
-    if (!location) return;
-
-    moveCameraToLocation(location);
     setIsFollowingUser(true);
+
+    const freshLocation = await getLocation();
+    if (!freshLocation) return;
+
+    if (isTripActive) {
+      moveCameraToDriverNavigation(freshLocation);
+    } else {
+      moveCameraToLocation(freshLocation);
+    }
   };
 
   useEffect(() => {
@@ -173,9 +233,20 @@ export const CustomMap = ({
 
   useEffect(() => {
     if (lastKnownLocation && isFollowingUser && !currentOffer) {
-      moveCameraToLocation(lastKnownLocation);
+      if (isTripActive) {
+        moveCameraToDriverNavigation(lastKnownLocation);
+      } else {
+        moveCameraToLocation(lastKnownLocation);
+      }
     }
-  }, [lastKnownLocation, isFollowingUser, currentOffer]);
+  }, [
+    lastKnownLocation,
+    isFollowingUser,
+    currentOffer,
+    isTripActive,
+    moveCameraToLocation,
+    moveCameraToDriverNavigation,
+  ]);
 
   return (
     <View style={[styles.container, rest.style]} {...rest}>

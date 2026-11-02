@@ -111,6 +111,28 @@ describe('Safety & Incident Reporting: Passenger Blocking & Trip Extras', () => 
     });
   });
 
+  describe('ratePassenger HTTP payload forwarding', () => {
+    it('forwards block_matching and incident_type to POST /rides/:id/rate-passenger', async () => {
+      vi.mocked(transferApi.post).mockResolvedValueOnce({
+        data: { success: true },
+      });
+
+      await tripActions.ratePassenger('trip-block-1', {
+        rating: 1,
+        comment: 'Conducta inapropiada',
+        block_matching: true,
+        incident_type: 'violent_aggressive',
+      });
+
+      expect(transferApi.post).toHaveBeenCalledWith('/rides/trip-block-1/rate-passenger', {
+        rating: 1,
+        comment: 'Conducta inapropiada',
+        block_matching: true,
+        incident_type: 'violent_aggressive',
+      });
+    });
+  });
+
   describe('reportTripIncident', () => {
     it('dispatches incident report, rates 1 star with block flag, and stores blocked passenger', async () => {
       vi.mocked(transferApi.post).mockResolvedValueOnce({

@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   RefreshControl,
   ScrollView,
   Text,
@@ -12,15 +12,15 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME_COLORS } from '../../../core/constants/theme';
-import { PayoutModal } from '../../../presentation/components/wallet/PayoutModal';
-import { useWalletStore } from '../../../presentation/wallet/store/useWalletStore';
-import * as Haptics from 'expo-haptics';
-import { LiquidGlassContainer } from '../../../presentation/components/ui/LiquidGlassContainer';
-import { AmbientGlow } from '../../../presentation/components/ui/AmbientGlow';
 import {
   MIN_IMMEDIATE_PAYOUT_AMOUNT,
   getNormalizedPayoutStatusMeta,
 } from '../../../core/wallet/utils/wallet.utils';
+import { AmbientGlow } from '../../../presentation/components/ui/AmbientGlow';
+import { LiquidGlassContainer } from '../../../presentation/components/ui/LiquidGlassContainer';
+import { SkeletonBox } from '../../../presentation/components/ui/SkeletonBox';
+import { PayoutModal } from '../../../presentation/components/wallet/PayoutModal';
+import { useWalletStore } from '../../../presentation/wallet/store/useWalletStore';
 
 const getTransactionMeta = (type: string, amount: number) => {
   switch (type) {
@@ -99,6 +99,7 @@ export default function WalletScreen() {
     payoutMethod,
     isLoading,
     isLoadingTransactions,
+    error,
     fetchSummary,
     fetchTransactions,
     fetchPayoutMethod,
@@ -123,13 +124,7 @@ export default function WalletScreen() {
   const filteredTransactions = transactions.filter((tx) => {
     const numAmount = parseFloat(tx.amount);
     if (activeFilter === 'earnings') {
-      return (
-        numAmount > 0 ||
-        tx.entry_type === 'trip_earning' ||
-        tx.entry_type === 'manual_adjustment' ||
-        tx.entry_type === 'debt_settlement' ||
-        tx.entry_type === 'cancellation_compensation'
-      );
+      return numAmount > 0 && tx.entry_type !== 'payout';
     }
     if (activeFilter === 'commissions') {
       return (
@@ -145,9 +140,23 @@ export default function WalletScreen() {
 
   if (isLoading && !summary && transactions.length === 0) {
     return (
-      <View className="flex-1 bg-obsidian items-center justify-center">
-        <ActivityIndicator size="large" color={THEME_COLORS.gold} />
-      </View>
+      <SafeAreaView className="flex-1 bg-obsidian" edges={['top', 'bottom']}>
+        <StatusBar style="light" />
+        <View className="px-4 py-3 flex-row items-center justify-between border-b border-white/10">
+          <SkeletonBox className="h-11 w-48 rounded-full" />
+          <SkeletonBox className="h-11 w-11 rounded-full" />
+        </View>
+        <View className="flex-1 px-4 pt-5 gap-4">
+          <SkeletonBox className="h-44 w-full rounded-3xl" />
+          <View className="flex-row gap-3">
+            <SkeletonBox className="flex-1 h-28 rounded-2xl" />
+            <SkeletonBox className="flex-1 h-28 rounded-2xl" />
+          </View>
+          <SkeletonBox className="h-14 w-full rounded-2xl" />
+          <SkeletonBox className="h-16 w-full rounded-2xl" />
+          <SkeletonBox className="h-16 w-full rounded-2xl" />
+        </View>
+      </SafeAreaView>
     );
   }
 
@@ -212,6 +221,34 @@ export default function WalletScreen() {
           />
         }
       >
+        {/* Error Banner with Retry */}
+        {error && !summary && (
+          <LiquidGlassContainer
+            variant="danger"
+            className="rounded-2xl p-4 mb-5 border border-red-500/40"
+          >
+            <View className="flex-row items-center mb-2">
+              <Ionicons name="alert-circle" size={20} color="#EF4444" />
+              <Text className="text-red-400 font-montserrat-bold text-sm ml-2">
+                No se pudo cargar tu billetera
+              </Text>
+            </View>
+            <Text className="text-red-200/90 font-montserrat text-xs mb-3">
+              {error}
+            </Text>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Reintentar carga de billetera"
+              onPress={onRefresh}
+              className="self-start px-4 py-2 rounded-xl bg-red-500/20 border border-red-500/40"
+            >
+              <Text className="text-red-300 font-montserrat-semibold text-xs">
+                Reintentar
+              </Text>
+            </TouchableOpacity>
+          </LiquidGlassContainer>
+        )}
+
         {/* Warning Banner if Restricted */}
         {isRestricted && (
           <LiquidGlassContainer
@@ -291,11 +328,10 @@ export default function WalletScreen() {
 
         {/* Balance Card con diseño obsidian y disponible diferenciado */}
         <View
-          className={`rounded-3xl p-6 mb-5 border relative overflow-hidden ${
-            isRestricted
+          className={`rounded-3xl p-6 mb-5 border relative overflow-hidden ${isRestricted
               ? 'bg-red-950/40 border-red-500/40'
               : 'bg-obsidian-card border-gold/30'
-          }`}
+            }`}
           style={{
             shadowColor: '#000',
             shadowOffset: { width: 0, height: 8 },
@@ -552,9 +588,8 @@ export default function WalletScreen() {
             }}
             disabled={!canWithdraw}
             activeOpacity={0.85}
-            className={`w-full h-14 rounded-2xl flex-row justify-center items-center mb-6 shadow-lg shadow-black ${
-              canWithdraw ? 'bg-gold active:opacity-90 shadow-gold/20' : 'bg-charcoal/60 opacity-50'
-            }`}
+            className={`w-full h-14 rounded-2xl flex-row justify-center items-center mb-6 shadow-lg shadow-black ${canWithdraw ? 'bg-gold active:opacity-90 shadow-gold/20' : 'bg-charcoal/60 opacity-50'
+              }`}
             accessibilityRole="button"
             accessibilityLabel="Solicitar retiro inmediato de saldo"
           >
@@ -564,15 +599,14 @@ export default function WalletScreen() {
               color={canWithdraw ? THEME_COLORS.obsidian : THEME_COLORS.ash}
             />
             <Text
-              className={`font-montserrat-bold text-base ml-2 ${
-                canWithdraw ? 'text-obsidian' : 'text-ash'
-              }`}
+              className={`font-montserrat-bold text-base ml-2 ${canWithdraw ? 'text-obsidian' : 'text-ash'
+                }`}
             >
               {availableBalance <= 0
                 ? 'Sin saldo disponible para retirar'
                 : availableBalance <= MIN_IMMEDIATE_PAYOUT_AMOUNT
-                ? 'Saldo mín. para retiro inmediato: > $500'
-                : 'Solicitar Retiro Inmediato'}
+                  ? 'Saldo mín. para retiro inmediato: > $500'
+                  : 'Solicitar Retiro Inmediato'}
             </Text>
           </TouchableOpacity>
         )}
@@ -583,9 +617,6 @@ export default function WalletScreen() {
             <Text className="text-white font-montserrat-bold text-base">
               Movimientos Recientes
             </Text>
-            {isLoadingTransactions && (
-              <ActivityIndicator size="small" color={THEME_COLORS.gold} />
-            )}
           </View>
 
           {/* Filtros tipo pills ergonómicos */}
@@ -610,20 +641,18 @@ export default function WalletScreen() {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     setActiveFilter(tab.id as TransactionFilter);
                   }}
-                  className={`h-9 px-4 rounded-full border items-center justify-center ${
-                    isActive
+                  className={`h-9 px-4 rounded-full border items-center justify-center ${isActive
                       ? 'bg-gold border-gold'
                       : 'bg-white/5 border-white/10'
-                  }`}
+                    }`}
                   accessibilityRole="button"
                   accessibilityLabel={`Filtrar por ${tab.label}`}
                 >
                   <Text
-                    className={`text-xs ${
-                      isActive
+                    className={`text-xs ${isActive
                         ? 'text-obsidian font-montserrat-bold'
                         : 'text-ash font-montserrat-medium'
-                    }`}
+                      }`}
                   >
                     {tab.label}
                   </Text>
@@ -632,7 +661,13 @@ export default function WalletScreen() {
             })}
           </ScrollView>
 
-          {filteredTransactions.length === 0 && !isLoadingTransactions ? (
+          {isLoadingTransactions && transactions.length === 0 ? (
+            <View className="gap-2.5">
+              <SkeletonBox className="h-16 w-full rounded-2xl" />
+              <SkeletonBox className="h-16 w-full rounded-2xl" />
+              <SkeletonBox className="h-16 w-full rounded-2xl" />
+            </View>
+          ) : filteredTransactions.length === 0 ? (
             <View className="bg-obsidian-card border border-white/10 rounded-2xl p-8 items-center justify-center">
               <Ionicons name="receipt-outline" size={32} color={THEME_COLORS.ash} />
               <Text className="text-ash font-montserrat text-sm mt-2 text-center">
@@ -652,9 +687,8 @@ export default function WalletScreen() {
                 return (
                   <View
                     key={tx.id}
-                    className={`p-4 flex-row items-center justify-between ${
-                      !isLast ? 'border-b border-white/5' : ''
-                    }`}
+                    className={`p-4 flex-row items-center justify-between ${!isLast ? 'border-b border-white/5' : ''
+                      }`}
                   >
                     <View className="flex-row items-center flex-1 mr-3">
                       <View
@@ -678,9 +712,8 @@ export default function WalletScreen() {
                     </View>
 
                     <Text
-                      className={`font-montserrat-bold text-sm ${
-                        isPositive ? 'text-emerald-400' : 'text-red-400'
-                      }`}
+                      className={`font-montserrat-bold text-sm ${isPositive ? 'text-emerald-400' : 'text-red-400'
+                        }`}
                       style={{ fontVariant: ['tabular-nums'] }}
                     >
                       {isPositive

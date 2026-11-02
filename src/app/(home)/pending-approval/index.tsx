@@ -135,7 +135,8 @@ export default function PendingApprovalScreen() {
       } else {
         try {
           const meetingResponse = await transferApi.get('/driver/meeting');
-          if (meetingResponse.data && meetingResponse.data.id) {
+          const meetingData = meetingResponse.data?.data || meetingResponse.data;
+          if (meetingData && meetingData.id) {
             router.replace('/confirmed-appointment' as any);
             return;
           }

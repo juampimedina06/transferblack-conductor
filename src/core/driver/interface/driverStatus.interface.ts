@@ -62,6 +62,7 @@ export interface DriverDocumentItem {
   type?: string;
   documentType: string;
   status: DriverDocumentStatus;
+  issuedAt?: string | null;
   expiresAt: string | null;
   daysRemaining?: number | null;
   daysUntilExpiry?: number | null;

@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Image } from 'expo-image';
 import { Link, router } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import * as z from 'zod';
@@ -12,6 +12,7 @@ import { Button } from '../../../presentation/components/ui/Button';
 import { Input } from '../../../presentation/components/ui/Input';
 import { RateLimitBanner } from '../../../presentation/components/ui/RateLimitBanner';
 import { useAuthStore } from '../../../presentation/auth/store/useAuthStore';
+import { authStorage } from '../../../presentation/auth/store/authStorage';
 
 const loginSchema = z.object({
   email: z.string().trim().toLowerCase().email('El email no tiene un formato válido').max(320, 'El email es demasiado largo'),
@@ -23,12 +24,31 @@ type LoginFormData = z.infer<typeof loginSchema>;
 export default function LoginScreen(): React.JSX.Element {
   const [isLoading, setIsLoading] = useState(false);
   const setSession = useAuthStore((state) => state.setSession);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const user = useAuthStore((state) => state.user);
   const {
     isRateLimited,
     secondsLeft,
     rateLimitMessage,
     handleRateLimitError,
   } = useRateLimit();
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      if (!isAuthenticated || !user) return;
+      const token = await authStorage.getAccessToken();
+      if (cancelled || !token) return;
+      if (!user.email_verified_at) {
+        router.replace('/auth/verify-email' as any);
+      } else {
+        router.replace('/(home)' as any);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, user]);
 
   const { control, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -48,12 +68,6 @@ export default function LoginScreen(): React.JSX.Element {
 
       if (!profile.email_verified_at) {
         router.replace('/auth/verify-email' as any);
-        return;
-      }
-
-      const isDriver = profile.roles?.includes('driver');
-      if (!isDriver) {
-        router.replace('/(home)' as any);
         return;
       }
 

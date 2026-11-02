@@ -1,7 +1,23 @@
-import { Stack } from 'expo-router';
+import React, { useEffect } from 'react';
+import { Redirect, Stack } from 'expo-router';
 import { THEME_COLORS } from '../../core/constants/theme';
+import { useAuthStore } from '../../presentation/auth/store/useAuthStore';
+import { useOnboardingStore } from '../../presentation/onboarding/store/useOnboardingStore';
 
 export default function OnboardingLayout() {
+  const user = useAuthStore((state) => state.user);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+
+  useEffect(() => {
+    if (isAuthenticated && user?.id) {
+      void useOnboardingStore.getState().initUserSession(user.id);
+    }
+  }, [isAuthenticated, user?.id]);
+
+  if (!isAuthenticated && !user) {
+    return <Redirect href="/auth/login" />;
+  }
+
   return (
     <Stack
       screenOptions={{
@@ -23,4 +39,3 @@ export default function OnboardingLayout() {
     </Stack>
   );
 }
-

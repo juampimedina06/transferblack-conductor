@@ -4,6 +4,17 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { UserProfile, AuthResponse, UserProfileResponse } from '../../../core/auth/interface/auth.interface';
 import { authStorage } from './authStorage';
+import { pushDeviceStorage } from '../../../infrastructure/storage/pushDeviceStorage';
+
+type LogoutCleanupCallback = () => void | Promise<void>;
+const logoutCleanupCallbacks = new Set<LogoutCleanupCallback>();
+
+export const registerLogoutCleanup = (cb: LogoutCleanupCallback): (() => void) => {
+  logoutCleanupCallbacks.add(cb);
+  return () => {
+    logoutCleanupCallbacks.delete(cb);
+  };
+};
 
 interface AuthState {
   user: UserProfile | null;
@@ -55,14 +66,30 @@ export const useAuthStore = create<AuthState>()(
                   'Content-Type': 'application/json',
                   ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
                 },
-                timeout: 5000,
+                timeout: 3000,
               }
             );
           }
         } catch (error) {
           console.warn('Error invalidando refresh token en backend:', error);
         } finally {
-          await authStorage.removeTokens();
+          try {
+            await authStorage.removeTokens();
+          } catch (e) {
+            console.warn('Error purgando tokens:', e);
+          }
+          try {
+            await pushDeviceStorage.clear();
+          } catch (e) {
+            console.warn('Error limpiando push storage:', e);
+          }
+          for (const cb of logoutCleanupCallbacks) {
+            try {
+              await cb();
+            } catch {
+              // Ignore cleanup handler errors during logout
+            }
+          }
           set({
             user: null,
             isAuthenticated: false,

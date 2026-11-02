@@ -3,7 +3,6 @@ import { router, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState, useCallback } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   AppState,
   Linking,
@@ -19,6 +18,7 @@ import { THEME_COLORS } from '@/core/constants/theme';
 import { useAuthStore } from '@/presentation/auth/store/useAuthStore';
 import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
+import { SkeletonBox } from '@/presentation/components/ui/SkeletonBox';
 
 interface MeetingData {
   id: string;
@@ -44,8 +44,13 @@ export default function ConfirmedAppointmentScreen() {
   const fetchMeeting = useCallback(async (silent = false) => {
     try {
       const response = await transferApi.get('/driver/meeting');
-      if (response.data) {
-        setMeeting(response.data);
+      const meetingData = response.data?.data || response.data;
+      if (meetingData && meetingData.id) {
+        if (meetingData.status === 'completed') {
+          router.replace('/(home)' as any);
+          return;
+        }
+        setMeeting(meetingData);
       } else {
         router.replace('/pending-approval' as any);
       }
@@ -127,12 +132,18 @@ export default function ConfirmedAppointmentScreen() {
 
   if (loading) {
     return (
-      <View className="flex-1 bg-obsidian items-center justify-center">
-        <ActivityIndicator size="small" color={THEME_COLORS.gold} />
-        <Text className="text-ash font-montserrat text-xs mt-3 tracking-wider uppercase">
-          Verificando credencial...
-        </Text>
-      </View>
+      <SafeAreaView className="flex-1 bg-obsidian px-6" edges={['top', 'bottom']}>
+        <StatusBar style="light" />
+        <View className="py-4 flex-row items-center justify-between border-b border-white/5 mb-8">
+          <SkeletonBox className="h-8 w-40 rounded-lg" />
+          <SkeletonBox className="h-6 w-20 rounded-full" />
+        </View>
+        <SkeletonBox className="h-3 w-32 rounded mb-3" />
+        <SkeletonBox className="h-8 w-64 rounded-lg mb-4" />
+        <SkeletonBox className="h-16 w-full rounded-xl mb-10" />
+        <SkeletonBox className="h-40 w-full rounded-2xl mb-8" />
+        <SkeletonBox className="h-32 w-full rounded-2xl" />
+      </SafeAreaView>
     );
   }
 
@@ -404,8 +415,8 @@ export default function ConfirmedAppointmentScreen() {
         <View className="mb-8 mt-6">
           <TouchableOpacity
             activeOpacity={0.7}
-            onPress={() => {
-              logout();
+            onPress={async () => {
+              await logout();
               router.replace('/auth/login' as any);
             }}
             className="py-4 items-center"

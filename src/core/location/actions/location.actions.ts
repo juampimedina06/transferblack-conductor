@@ -22,7 +22,7 @@ export const getCurrentReading = async (): Promise<LocationReading> => {
         heading: lastKnown.coords.heading ?? null,
         speed: lastKnown.coords.speed ?? null,
         accuracy: lastKnown.coords.accuracy ?? null,
-        timestamp: lastKnown.timestamp || Date.now(),
+        timestamp: Math.round(lastKnown.timestamp || Date.now()),
       };
     }
 
@@ -36,7 +36,7 @@ export const getCurrentReading = async (): Promise<LocationReading> => {
       heading: coords.heading ?? null,
       speed: coords.speed ?? null,
       accuracy: coords.accuracy ?? null,
-      timestamp: timestamp || Date.now(),
+      timestamp: Math.round(timestamp || Date.now()),
     };
   } catch {
     throw new Error('No se pudo obtener la ubicación actual del dispositivo.');
@@ -67,7 +67,7 @@ export const watchCurrentPosition = (
         heading: coords.heading ?? null,
         speed: coords.speed ?? null,
         accuracy: coords.accuracy ?? null,
-        timestamp: timestamp || Date.now(),
+        timestamp: Math.round(timestamp || Date.now()),
       });
     },
   );

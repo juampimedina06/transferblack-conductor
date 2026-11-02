@@ -7,7 +7,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
-  ActivityIndicator,
   TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -26,6 +25,7 @@ import { Input } from '../../../presentation/components/ui/Input';
 import { Button } from '../../../presentation/components/ui/Button';
 import * as Haptics from 'expo-haptics';
 import { LiquidGlassContainer } from '../../../presentation/components/ui/LiquidGlassContainer';
+import { SkeletonBox } from '../../../presentation/components/ui/SkeletonBox';
 
 export default function PayoutMethodScreen() {
   const {
@@ -135,11 +135,17 @@ export default function PayoutMethodScreen() {
           keyboardShouldPersistTaps="handled"
         >
           {isLoadingPayoutMethod && !payoutMethod ? (
-            <View className="py-20 items-center justify-center">
-              <ActivityIndicator size="large" color={THEME_COLORS.gold} />
-              <Text className="text-ash font-montserrat text-sm mt-4">
-                Cargando cuenta de cobro...
-              </Text>
+            <View className="gap-4">
+              <SkeletonBox className="h-24 w-full rounded-2xl" />
+              <View className="flex-row gap-3">
+                <SkeletonBox className="flex-1 h-12 rounded-2xl" />
+                <SkeletonBox className="flex-1 h-12 rounded-2xl" />
+              </View>
+              <SkeletonBox className="h-14 w-full rounded-2xl" />
+              <SkeletonBox className="h-14 w-full rounded-2xl" />
+              <SkeletonBox className="h-14 w-full rounded-2xl" />
+              <SkeletonBox className="h-14 w-full rounded-2xl" />
+              <SkeletonBox className="h-14 w-full rounded-2xl mt-2" />
             </View>
           ) : (
             <>

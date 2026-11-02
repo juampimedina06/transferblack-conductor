@@ -39,6 +39,7 @@ export async function getDriverDocuments(): Promise<DriverDocumentItem[]> {
     type: item.type || item.documentType,
     documentType: item.documentType || item.type || '',
     status: item.status,
+    issuedAt: item.issuedAt || null,
     expiresAt: item.expiresAt || null,
     daysRemaining: item.daysRemaining ?? item.daysUntilExpiry ?? null,
     daysUntilExpiry: item.daysUntilExpiry ?? item.daysRemaining ?? null,
