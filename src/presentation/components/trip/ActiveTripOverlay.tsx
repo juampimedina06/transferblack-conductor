@@ -13,7 +13,7 @@ import {
   driverArrived,
   startTrip,
 } from '../../../core/trip/actions/trip.actions';
-import { useDriverLocation } from '../../maps/hooks/useDriverLocation';
+import { useLocationStore } from '../../maps/store/useLocationStore';
 import { useDriverTripStore } from '../../trip/store/useDriverTripStore';
 import { useCourtesyTimer } from '../../trip/hooks/useCourtesyTimer';
 import { RideCard, RideCardStatus } from './RideCard';
@@ -34,7 +34,7 @@ export const ActiveTripOverlay: React.FC<ActiveTripOverlayProps> = ({
   onHeightChange,
 }) => {
   const insets = useSafeAreaInsets();
-  const { location } = useDriverLocation(true);
+  const location = useLocationStore((state) => state.lastKnownLocation);
   const updateTripStatus = useDriverTripStore((state) => state.updateTripStatus);
   const setActiveTrip = useDriverTripStore((state) => state.setActiveTrip);
   const tollsAmount = useDriverTripStore((state) => state.getTripExtrasTotal());

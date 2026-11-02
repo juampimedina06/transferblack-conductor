@@ -25,7 +25,7 @@ export const processTelemetryTick = (
   config: TelemetryConfig,
   activeTripId: string | null,
   isSocketConnected: boolean,
-  isAvailable: boolean = true,
+  isAvailable: boolean = false,
 ): ProcessTelemetryResult => {
   if ((!activeTripId && !isAvailable) || !isSocketConnected || !currentReading) {
     return {
@@ -61,12 +61,17 @@ export const processTelemetryTick = (
     };
   }
 
-  // Add to sliding history and prune entries older than 15 seconds
-  const now = Date.now();
-  const cutoff = now - 15000;
+  // Add to sliding history and prune entries older than 15 seconds relative to reading timestamp
+  const readingTimestamp =
+    typeof currentReading.timestamp === 'number' &&
+    !isNaN(currentReading.timestamp) &&
+    currentReading.timestamp > 0
+      ? currentReading.timestamp
+      : Date.now();
+  const cutoff = readingTimestamp - 15000;
   const updatedHistory = [
     ...readingsHistory.filter((r) => r.timestamp >= cutoff),
-    { ...currentReading, timestamp: now },
+    { ...currentReading, timestamp: readingTimestamp },
   ];
 
   // Run pure event detection only during active trip
@@ -88,7 +93,7 @@ export const processTelemetryTick = (
     lng,
     latitude: lat,
     longitude: lng,
-    timestamp: now,
+    timestamp: readingTimestamp,
   };
 
   // Only assign numeric fields if valid and non-negative; NEVER send null to backend Zod schema

@@ -24,7 +24,7 @@ import { OfficialTripProofModal } from '../safety/OfficialTripProofModal';
 import { BlockedPassengersModal } from '../safety/BlockedPassengersModal';
 import { useDriverTripStore } from '../../trip/store/useDriverTripStore';
 import { useSafetyStore } from '../../safety/store/useSafetyStore';
-import { useDriverLocation } from '../../maps/hooks/useDriverLocation';
+import { useLocationStore } from '../../maps/store/useLocationStore';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { Trip } from '../../../core/trip/interface/trip.interface';
 
@@ -59,7 +59,7 @@ export const SecurityModal: React.FC<SecurityModalProps> = ({
   const activeTrip = propTrip || storeTrip;
   const user = useAuthStore((state) => state.user);
   const blockedPassengers = useSafetyStore((state) => state.blockedPassengers);
-  const { location } = useDriverLocation(true);
+  const location = useLocationStore((state) => state.lastKnownLocation);
 
   // Modales secundarios de funciones reales de seguridad
   const [isLegalModalVisible, setIsLegalModalVisible] = useState(false);
