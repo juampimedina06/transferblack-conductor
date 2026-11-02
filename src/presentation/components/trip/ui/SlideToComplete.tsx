@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   LayoutChangeEvent,
@@ -11,7 +11,6 @@ import Animated, {
   Easing,
   runOnJS,
   useAnimatedStyle,
-  useReducedMotion,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
@@ -46,15 +45,33 @@ export const SlideToComplete: React.FC<SlideToCompleteProps> = React.memo(({
   loadingLabel = 'FINALIZANDO VIAJE...',
   disabled = false,
 }) => {
-  const reducedMotion = useReducedMotion();
   const [containerWidth, setContainerWidth] = useState<number>(320);
   const [isCompleted, setIsCompleted] = useState<boolean>(false);
+  const [wasLoading, setWasLoading] = useState<boolean>(isLoading);
 
   const translateX = useSharedValue(0);
   const contextX = useSharedValue(0);
   const lastMilestone = useSharedValue(0);
 
   const maxTranslate = Math.max(0, containerWidth - THUMB_SIZE - 6);
+
+  // If the completion request failed and isLoading returned to false while still mounted,
+  // unlock the slider during render so the driver can retry.
+  if (isLoading !== wasLoading) {
+    setWasLoading(isLoading);
+    if (!isLoading && isCompleted) {
+      setIsCompleted(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!isLoading && !isCompleted) {
+      translateX.value = withTiming(0, {
+        duration: 220,
+        easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+      });
+    }
+  }, [isLoading, isCompleted, translateX]);
 
   const triggerLightHaptic = () => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);

@@ -21,28 +21,40 @@ const isJwtExpiring = (token: string): boolean => {
   }
 };
 
+let inflightRefreshPromise: Promise<string | null> | null = null;
+
 export const refreshSocketToken = async (): Promise<string | null> => {
-  try {
-    const refreshToken = await authStorage.getRefreshToken();
-    if (!refreshToken) return null;
-
-    const response = await axios.post(
-      `${API_BASE_URL}/auth/refresh`,
-      { refresh_token: refreshToken },
-      { headers: { 'Content-Type': 'application/json' }, timeout: 8000 }
-    );
-    const tokens = response.data?.data?.tokens || response.data?.tokens;
-    const newAccessToken = tokens?.access_token;
-    const newRefreshToken = tokens?.refresh_token;
-
-    if (newAccessToken) {
-      await authStorage.setTokens(newAccessToken, newRefreshToken || refreshToken);
-      return newAccessToken;
-    }
-    return null;
-  } catch {
-    return null;
+  if (inflightRefreshPromise) {
+    return inflightRefreshPromise;
   }
+
+  inflightRefreshPromise = (async (): Promise<string | null> => {
+    try {
+      const refreshToken = await authStorage.getRefreshToken();
+      if (!refreshToken) return null;
+
+      const response = await axios.post(
+        `${API_BASE_URL}/auth/refresh`,
+        { refresh_token: refreshToken },
+        { headers: { 'Content-Type': 'application/json' }, timeout: 8000 }
+      );
+      const tokens = response.data?.data?.tokens || response.data?.tokens;
+      const newAccessToken = tokens?.access_token;
+      const newRefreshToken = tokens?.refresh_token;
+
+      if (newAccessToken) {
+        await authStorage.setTokens(newAccessToken, newRefreshToken || refreshToken);
+        return newAccessToken;
+      }
+      return null;
+    } catch {
+      return null;
+    } finally {
+      inflightRefreshPromise = null;
+    }
+  })();
+
+  return inflightRefreshPromise;
 };
 
 export const getSocketAuth = async (): Promise<{ token?: string }> => {
@@ -77,7 +89,6 @@ socket.on('connect_error', async (err: any) => {
   if (errMsg.includes('INVALID_TOKEN') || errMsg.includes('MISSING_TOKEN')) {
     const freshToken = await refreshSocketToken();
     if (freshToken) {
-      socket.auth = { token: freshToken };
       socket.connect();
     }
   }

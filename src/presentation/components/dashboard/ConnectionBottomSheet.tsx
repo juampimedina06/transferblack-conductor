@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Text, TouchableOpacity, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Alert, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
   Easing,
   interpolate,
@@ -13,9 +13,8 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { transferApi } from '../../../core/api/transferApi';
-import { THEME_COLORS } from '../../../core/constants/theme';
 import { acceptTripOffer, driverArriving } from '../../../core/trip/actions/trip.actions';
-import { Trip, getPaymentMethodInfo, calculateTripDistanceKm } from '../../../core/trip/interface/trip.interface';
+import { Trip } from '../../../core/trip/interface/trip.interface';
 import { useLocationStore } from '../../maps/store/useLocationStore';
 import { useDriverTripStore } from '../../trip/store/useDriverTripStore';
 import { useAuthStore } from '../../auth/store/useAuthStore';
@@ -86,14 +85,9 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
 
         if (isMounted && vid) {
           setVehicleId(vid);
-          return;
         }
       } catch (err: any) {
         console.warn('Could not load vehicle from /driver/me:', err?.response?.data || err?.message);
-      }
-
-      if (isMounted && (user?.email === 'jpmedinagomez1@gmail.com' || user?.id === '645b08f9-93b5-48a9-93d8-ec376107c57e')) {
-        setVehicleId('835be3bf-9684-4e7e-a844-8f0820e31517');
       }
     };
 
@@ -102,7 +96,7 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
     return () => {
       isMounted = false;
     };
-  }, [user?.email, user?.id]);
+  }, [user?.id]);
 
   // Radar Pulse Animation for "Buscando viajes"
   const pulseAnim = useSharedValue(0);
@@ -160,13 +154,12 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
           res.data?.data?.driverProfile?.vehicles?.[0]?.id ||
           res.data?.vehicle?.id ||
           res.data?.data?.vehicleId;
+        if (activeVehicle) {
+          setVehicleId(activeVehicle);
+        }
       } catch (e: any) {
         console.warn('Error fetching vehicle on accept:', e?.response?.data || e?.message);
       }
-    }
-
-    if (!activeVehicle && (user?.email === 'jpmedinagomez1@gmail.com' || user?.id === '645b08f9-93b5-48a9-93d8-ec376107c57e')) {
-      activeVehicle = '835be3bf-9684-4e7e-a844-8f0820e31517';
     }
 
     if (!activeVehicle) {

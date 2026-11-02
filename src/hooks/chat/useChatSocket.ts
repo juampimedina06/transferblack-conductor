@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
-import { io, Socket } from 'socket.io-client';
+import { socket, refreshSocketToken } from '@/core/socket/socket';
 import { authStorage } from '@/presentation/auth/store/authStorage';
 import {
   SocketMessageCreatedPayload,
@@ -19,19 +19,18 @@ interface UseChatSocketReturn {
   connectionError: string | null;
 }
 
-// We keep a ref-based approach so callers don't need to manage Socket state.
+// Reuses the shared application socket singleton so leaving the chat screen
+// never disconnects the driver's main dispatch/telemetry socket session.
 export const useChatSocket = ({
   tripId,
   onMessageCreated,
   onMessageRead,
   onReconnect,
 }: UseChatSocketProps): UseChatSocketReturn => {
-  const socketRef = useRef<Socket | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
+  const [isConnected, setIsConnected] = useState<boolean>(socket.connected);
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const hasRetriedAuthRef = useRef<boolean>(false);
 
-  // Callbacks are kept in refs so a new inline function from the caller does not
-  // tear down and re-create the socket on every render.
   const onMessageCreatedRef = useRef(onMessageCreated);
   const onMessageReadRef = useRef(onMessageRead);
   const onReconnectRef = useRef(onReconnect);
@@ -49,23 +48,21 @@ export const useChatSocket = ({
   }, [onReconnect]);
 
   const joinRoom = useCallback(() => {
-    const socket = socketRef.current;
-    if (!socket?.connected) return;
+    if (!socket.connected) return;
 
     socket.emit(
       'chat.join',
       { tripId },
       (ack?: { ok?: boolean; tripId?: string; error?: { code: string; message: string | string[] } }) => {
         if (ack?.ok) {
-          // Successfully joined room ride_<tripId> — trigger catch-up fetch
+          hasRetriedAuthRef.current = false;
           onReconnectRef.current();
         } else if (ack?.error) {
           const code = ack.error.code ?? 'UNKNOWN';
-          if (code === 'UNAUTHORIZED' || code === 'TOKEN_EXPIRED') {
-            // Try refreshing token once and reconnect
-            authStorage.getAccessToken().then((token) => {
-              if (token && socket) {
-                socket.auth = { token: `Bearer ${token}` };
+          if ((code === 'UNAUTHORIZED' || code === 'TOKEN_EXPIRED') && !hasRetriedAuthRef.current) {
+            hasRetriedAuthRef.current = true;
+            void refreshSocketToken().then((freshToken) => {
+              if (freshToken) {
                 socket.disconnect();
                 socket.connect();
               }
@@ -77,75 +74,77 @@ export const useChatSocket = ({
   }, [tripId]);
 
   useEffect(() => {
-    let appStateSubscription: ReturnType<typeof AppState.addEventListener> | null = null;
+    let isCancelled = false;
 
-    const connect = async () => {
-      const token = await authStorage.getAccessToken();
-      if (!token) return;
-
-      const rawUrl = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.0.100:3000/api/v1';
-      const socketUrl = rawUrl.replace(/\/api\/v1\/?$/, '').replace(/\/api\/?$/, '');
-
-      const socket = io(socketUrl, {
-        auth: { token: `Bearer ${token}` },
-        transports: ['websocket', 'polling'],
-        autoConnect: true,
-      });
-
-      socketRef.current = socket;
-
-      socket.on('connect', () => {
-        setIsConnected(true);
-        setConnectionError(null);
-        joinRoom();
-      });
-
-      socket.on('disconnect', () => {
-        setIsConnected(false);
-      });
-
-      socket.on('connect_error', (err: Error) => {
-        setIsConnected(false);
-        setConnectionError(err.message ?? 'Error de conexión');
-      });
-
-      socket.on('chat.message.created', (payload: SocketMessageCreatedPayload) => {
-        const msgTripId = payload.tripId || (payload as any).trip_id;
-        if (msgTripId === tripId) {
-          onMessageCreatedRef.current(payload);
-        }
-      });
-
-      socket.on('chat.message.read', (payload: SocketMessageReadPayload) => {
-        const msgTripId = payload.trip_id || (payload as any).tripId;
-        if (msgTripId === tripId) {
-          onMessageReadRef.current(payload);
-        }
-      });
+    const handleConnect = () => {
+      if (isCancelled) return;
+      setIsConnected(true);
+      setConnectionError(null);
+      joinRoom();
     };
 
-    connect();
+    const handleDisconnect = () => {
+      if (isCancelled) return;
+      setIsConnected(false);
+    };
 
-    // Re-join + catch-up when app comes back to foreground
-    appStateSubscription = AppState.addEventListener('change', (nextState: AppStateStatus) => {
-      if (nextState === 'active') {
-        const socket = socketRef.current;
-        if (socket && !socket.connected) {
+    const handleConnectError = (err: Error) => {
+      if (isCancelled) return;
+      setIsConnected(false);
+      setConnectionError(err.message ?? 'Error de conexión');
+    };
+
+    const handleMessageCreated = (payload: SocketMessageCreatedPayload) => {
+      const msgTripId = payload.tripId || (payload as any).trip_id;
+      if (msgTripId === tripId) {
+        onMessageCreatedRef.current(payload);
+      }
+    };
+
+    const handleMessageRead = (payload: SocketMessageReadPayload) => {
+      const msgTripId = payload.trip_id || (payload as any).tripId;
+      if (msgTripId === tripId) {
+        onMessageReadRef.current(payload);
+      }
+    };
+
+    socket.on('connect', handleConnect);
+    socket.on('disconnect', handleDisconnect);
+    socket.on('connect_error', handleConnectError);
+    socket.on('chat.message.created', handleMessageCreated);
+    socket.on('chat.message.read', handleMessageRead);
+
+    if (socket.connected) {
+      joinRoom();
+    } else {
+      void authStorage.getAccessToken().then((token) => {
+        if (!isCancelled && token && !socket.connected) {
           socket.connect();
-        } else if (socket && socket.connected) {
+        }
+      });
+    }
+
+    const appStateSubscription = AppState.addEventListener('change', (nextState: AppStateStatus) => {
+      if (nextState === 'active') {
+        if (!socket.connected) {
+          socket.connect();
+        } else {
           joinRoom();
         }
       }
     });
 
     return () => {
-      const socket = socketRef.current;
-      if (socket) {
+      isCancelled = true;
+      if (socket.connected) {
         socket.emit('chat.leave', { tripId }, () => {});
-        socket.disconnect();
-        socketRef.current = null;
       }
-      appStateSubscription?.remove();
+      socket.off('connect', handleConnect);
+      socket.off('disconnect', handleDisconnect);
+      socket.off('connect_error', handleConnectError);
+      socket.off('chat.message.created', handleMessageCreated);
+      socket.off('chat.message.read', handleMessageRead);
+      appStateSubscription.remove();
     };
   }, [tripId, joinRoom]);
 

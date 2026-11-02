@@ -31,8 +31,14 @@ export const useCourtesyTimer = (initialMinutes: number = 5) => {
   }
 
   useEffect(() => {
+    if (!arrivedAt) return;
+
     const timerId = setInterval(() => {
-      setTimeLeft(getCourtesySecondsLeft(arrivedAt, totalSeconds));
+      const remaining = getCourtesySecondsLeft(arrivedAt, totalSeconds);
+      setTimeLeft(remaining);
+      if (remaining <= 0) {
+        clearInterval(timerId);
+      }
     }, 1000);
 
     return () => clearInterval(timerId);

@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { ChatService } from '@/core/chat/services/chat.service';
 import { ChatMessage } from '@/core/chat/interface/chat.interface';
 
@@ -25,10 +25,18 @@ export const useReadMessages = ({
   driverUserId,
   isTripInProgress,
   messages,
-  applyReadReceiptToCache,
 }: UseReadMessagesProps) => {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSentRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, []);
 
   const markRead = useCallback(() => {
     if (isTripInProgress) return;
@@ -44,8 +52,6 @@ export const useReadMessages = ({
       lastSentRef.current = candidate.id;
       try {
         await ChatService.readMessages(tripId, { up_to_message_id: candidate.id });
-        // Optimistic update: mark the driver's messages as read locally
-        // The socket event will confirm this, but updating immediately feels snappy.
       } catch {
         // Silent — read receipts are best-effort
       }

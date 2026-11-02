@@ -17,12 +17,31 @@ export function popNextValidOffer(
 ): { nextOffer: TripOfferPayload | null; remainingQueue: QueuedTripOffer[] } {
   const remaining = [...queue];
 
-  if (remaining.length > 0) {
+  while (remaining.length > 0) {
     const candidate = remaining.shift()!;
+    const baseTtl = candidate.offer.ttlSeconds || 15;
+
+    if (candidate.offer.expiresAt) {
+      const expMs = new Date(candidate.offer.expiresAt).getTime();
+      if (!Number.isNaN(expMs)) {
+        const remainingSec = Math.floor((expMs - Date.now()) / 1000);
+        if (remainingSec < MIN_REMAINING_TTL_SECONDS) {
+          continue;
+        }
+        return {
+          nextOffer: {
+            ...candidate.offer,
+            ttlSeconds: Math.min(baseTtl, remainingSec),
+          },
+          remainingQueue: remaining,
+        };
+      }
+    }
+
     return {
       nextOffer: {
         ...candidate.offer,
-        ttlSeconds: candidate.offer.ttlSeconds || 15,
+        ttlSeconds: baseTtl,
       },
       remainingQueue: remaining,
     };
@@ -215,10 +234,25 @@ export const useDriverTripStore = create<DriverTripState>()(
         const isLive = !!trip && trip.status !== 'completed' && trip.status !== 'cancelled';
         set((state) => {
           const tripChanged = !trip || (state.activeTrip && state.activeTrip.id !== trip.id);
+          let nextArrivedAt: number | null = null;
+
+          if (trip?.status === 'driver_arrived') {
+            const backendArrivedMs = trip.driver_arrived_at
+              ? new Date(trip.driver_arrived_at).getTime()
+              : NaN;
+            if (!Number.isNaN(backendArrivedMs) && backendArrivedMs > 0) {
+              nextArrivedAt = backendArrivedMs;
+            } else if (!tripChanged && state.arrivedAt) {
+              nextArrivedAt = state.arrivedAt;
+            } else {
+              nextArrivedAt = Date.now();
+            }
+          }
+
           return {
             ...state,
-            activeTrip: trip, 
-            arrivedAt: trip?.status === 'driver_arrived' ? Date.now() : null,
+            activeTrip: trip,
+            arrivedAt: nextArrivedAt,
             ...(isLive ? { currentOffer: null, offerQueue: [] } : {}),
             ...(tripChanged && !trip ? { tripExtras: [] } : {}),
           };

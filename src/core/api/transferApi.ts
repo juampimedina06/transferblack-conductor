@@ -1,6 +1,7 @@
-import axios, { create } from "axios";
+import { create } from "axios";
 import { authStorage } from '../../presentation/auth/store/authStorage';
 import { useAuthStore } from '../../presentation/auth/store/useAuthStore';
+import { refreshSocketToken } from '../socket/socket';
 
 export const transferApi = create({
   baseURL: process.env.EXPO_PUBLIC_API_URL,
@@ -82,26 +83,12 @@ transferApi.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const refreshToken = await authStorage.getRefreshToken();
-        if (!refreshToken) {
-          throw new Error('No refresh token available');
-        }
-
-        const refreshResponse = await axios.post(
-          `${process.env.EXPO_PUBLIC_API_URL}/auth/refresh`,
-          { refresh_token: refreshToken },
-          { headers: { 'Content-Type': 'application/json' } }
-        );
-
-        const tokens = refreshResponse.data?.data?.tokens || refreshResponse.data?.tokens;
-        const newAccessToken = tokens?.access_token;
-        const newRefreshToken = tokens?.refresh_token;
+        const newAccessToken = await refreshSocketToken();
 
         if (!newAccessToken) {
           throw new Error('No access token returned from refresh');
         }
 
-        await authStorage.setTokens(newAccessToken, newRefreshToken || refreshToken);
         transferApi.defaults.headers.common.Authorization = `Bearer ${newAccessToken}`;
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
 
