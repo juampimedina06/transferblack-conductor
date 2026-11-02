@@ -22,7 +22,6 @@ import { useDriverTripStore } from '../../trip/store/useDriverTripStore';
 import { useWalletStore } from '../../wallet/store/useWalletStore';
 import { useSafetyStore } from '../../safety/store/useSafetyStore';
 import { ratePassenger } from '../../../core/trip/actions/trip.actions';
-import { router } from 'expo-router';
 import { LiquidGlassContainer } from '../ui/LiquidGlassContainer';
 import { IncidentReportModal } from './IncidentReportModal';
 
@@ -66,7 +65,6 @@ export const TripReceiptModal = ({ trip, visible }: TripReceiptModalProps) => {
     useWalletStore.getState().fetchSummary().catch(() => {});
     useDriverTripStore.getState().clearTripExtras();
     useDriverTripStore.getState().setActiveTrip(null);
-    router.replace('/' as any);
   };
 
   const handleRatingChange = (newRating: number) => {
@@ -94,7 +92,11 @@ export const TripReceiptModal = ({ trip, visible }: TripReceiptModalProps) => {
       });
 
       // Persist blocked passenger in local store if selected
-      const passengerId = trip?.passenger?.phone || trip?.id;
+      const passengerId =
+        trip?.chat?.passenger_user_id ||
+        (trip as any)?.passenger_id ||
+        trip?.passenger?.phone ||
+        trip?.id;
       if (blockPassenger && passengerId) {
         useSafetyStore.getState().blockPassenger({
           passengerId,
@@ -448,7 +450,12 @@ export const TripReceiptModal = ({ trip, visible }: TripReceiptModalProps) => {
       <IncidentReportModal
         visible={isIncidentModalVisible}
         tripId={trip.id}
-        passengerId={trip?.passenger?.phone || trip?.id}
+        passengerId={
+          trip?.chat?.passenger_user_id ||
+          (trip as any)?.passenger_id ||
+          trip?.passenger?.phone ||
+          trip?.id
+        }
         passengerName={passengerName}
         onClose={() => setIsIncidentModalVisible(false)}
         onReportSuccess={() => {

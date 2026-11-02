@@ -11,6 +11,7 @@ import { Button } from '../../../presentation/components/ui/Button';
 import { Input } from '../../../presentation/components/ui/Input';
 import { PhoneInput } from '../../../presentation/components/ui/PhoneInput';
 import { useAuthStore } from '../../../presentation/auth/store/useAuthStore';
+import { authStorage } from '../../../presentation/auth/store/authStorage';
 
 const registerSchema = z.object({
   first_name: z.string().min(2, 'El nombre es muy corto'),
@@ -25,6 +26,7 @@ type RegisterFormData = z.infer<typeof registerSchema>;
 export default function RegisterScreen(): React.JSX.Element {
   const [isLoading, setIsLoading] = useState(false);
   const setSession = useAuthStore((state) => state.setSession);
+  const updateUser = useAuthStore((state) => state.updateUser);
 
   const { control, handleSubmit, formState: { errors } } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
@@ -40,19 +42,29 @@ export default function RegisterScreen(): React.JSX.Element {
   const onSubmit = async (data: RegisterFormData): Promise<void> => {
     try {
       setIsLoading(true);
-      
-      // 1. Register with email and password
-      const session = await authActions.register(data.email, data.password);
-      
-      // 2. Save session (this will set the token in secure storage, required for the next call)
-      await setSession(session);
+
+      const { isAuthenticated, user } = useAuthStore.getState();
+      const existingToken = await authStorage.getAccessToken();
+      const alreadyRegisteredSameEmail =
+        isAuthenticated &&
+        !!existingToken &&
+        user?.email?.toLowerCase() === data.email.trim().toLowerCase();
+
+      if (!alreadyRegisteredSameEmail) {
+        // 1. Register with email and password
+        const session = await authActions.register(data.email, data.password);
+
+        // 2. Save session (sets the token in secure storage, required for the next call)
+        await setSession(session);
+      }
 
       // 3. Update profile with the additional data
-      await authActions.updateProfile({
+      const updatedProfile = await authActions.updateProfile({
         first_name: data.first_name,
         last_name: data.last_name,
         phone_number: data.phone_e164,
       });
+      updateUser(updatedProfile);
 
       router.replace('/auth/verify-email' as any);
     } catch (error: unknown) {

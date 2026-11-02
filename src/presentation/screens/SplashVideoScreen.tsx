@@ -3,6 +3,8 @@ import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { SplashAnimation } from '../components/SplashAnimation';
+import { useAuthStore } from '../auth/store/useAuthStore';
+import { authStorage } from '../auth/store/authStorage';
 
 export const SplashVideoScreen = () => {
   const router = useRouter();
@@ -13,8 +15,27 @@ export const SplashVideoScreen = () => {
     if (isNavigating) return;
     setIsNavigating(true);
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    // Usamos replace para que no se pueda volver atrás al video con el botón back
-    router.replace('/auth/login' as any);
+
+    void (async () => {
+      try {
+        const accessToken = await authStorage.getAccessToken();
+        const { isAuthenticated, user } = useAuthStore.getState();
+
+        if (accessToken && isAuthenticated && user) {
+          if (!user.email_verified_at) {
+            router.replace('/auth/verify-email' as any);
+            return;
+          }
+          router.replace('/(home)' as any);
+          return;
+        }
+      } catch {
+        // Fallback to login screen if token read fails
+      }
+
+      // Usamos replace para que no se pueda volver atrás al video con el botón back
+      router.replace('/auth/login' as any);
+    })();
   }, [isNavigating, router]);
 
   // The safety timeout is armed once on mount, so it must not depend on

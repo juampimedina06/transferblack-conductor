@@ -22,6 +22,7 @@ interface DriverStatusState {
   setDispatchSuspendedUntil: (timestamp: string | null) => void;
   setConsecutiveCancellations: (count: number) => void;
   setCompliance: (compliance: Partial<DriverCompliance>) => void;
+  resetDriverStatus: () => void;
   initSocketListeners: () => () => void;
 }
 
@@ -85,6 +86,16 @@ export const useDriverStatusStore = create<DriverStatusState>()(
             ...partial,
           },
         }));
+      },
+
+      resetDriverStatus: () => {
+        set({
+          consecutiveCancellations: 0,
+          dispatchSuspendedUntil: null,
+          compliance: defaultCompliance,
+          documents: [],
+          isLoading: false,
+        });
       },
 
       initSocketListeners: () => {

@@ -13,6 +13,14 @@ import { QueryProvider } from "../presentation/providers/QueryProvider";
 import { usePushNotifications } from "../presentation/hooks/usePushNotifications";
 import { ensureDefaultNotificationChannels } from "../core/notifications/notification-channel";
 import { RouteErrorFallback } from "../presentation/components/RouteErrorFallback";
+import { registerLogoutCleanup } from "../presentation/auth/store/useAuthStore";
+import { useWalletStore } from "../presentation/wallet/store/useWalletStore";
+import { useDriverStatusStore } from "../presentation/driver/store/useDriverStatusStore";
+import { useLocationStore } from "../presentation/maps/store/useLocationStore";
+import { useSafetyStore } from "../presentation/safety/store/useSafetyStore";
+import { useDriverTripStore } from "../presentation/trip/store/useDriverTripStore";
+import { socket } from "../core/socket/socket";
+import { pushNotificationService } from "../core/push/services/pushNotificationService";
 import "../global.css";
 
 // Mantiene el splash nativo hasta que las fuentes e inicialización estén listas
@@ -20,6 +28,23 @@ void SplashScreen.preventAutoHideAsync();
 
 // Pre-configura los canales de notificación en Android sin bloquear render
 void ensureDefaultNotificationChannels();
+
+registerLogoutCleanup(async () => {
+    useDriverTripStore.getState().setIsAvailable(false);
+    if (socket.connected) {
+        socket.disconnect();
+    }
+    await pushNotificationService.revoke();
+    useWalletStore.getState().clearWallet();
+    useDriverStatusStore.getState().resetDriverStatus();
+    useLocationStore.getState().clearLocationHistory();
+    useSafetyStore.getState().clearBlockedPassengers();
+    const trip = useDriverTripStore.getState().activeTrip;
+    const isTripLive = !!trip && trip.status !== 'completed' && trip.status !== 'cancelled';
+    if (!isTripLive) {
+        useDriverTripStore.getState().setActiveTrip(null);
+    }
+});
 
 function PushNotificationRoot() {
     usePushNotifications();
