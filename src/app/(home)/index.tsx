@@ -192,7 +192,7 @@ export default function DriverDashboardScreen() {
           <ActiveTripTopHeader trip={activeTrip} />
         ) : (
           <View className="px-4 py-3 flex-row items-center justify-between" pointerEvents="box-none">
-            {/* Left: Sculpted Logout Capsule */}
+            {/* Left: Floating Glass Logout Capsule */}
             <TouchableOpacity
               onPress={() => {
                 void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -201,12 +201,10 @@ export default function DriverDashboardScreen() {
               accessibilityRole="button"
               accessibilityLabel="Cerrar sesión"
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              className="w-12 h-12 rounded-2xl bg-[#0B0C12]/95 items-center justify-center border border-white/20 shadow-2xl shadow-black relative overflow-hidden active:scale-95"
+              className="w-11 h-11 rounded-2xl bg-black/60 items-center justify-center border border-white/15 shadow-lg relative overflow-hidden active:scale-95"
             >
-              <View className="absolute top-0 left-2.5 right-2.5 h-[1px] bg-white/25 pointer-events-none" />
-              <View className="w-8 h-8 rounded-xl bg-white/[0.06] border border-white/10 items-center justify-center">
-                <Ionicons name="log-out-outline" size={18} color={THEME_COLORS.platinum} />
-              </View>
+              <View className="absolute top-0 left-2.5 right-2.5 h-[1px] bg-white/20 pointer-events-none" />
+              <Ionicons name="log-out-outline" size={19} color={THEME_COLORS.platinum} />
             </TouchableOpacity>
 
             {/* Center: Unified VIP Executive Console Dock (Bóveda + Caja/Saldo + Agenda) */}
@@ -219,16 +217,16 @@ export default function DriverDashboardScreen() {
 
               return (
                 <View
-                  className={`flex-row items-center rounded-[22px] p-1 border shadow-2xl shadow-black relative overflow-hidden ${
+                  className={`flex-row items-center rounded-2xl p-1 border shadow-lg relative overflow-hidden bg-black/60 ${
                     isNegative
-                      ? 'bg-[#190A0D]/95 border-red-500/60'
-                      : 'bg-[#0B0C12]/95 border-gold/55'
+                      ? 'border-red-500/50'
+                      : 'border-white/15'
                   }`}
                 >
-                  {/* Top Specular Gold/White Edge */}
+                  {/* Top Specular Edge */}
                   <View
-                    className={`absolute top-0 left-5 right-5 h-[1px] pointer-events-none ${
-                      isNegative ? 'bg-red-400/40' : 'bg-gold/55'
+                    className={`absolute top-0 left-4 right-4 h-[1px] pointer-events-none ${
+                      isNegative ? 'bg-red-400/40' : 'bg-gold/40'
                     }`}
                   />
 
@@ -241,11 +239,11 @@ export default function DriverDashboardScreen() {
                     accessibilityRole="button"
                     accessibilityLabel="Ir a la Bóveda"
                     hitSlop={{ top: 8, bottom: 8, left: 6, right: 4 }}
-                    className="w-10 h-10 rounded-2xl bg-gold/15 border border-gold/35 items-center justify-center relative active:scale-95"
+                    className="w-9 h-9 rounded-xl bg-gold/15 items-center justify-center relative active:scale-95"
                   >
-                    <Ionicons name="wallet" size={17} color={THEME_COLORS.gold} />
+                    <Ionicons name="wallet" size={16} color={THEME_COLORS.gold} />
                     {summary?.pending_payout && (
-                      <View className="w-2.5 h-2.5 rounded-full bg-amber-400 absolute top-1.5 right-1.5 border border-[#0B0C12]" />
+                      <View className="w-2 h-2 rounded-full bg-amber-400 absolute top-1.5 right-1.5 border border-[#0B0C12]" />
                     )}
                   </TouchableOpacity>
 
@@ -300,15 +298,15 @@ export default function DriverDashboardScreen() {
                     accessibilityRole="button"
                     accessibilityLabel="Ver mis reservas programadas"
                     hitSlop={{ top: 8, bottom: 8, left: 4, right: 6 }}
-                    className="w-10 h-10 rounded-2xl bg-white/[0.07] border border-white/15 items-center justify-center active:scale-95"
+                    className="w-9 h-9 rounded-xl bg-white/[0.08] items-center justify-center active:scale-95"
                   >
-                    <Ionicons name="calendar" size={16} color={THEME_COLORS.gold} />
+                    <Ionicons name="calendar" size={15} color={THEME_COLORS.gold} />
                   </TouchableOpacity>
                 </View>
               );
             })()}
 
-            {/* Right: VIP Chauffeur Profile Avatar Capsule */}
+            {/* Right: VIP Chauffeur Profile Avatar Capsule (Sin doble borde) */}
             <TouchableOpacity
               onPress={() => {
                 void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -317,17 +315,17 @@ export default function DriverDashboardScreen() {
               accessibilityRole="button"
               accessibilityLabel="Ver perfil del conductor"
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              className="w-12 h-12 rounded-2xl bg-[#0B0C12]/95 p-0.5 items-center justify-center border border-gold/65 shadow-2xl shadow-black relative overflow-hidden active:scale-95"
+              className="w-11 h-11 rounded-2xl bg-black/60 items-center justify-center border border-gold/50 shadow-lg relative overflow-hidden active:scale-95"
             >
-              <View className="absolute top-0 left-2.5 right-2.5 h-[1px] bg-gold/60 pointer-events-none" />
+              <View className="absolute top-0 left-2 right-2 h-[1px] bg-gold/50 pointer-events-none" />
               {user?.avatar_url ? (
                 <Image
                   source={{ uri: user.avatar_url }}
-                  className="w-full h-full rounded-[14px]"
+                  className="w-full h-full"
                   contentFit="cover"
                 />
               ) : (
-                <View className="w-9 h-9 rounded-xl bg-gold/20 border border-gold/35 items-center justify-center">
+                <View className="w-full h-full items-center justify-center bg-gold/15">
                   <Text className="text-gold font-montserrat-bold text-sm">
                     {user?.first_name?.charAt(0).toUpperCase() || 'C'}
                   </Text>
@@ -335,7 +333,7 @@ export default function DriverDashboardScreen() {
               )}
               {/* Status Online Micro-Badge */}
               <View
-                className={`w-3 h-3 rounded-full absolute bottom-1 right-1 border-2 border-[#0B0C12] ${
+                className={`w-3 h-3 rounded-full absolute bottom-0.5 right-0.5 border-2 border-black ${
                   isAvailable ? 'bg-emerald-400' : 'bg-zinc-500'
                 }`}
               />
