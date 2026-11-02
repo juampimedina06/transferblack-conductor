@@ -32,14 +32,12 @@ export const useTripSocket = () => {
   // Escucha de ofertas entrantes (trip:offer) y eventos globales del conductor
   useEffect(() => {
     const handleConnect = () => {
-      console.log('⚡ [Socket] Conectado exitosamente con id:', socket.id);
       syncActiveTripState();
     };
     const handleConnectError = (err: any) => {
       console.warn('⚠️ [Socket] Error de conexión:', err?.message || err);
     };
     const handleNewOffer = (payload: TripOfferPayload) => {
-      console.log('🔔 [Socket] OFERTA RECIBIDA:', payload?.tripId, payload);
       enqueueOffer(payload);
     };
 
@@ -69,7 +67,6 @@ export const useTripSocket = () => {
     };
 
     const handleOfferCancel = (payload: { offerId: string; tripId: string; reason: string }) => {
-      console.log('🚫 [Socket] OFERTA CANCELADA:', payload);
       cancelOffer(payload.offerId || payload.tripId);
       void offerAlarmService.stop();
       void dismissAllNotificationsSafely();
@@ -81,10 +78,6 @@ export const useTripSocket = () => {
     socket.on('trip:offer:cancel', handleOfferCancel);
     socket.on('trip:scheduled_reminder', handleScheduledReminder);
     socket.on('trip:assigned', handleTripAssigned);
-
-    if (socket.connected) {
-      console.log('⚡ [Socket] Ya estaba conectado con id:', socket.id);
-    }
 
     return () => {
       socket.off('connect', handleConnect);
@@ -126,8 +119,8 @@ export const useTripSocket = () => {
       }
     };
 
-    const handleRideJoined = (payload: { rideId: string }) => {
-      console.log('✅ [Socket] Confirmada unión a sala de viaje:', payload?.rideId);
+    const handleRideJoined = (_payload: { rideId: string }) => {
+      // Room join acknowledged by backend
     };
 
     const handleSocketError = (err: any) => {

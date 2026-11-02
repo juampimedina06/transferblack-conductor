@@ -103,7 +103,6 @@ export const useDriverStatusStore = create<DriverStatusState>()(
 
         const handleSuspended = (payload: { dispatchSuspendedUntil?: string }) => {
           if (payload?.dispatchSuspendedUntil) {
-            console.log('🛑 [Socket] Despacho suspendido temporalmente hasta:', payload.dispatchSuspendedUntil);
             set({ dispatchSuspendedUntil: payload.dispatchSuspendedUntil });
           }
         };
@@ -112,7 +111,6 @@ export const useDriverStatusStore = create<DriverStatusState>()(
           status?: DriverCompliance['status'];
           blockingDocuments?: string[];
         }) => {
-          console.log('📋 [Socket] Compliance documental actualizado:', payload);
           if (payload?.status) {
             get().setCompliance({
               status: payload.status,

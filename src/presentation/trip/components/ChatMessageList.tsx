@@ -6,6 +6,7 @@ import {
   ListRenderItemInfo,
 } from 'react-native';
 import { ChatMessage } from '@/core/chat/interface/chat.interface';
+import { SkeletonBox } from '@/presentation/components/ui/SkeletonBox';
 import { ChatBubble } from './ChatBubble';
 import { ChatEmptyState } from './ChatEmptyState';
 
@@ -57,8 +58,11 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
 
   if (isLoading) {
     return (
-      <View className="flex-1 items-center justify-center">
-        <ActivityIndicator size="large" color="#D4AF37" />
+      <View className="flex-1 justify-end px-4 py-6 gap-3">
+        <SkeletonBox className="h-12 w-56 rounded-2xl self-start" />
+        <SkeletonBox className="h-12 w-64 rounded-2xl self-end" />
+        <SkeletonBox className="h-14 w-48 rounded-2xl self-start" />
+        <SkeletonBox className="h-12 w-60 rounded-2xl self-end" />
       </View>
     );
   }

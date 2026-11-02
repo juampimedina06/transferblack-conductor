@@ -17,6 +17,7 @@ import { THEME_COLORS } from '../../../core/constants/theme';
 import { useWalletStore } from '../../../presentation/wallet/store/useWalletStore';
 import * as Haptics from 'expo-haptics';
 import { LiquidGlassContainer } from '../../../presentation/components/ui/LiquidGlassContainer';
+import { SkeletonBox } from '../../../presentation/components/ui/SkeletonBox';
 import type { PayoutRequestItem } from '../../../core/wallet/interface/wallet.interface';
 import { getNormalizedPayoutStatusMeta } from '../../../core/wallet/utils/wallet.utils';
 
@@ -41,6 +42,7 @@ export default function PayoutHistoryScreen() {
     payoutsHistory,
     payoutsPagination,
     isLoadingPayouts,
+    payoutsError,
     fetchPayoutsHistory,
   } = useWalletStore();
 
@@ -283,11 +285,32 @@ export default function PayoutHistoryScreen() {
       </View>
 
       {isLoadingPayouts && payoutsHistory.length === 0 ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color={THEME_COLORS.gold} />
-          <Text className="text-ash font-montserrat text-sm mt-3">
-            Cargando historial de retiros...
+        <View className="flex-1 p-4 gap-4">
+          <SkeletonBox className="h-36 w-full rounded-2xl" />
+          <SkeletonBox className="h-36 w-full rounded-2xl" />
+          <SkeletonBox className="h-36 w-full rounded-2xl" />
+        </View>
+      ) : payoutsError && payoutsHistory.length === 0 ? (
+        <View className="flex-1 items-center justify-center px-6">
+          <View className="w-16 h-16 rounded-full bg-red-500/15 border border-red-500/30 items-center justify-center mb-4">
+            <Ionicons name="alert-circle-outline" size={32} color="#EF4444" />
+          </View>
+          <Text className="text-platinum font-montserrat-bold text-base text-center mb-1">
+            No se pudo cargar el historial
           </Text>
+          <Text className="text-ash font-montserrat text-xs text-center leading-relaxed mb-4">
+            {payoutsError}
+          </Text>
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Reintentar carga del historial de retiros"
+            onPress={() => fetchPayoutsHistory(1, 20)}
+            className="px-5 py-2.5 rounded-xl bg-gold/15 border border-gold/40"
+          >
+            <Text className="text-gold font-montserrat-semibold text-xs">
+              Reintentar
+            </Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <FlatList
