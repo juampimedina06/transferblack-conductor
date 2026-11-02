@@ -29,13 +29,10 @@ if (!isExpoGoOnAndroid) {
 if (Notifications?.setNotificationHandler) {
   try {
     Notifications.setNotificationHandler({
-      handleNotification: async (notification) => {
-        const data = notification.request.content.data;
-        const isOffer = data?.type === 'trip:offer';
-
+      handleNotification: async () => {
         return {
           shouldShowAlert: true,
-          shouldPlaySound: !isOffer, // La alarma continua gestiona el sonido para ofertas
+          shouldPlaySound: true,
           shouldSetBadge: true,
           shouldShowBanner: true,
           shouldShowList: true,
@@ -61,14 +58,12 @@ try {
       if (!rawData) return;
 
       if (isPushDocumentEvent(rawData)) {
-        console.log('📋 [PushBackground] Evento de documentación recibido:', rawData);
         void useDriverStatusStore.getState().fetchStatus();
         void useDriverStatusStore.getState().fetchDocuments();
         return;
       }
 
       if (isPushTripCancel(rawData)) {
-        console.log('🚫 [PushBackground] Cancelación recibida en background:', rawData);
         await offerAlarmService.stop();
         await Notifications?.dismissAllNotificationsAsync().catch(() => {});
         useDriverTripStore.getState().cancelOffer(rawData.offerId || rawData.tripId);
@@ -77,8 +72,6 @@ try {
 
       const offer = parsePushTripOffer(rawData);
       if (offer) {
-        console.log('🔔 [PushBackground] Oferta válida recibida en background:', offer.offerId);
-
         // Disparar alarma continua
         await offerAlarmService.start();
 
@@ -120,9 +113,6 @@ class PushNotificationService {
     if (this.isInitialized) return this.currentDeviceToken;
 
     if (isExpoGoOnAndroid) {
-      console.info(
-        'TransferBlack: Push notifications en Android requieren Development Build (removido de Expo Go en SDK 53).'
-      );
       return null;
     }
 
@@ -167,7 +157,6 @@ class PushNotificationService {
       }
 
       if (!isGranted) {
-        console.warn('⚠️ [PushService] Permisos de notificación denegados.');
         return null;
       }
 
@@ -188,14 +177,12 @@ class PushNotificationService {
 
       const platform = Platform.OS === 'ios' ? 'ios' : 'android';
 
-      // 5. Enviar al backend vía PUT /drivers/me/push-token
+      // 5. Enviar al backend vía PUT /driver/me/push-token
       await registerDriverPushToken({
         token: nativeToken,
         platform,
         provider: 'fcm',
       });
-
-      console.log('✅ [PushService] Token nativo registrado en backend exitosamente');
 
       // 6. Listener para cambios de token del sistema
       this.tokenListenerSubscription = notif.addPushTokenListener(async (tokenData) => {
@@ -217,7 +204,6 @@ class PushNotificationService {
           if (!rawData) return;
 
           if (isPushDocumentEvent(rawData)) {
-            console.log('📋 [PushForeground] Evento de documentación recibido:', rawData);
             void useDriverStatusStore.getState().fetchStatus();
             void useDriverStatusStore.getState().fetchDocuments();
             return;

@@ -7,6 +7,7 @@ import type * as ExpoNotifications from 'expo-notifications';
 
 import { registerDevice } from '@/core/device/actions/device.actions';
 import { pushDeviceStorage } from '@/infrastructure/storage/pushDeviceStorage';
+import { useAuthStore } from '@/presentation/auth/store/useAuthStore';
 
 // En Expo SDK 53+, Android eliminó el soporte de push remotas en Expo Go.
 // Importar estáticamente expo-notifications en Expo Go Android lanza un error irrecuperable.
@@ -28,6 +29,10 @@ export interface PushNotificationResponse {
   notification: PushNotificationPayload;
 }
 
+export interface UsePushNotificationsOptions {
+  enableListeners?: boolean;
+}
+
 // Objeto de módulo dinámico tipado de expo-notifications
 let Notifications: typeof ExpoNotifications | null = null;
 
@@ -35,16 +40,6 @@ if (!isExpoGoOnAndroid) {
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     Notifications = require('expo-notifications');
-
-    // Handler global para definir cómo se comportan las notificaciones cuando la app está en primer plano
-    Notifications?.setNotificationHandler?.({
-      handleNotification: async () => ({
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-        shouldShowBanner: true,
-        shouldShowList: true,
-      }),
-    });
   } catch (err) {
     console.warn('expo-notifications no disponible en este entorno:', err);
   }
@@ -108,9 +103,7 @@ function allowsNotifications(
 /**
  * Obtiene el token de Expo y lo registra en el backend
  */
-async function registerForPushNotificationsAsync(
-  isInteractive = false
-): Promise<{
+async function registerForPushNotificationsAsync(): Promise<{
   token: string | null;
   permissionGranted: boolean;
   deniedPermanently: boolean;
@@ -166,7 +159,7 @@ async function registerForPushNotificationsAsync(
     const projectId =
       Constants?.expoConfig?.extra?.eas?.projectId ??
       Constants?.easConfig?.projectId ??
-      '2956340e-d243-4b85-81a0-03d74a419a48';
+      '75830bc4-0596-4e25-ad38-469916a82bef';
 
     const pushTokenString = (
       await Notifications.getExpoPushTokenAsync(
@@ -181,7 +174,11 @@ async function registerForPushNotificationsAsync(
   }
 }
 
-export function usePushNotifications(): UsePushNotificationsResult {
+export function usePushNotifications(
+  options: UsePushNotificationsOptions = {}
+): UsePushNotificationsResult {
+  const { enableListeners = true } = options;
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const [expoPushToken, setExpoPushToken] = useState<string>('');
   const [isRegistering, setIsRegistering] = useState<boolean>(false);
   const [isRegistered, setIsRegistered] = useState<boolean>(false);
@@ -189,6 +186,7 @@ export function usePushNotifications(): UsePushNotificationsResult {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<PushNotificationPayload[]>([]);
   const pendingRouteRef = useRef<string | null>(null);
+  const handledResponseIdsRef = useRef<Set<string>>(new Set());
 
   const rootNavigationState = useRootNavigationState();
 
@@ -198,13 +196,17 @@ export function usePushNotifications(): UsePushNotificationsResult {
         return false;
       }
 
+      if (!useAuthStore.getState().isAuthenticated) {
+        return false;
+      }
+
       setIsRegistering(true);
       setErrorMessage(null);
 
       try {
         const result = forceToken
           ? { token: forceToken, permissionGranted: true, deniedPermanently: false, isExpoGoWarning: false }
-          : await registerForPushNotificationsAsync(interactive);
+          : await registerForPushNotificationsAsync();
 
         setPermissionGranted(result.permissionGranted);
 
@@ -275,29 +277,40 @@ export function usePushNotifications(): UsePushNotificationsResult {
     []
   );
 
-  // Registro inicial al montar (microtask async para evitar sincronía en el cuerpo del efecto)
+  // Registro inicial cuando el usuario está autenticado
   useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
     let isCancelled = false;
-    registerForPushNotificationsAsync(false).then((result) => {
+    registerForPushNotificationsAsync().then((result) => {
       if (!isCancelled && result.token) {
-        syncDeviceToken(result.token);
+        void syncDeviceToken(result.token);
       }
     });
     return () => {
       isCancelled = true;
     };
-  }, [syncDeviceToken]);
+  }, [isAuthenticated, syncDeviceToken]);
 
   // Manejador centralizado para navegación al interactuar con la notificación
   const handleNotificationNavigation = useCallback(
     (response: unknown) => {
       const res = response as PushNotificationResponse | undefined;
+      const identifier = res?.notification?.request?.identifier;
+      if (identifier) {
+        if (handledResponseIdsRef.current.has(identifier)) {
+          return;
+        }
+        handledResponseIdsRef.current.add(identifier);
+      }
+
       const data = res?.notification?.request?.content?.data;
       if (!data) return;
 
       let targetRoute: string | null = null;
       if (data.chatId || data.type === 'chat') {
-        targetRoute = '/chat';
+        targetRoute = '/(home)/chat';
       } else if (data.tripId || data.type === 'trip_offer' || data.type === 'new_offer') {
         targetRoute = '/(home)';
       } else if (data.scheduledTripId || data.type === 'scheduled_trip') {
@@ -315,9 +328,9 @@ export function usePushNotifications(): UsePushNotificationsResult {
     [rootNavigationState?.key]
   );
 
-  // Listeners de notificaciones entrantes e interacción del usuario (como en pushApp)
+  // Listeners de notificaciones entrantes e interacción del usuario
   useEffect(() => {
-    if (!Notifications) return;
+    if (!Notifications || !enableListeners) return;
 
     const notificationListener = Notifications.addNotificationReceivedListener?.((notification: unknown) => {
       setNotifications((prev) => [...prev, notification as PushNotificationPayload]);
@@ -343,7 +356,7 @@ export function usePushNotifications(): UsePushNotificationsResult {
       notificationListener?.remove?.();
       responseListener?.remove?.();
     };
-  }, [handleNotificationNavigation]);
+  }, [enableListeners, handleNotificationNavigation]);
 
   // Ejecuta la redirección si había una ruta pendiente una vez montado el navegador
   useEffect(() => {

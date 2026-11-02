@@ -22,6 +22,7 @@ import { getDriverMe } from '@/core/driver/actions/driver.actions';
 import { ProfileSkeleton } from '@/presentation/components/profile/ProfileSkeleton';
 import { VehicleCard } from '@/presentation/components/profile/VehicleCard';
 import { ProfileOptionItem } from '@/presentation/components/profile/ProfileOptionItem';
+import { DriverDocumentsModal } from '@/presentation/components/compliance/DriverDocumentsModal';
 import { usePushNotifications } from '@/presentation/hooks/usePushNotifications';
 import { pushNotificationService } from '@/core/push/services/pushNotificationService';
 
@@ -32,10 +33,11 @@ export default function DriverProfileScreen() {
   const setIsAvailable = useDriverTripStore((state) => state.setIsAvailable);
 
   const [isLoggingOut, setIsLoggingOut] = useState<boolean>(false);
+  const [isDocsModalVisible, setIsDocsModalVisible] = useState<boolean>(false);
 
-  // Hook para acceder al estado y acciones de notificaciones push
+  // Hook para acceder al estado y acciones de notificaciones push sin duplicar listeners globales
   const { isRegistered: isPushRegistered, syncDeviceToken, expoPushToken, isExpoGoOnAndroid } =
-    usePushNotifications();
+    usePushNotifications({ enableListeners: false });
 
   // Consulta del perfil del conductor y vehículo asignado (GET /api/v1/driver/me)
   const {
@@ -93,11 +95,10 @@ export default function DriverProfileScreen() {
       // 4. Invalidar Refresh Token en la API y purgar credenciales de SecureStore + Zustand
       await logout();
 
-      // 4. Redirección limpia al Stack de Login impidiendo volver atrás
+      // 5. Redirección limpia al Stack de Login impidiendo volver atrás
       router.replace('/auth/login' as any);
     } catch (err) {
       console.error('Error durante el cierre de sesión:', err);
-      // Aun con error, asegurar salida al login
       router.replace('/auth/login' as any);
     } finally {
       setIsLoggingOut(false);
@@ -141,11 +142,7 @@ export default function DriverProfileScreen() {
   };
 
   const handleDocumentsPress = () => {
-    Alert.alert(
-      'Mis Documentos',
-      'Tu documentación operativa (Licencia, Seguro, ITV) fue aprobada por el equipo de administración. Para renovar o actualizar algún documento, contactá a soporte.',
-      [{ text: 'Entendido' }]
-    );
+    setIsDocsModalVisible(true);
   };
 
   const handleSupportPress = () => {
@@ -357,6 +354,11 @@ export default function DriverProfileScreen() {
           </ScrollView>
         )}
       </SafeAreaView>
+
+      <DriverDocumentsModal
+        visible={isDocsModalVisible}
+        onClose={() => setIsDocsModalVisible(false)}
+      />
     </View>
   );
 }

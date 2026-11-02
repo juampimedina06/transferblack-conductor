@@ -15,19 +15,20 @@ describe('Offer Alarm Service (TICKET-01)', () => {
     await offerAlarmService.stop();
   });
 
-  it('starts without vibration by default', async () => {
+  it('starts with vibration enabled by default', async () => {
     await offerAlarmService.start();
+
+    expect(Vibration.vibrate).toHaveBeenCalledWith([0, 500, 500, 500], true);
+    expect(offerAlarmService.getStatus().isVibrating).toBe(true);
+    expect(offerAlarmService.getStatus().isPlaying).toBe(true);
+  });
+
+  it('does not vibrate when vibrate: false is explicitly passed', async () => {
+    await offerAlarmService.start({ vibrate: false });
 
     expect(Vibration.vibrate).not.toHaveBeenCalled();
     expect(offerAlarmService.getStatus().isVibrating).toBe(false);
     expect(offerAlarmService.getStatus().isPlaying).toBe(true);
-  });
-
-  it('vibrates when explicitly requested in options', async () => {
-    await offerAlarmService.start({ vibrate: true });
-
-    expect(Vibration.vibrate).toHaveBeenCalledWith([0, 500, 500, 500], true);
-    expect(offerAlarmService.getStatus().isVibrating).toBe(true);
   });
 
   it('does not re-trigger start if already playing', async () => {

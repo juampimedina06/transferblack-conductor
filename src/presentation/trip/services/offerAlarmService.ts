@@ -4,14 +4,14 @@ class OfferAlarmService {
   private isPlaying = false;
   private isVibrating = false;
   /**
-   * Inicia la alerta para la oferta entrante. La vibración es opcional.
+   * Inicia la alerta para la oferta entrante. La vibración está habilitada por defecto.
    */
   async start(options: { vibrate?: boolean } = {}): Promise<void> {
     if (this.isPlaying) return;
     this.isPlaying = true;
 
-    // Vibración opcional (deshabilitada por defecto para no molestar al conductor)
-    if (options.vibrate) {
+    const shouldVibrate = options.vibrate ?? true;
+    if (shouldVibrate) {
       Vibration.vibrate([0, 500, 500, 500], true);
       this.isVibrating = true;
     } else {

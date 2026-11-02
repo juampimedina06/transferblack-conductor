@@ -13,6 +13,8 @@ import * as Haptics from 'expo-haptics';
 import { useDriverStatusStore } from '../../driver/store/useDriverStatusStore';
 import { DriverDocumentItem } from '@/core/driver/interface/driverStatus.interface';
 import { DocumentScannerModal } from '../ui/DocumentScannerModal';
+import { SkeletonBox } from '../ui/SkeletonBox';
+import { DatePickerInput } from '../ui/DatePickerInput';
 import { DocumentType } from '../../onboarding/store/useOnboardingStore';
 import { OnboardingService } from '../../onboarding/services/onboarding.service';
 import { transferApi } from '@/core/api/transferApi';
@@ -36,6 +38,11 @@ const DOCUMENT_LABELS: Record<string, string> = {
   itv: 'Inspección Técnica Vehicular (ITV / RTO)',
 };
 
+const toYyyyMmDd = (dateStr?: string | null): string => {
+  if (!dateStr) return '';
+  return dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
+};
+
 export const DriverDocumentsModal: React.FC<DriverDocumentsModalProps> = ({
   visible,
   onClose,
@@ -49,6 +56,9 @@ export const DriverDocumentsModal: React.FC<DriverDocumentsModalProps> = ({
   const [selectedDoc, setSelectedDoc] = useState<DriverDocumentItem | null>(null);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [renewalDates, setRenewalDates] = useState<
+    Record<string, { issuedAt: string; expiresAt: string }>
+  >({});
 
   useEffect(() => {
     if (visible) {
@@ -58,6 +68,11 @@ export const DriverDocumentsModal: React.FC<DriverDocumentsModalProps> = ({
 
   const handleStartRenewal = (doc: DriverDocumentItem) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const dates = renewalDates[doc.id] || {
+      issuedAt: toYyyyMmDd(doc.issuedAt),
+      expiresAt: toYyyyMmDd(doc.expiresAt),
+    };
+    setRenewalDates((prev) => ({ ...prev, [doc.id]: dates }));
     setSelectedDoc(doc);
     setIsScannerOpen(true);
   };
@@ -76,10 +91,16 @@ export const DriverDocumentsModal: React.FC<DriverDocumentsModalProps> = ({
         selectedDoc.documentType as DocumentType
       );
 
+      const dates = renewalDates[selectedDoc.id];
+      const issuedAt = toYyyyMmDd(dates?.issuedAt || selectedDoc.issuedAt) || undefined;
+      const expiresAt = toYyyyMmDd(dates?.expiresAt || selectedDoc.expiresAt) || undefined;
+
       // Actualizar documento para revisión
       try {
         await transferApi.patch(`/driver/documents/${selectedDoc.id}/retry`, {
           filePath: uploadRes.filePath,
+          ...(issuedAt ? { issuedAt } : {}),
+          ...(expiresAt ? { expiresAt } : {}),
         });
       } catch {
         // Fallback a POST /driver/documents
@@ -87,6 +108,8 @@ export const DriverDocumentsModal: React.FC<DriverDocumentsModalProps> = ({
           id: selectedDoc.id,
           documentType: selectedDoc.documentType,
           filePath: uploadRes.filePath,
+          ...(issuedAt ? { issuedAt } : {}),
+          ...(expiresAt ? { expiresAt } : {}),
         });
       }
 
@@ -192,11 +215,19 @@ export const DriverDocumentsModal: React.FC<DriverDocumentsModalProps> = ({
 
             {/* List */}
             {isLoading ? (
-              <View className="py-12 items-center justify-center">
-                <ActivityIndicator color={THEME_COLORS.gold} size="large" />
-                <Text className="text-zinc-400 font-montserrat-medium text-xs mt-3">
-                  Cargando estado de documentos...
-                </Text>
+              <View className="py-2 mb-4 gap-3">
+                {[1, 2, 3].map((item) => (
+                  <View
+                    key={item}
+                    className="p-4 rounded-2xl bg-white/[0.04] border border-white/10"
+                  >
+                    <View className="flex-row items-center justify-between mb-2">
+                      <SkeletonBox className="h-4 w-48 rounded-md" />
+                      <SkeletonBox className="h-5 w-20 rounded-full" />
+                    </View>
+                    <SkeletonBox className="h-3 w-32 rounded-md mt-1" />
+                  </View>
+                ))}
               </View>
             ) : (
               <ScrollView showsVerticalScrollIndicator={false} className="mb-4">
@@ -217,11 +248,16 @@ export const DriverDocumentsModal: React.FC<DriverDocumentsModalProps> = ({
                       doc.status === 'expiring_soon' ||
                       doc.status === 'expired' ||
                       doc.status === 'rejected';
+                    const isHighlighted =
+                      Boolean(initialSelectedDocType) &&
+                      doc.documentType === initialSelectedDocType;
 
                     return (
                       <View
                         key={doc.id}
-                        className="p-4 rounded-2xl bg-white/[0.04] border border-white/10 mb-3"
+                        className={`p-4 rounded-2xl bg-white/[0.04] border mb-3 ${
+                          isHighlighted ? 'border-gold/60' : 'border-white/10'
+                        }`}
                       >
                         <View className="flex-row items-start justify-between mb-2">
                           <View className="flex-1 mr-2">
@@ -251,17 +287,73 @@ export const DriverDocumentsModal: React.FC<DriverDocumentsModalProps> = ({
                         )}
 
                         {canRenew && (
-                          <TouchableOpacity
-                            activeOpacity={0.8}
-                            onPress={() => handleStartRenewal(doc)}
-                            disabled={isUploading}
-                            className="mt-2 h-10 bg-gold/20 border border-gold/40 rounded-xl items-center justify-center flex-row"
-                          >
-                            <Ionicons name="camera" size={16} color={THEME_COLORS.gold} />
-                            <Text className="text-gold font-montserrat-bold text-xs uppercase tracking-wider ml-2">
-                              {doc.status === 'rejected' ? 'Reintentar documento' : 'Renovar ahora'}
-                            </Text>
-                          </TouchableOpacity>
+                          <>
+                            <View className="mt-2 mb-2 p-2.5 rounded-xl border border-white/10 bg-black/30">
+                              <Text className="text-zinc-400 font-montserrat text-[11px] mb-2">
+                                Fechas del documento (opcional):
+                              </Text>
+                              <View className="flex-row gap-2">
+                                <View className="flex-1">
+                                  <DatePickerInput
+                                    value={
+                                      renewalDates[doc.id]?.issuedAt ?? toYyyyMmDd(doc.issuedAt)
+                                    }
+                                    onChangeDate={(d) =>
+                                      setRenewalDates((prev) => ({
+                                        ...prev,
+                                        [doc.id]: {
+                                          issuedAt: d,
+                                          expiresAt:
+                                            prev[doc.id]?.expiresAt ?? toYyyyMmDd(doc.expiresAt),
+                                        },
+                                      }))
+                                    }
+                                    placeholder="Emisión"
+                                    title="Fecha de Emisión"
+                                    minYear={2015}
+                                    maxYear={new Date().getFullYear()}
+                                    containerClassName="mb-0"
+                                  />
+                                </View>
+                                <View className="flex-1">
+                                  <DatePickerInput
+                                    value={
+                                      renewalDates[doc.id]?.expiresAt ?? toYyyyMmDd(doc.expiresAt)
+                                    }
+                                    onChangeDate={(d) =>
+                                      setRenewalDates((prev) => ({
+                                        ...prev,
+                                        [doc.id]: {
+                                          issuedAt:
+                                            prev[doc.id]?.issuedAt ?? toYyyyMmDd(doc.issuedAt),
+                                          expiresAt: d,
+                                        },
+                                      }))
+                                    }
+                                    placeholder="Vencimiento"
+                                    title="Fecha de Vencimiento"
+                                    minYear={new Date().getFullYear()}
+                                    maxYear={new Date().getFullYear() + 15}
+                                    containerClassName="mb-0"
+                                  />
+                                </View>
+                              </View>
+                            </View>
+
+                            <TouchableOpacity
+                              activeOpacity={0.8}
+                              onPress={() => handleStartRenewal(doc)}
+                              disabled={isUploading}
+                              className="mt-1 h-10 bg-gold/20 border border-gold/40 rounded-xl items-center justify-center flex-row"
+                            >
+                              <Ionicons name="camera" size={16} color={THEME_COLORS.gold} />
+                              <Text className="text-gold font-montserrat-bold text-xs uppercase tracking-wider ml-2">
+                                {doc.status === 'rejected'
+                                  ? 'Reintentar documento'
+                                  : 'Renovar ahora'}
+                              </Text>
+                            </TouchableOpacity>
+                          </>
                         )}
                       </View>
                     );
