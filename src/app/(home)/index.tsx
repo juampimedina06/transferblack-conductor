@@ -192,139 +192,155 @@ export default function DriverDashboardScreen() {
           <ActiveTripTopHeader trip={activeTrip} />
         ) : (
           <View className="px-4 py-3 flex-row items-center justify-between" pointerEvents="box-none">
-          {/* Logout Button */}
-          <TouchableOpacity
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              handleLogout();
-            }}
-            accessibilityRole="button"
-            accessibilityLabel="Cerrar sesión"
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            className="w-12 h-12 rounded-2xl bg-[#13141E] items-center justify-center border border-white/25 shadow-xl shadow-black relative overflow-hidden active:scale-95"
-          >
-            <View className="absolute top-0 left-2 right-2 h-[1px] bg-white/20 pointer-events-none" />
-            <Ionicons name="log-out-outline" size={21} color={THEME_COLORS.ash} />
-          </TouchableOpacity>
+            {/* Left: Sculpted Logout Capsule */}
+            <TouchableOpacity
+              onPress={() => {
+                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                handleLogout();
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Cerrar sesión"
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              className="w-12 h-12 rounded-2xl bg-[#0B0C12]/95 items-center justify-center border border-white/20 shadow-2xl shadow-black relative overflow-hidden active:scale-95"
+            >
+              <View className="absolute top-0 left-2.5 right-2.5 h-[1px] bg-white/25 pointer-events-none" />
+              <View className="w-8 h-8 rounded-xl bg-white/[0.06] border border-white/10 items-center justify-center">
+                <Ionicons name="log-out-outline" size={18} color={THEME_COLORS.platinum} />
+              </View>
+            </TouchableOpacity>
 
-          {/* Central Toggle Pill & Navigation Controls */}
-          {!activeTrip && (() => {
-            const displayBalance = stats?.balance ?? 0;
-            const isNegative = displayBalance < 0;
-            const formattedAmount = isNegative
-              ? `-$${Math.abs(displayBalance).toFixed(2)}`
-              : `$${(displayBalance > 0 ? displayBalance : (stats?.earningsToday ?? 0)).toFixed(2)}`;
+            {/* Center: Unified VIP Executive Console Dock (Bóveda + Caja/Saldo + Agenda) */}
+            {!activeTrip && (() => {
+              const displayBalance = stats?.balance ?? 0;
+              const isNegative = displayBalance < 0;
+              const formattedAmount = isNegative
+                ? `-$${Math.abs(displayBalance).toFixed(2)}`
+                : `$${(displayBalance > 0 ? displayBalance : (stats?.earningsToday ?? 0)).toFixed(2)}`;
 
-            return (
-              <View className="flex-row items-center gap-2">
-                {/* Bóveda Financiera */}
-                <TouchableOpacity
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    router.push('/wallet' as any);
-                  }}
-                  accessibilityRole="button"
-                  accessibilityLabel="Ir a la Bóveda"
-                  hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
-                  className="w-12 h-12 rounded-2xl bg-[#13141E] items-center justify-center border border-gold/55 shadow-xl shadow-black relative overflow-hidden active:scale-95"
-                >
-                  <View className="absolute top-0 left-2 right-2 h-[1px] bg-gold/50 pointer-events-none" />
-                  <View className="w-8 h-8 rounded-xl bg-gold/20 items-center justify-center">
-                    <Ionicons name="wallet" size={17} color={THEME_COLORS.gold} />
-                  </View>
-                  {summary?.pending_payout && (
-                    <View className="w-2.5 h-2.5 rounded-full bg-amber-400 absolute top-2 right-2 border border-[#13141E]" />
-                  )}
-                </TouchableOpacity>
-
-                {/* Pill Central: Ganancias / Saldo */}
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    setIsStatsExpanded(!isStatsExpanded);
-                  }}
-                  accessibilityRole="button"
-                  accessibilityLabel="Desplegar estadísticas de hoy"
-                  hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-                  className={`h-12 flex-row items-center px-3.5 rounded-2xl shadow-xl shadow-black border relative overflow-hidden active:scale-98 ${
-                    isNegative 
-                      ? 'bg-[#2A0F12] border-red-500/70' 
-                      : 'bg-[#13141E] border-gold/55'
+              return (
+                <View
+                  className={`flex-row items-center rounded-[22px] p-1 border shadow-2xl shadow-black relative overflow-hidden ${
+                    isNegative
+                      ? 'bg-[#190A0D]/95 border-red-500/60'
+                      : 'bg-[#0B0C12]/95 border-gold/55'
                   }`}
                 >
-                  <View className="absolute top-0 left-3 right-3 h-[1px] bg-white/20 pointer-events-none" />
-                  <View className={`w-7 h-7 rounded-lg items-center justify-center mr-2 ${isNegative ? 'bg-red-500/25' : 'bg-gold/20'}`}>
-                    <Ionicons 
-                      name={isNegative ? 'warning' : 'cash'} 
-                      size={15} 
-                      color={isNegative ? '#F87171' : THEME_COLORS.gold} 
-                    />
-                  </View>
-                  <Text 
-                    style={{ fontVariant: ['tabular-nums'] }}
-                    className={`font-montserrat-bold text-sm mr-2 ${
-                      isNegative ? 'text-red-400' : 'text-white'
+                  {/* Top Specular Gold/White Edge */}
+                  <View
+                    className={`absolute top-0 left-5 right-5 h-[1px] pointer-events-none ${
+                      isNegative ? 'bg-red-400/40' : 'bg-gold/55'
                     }`}
-                  >
-                    {formattedAmount}
-                  </Text>
-                  <Ionicons
-                    name={isStatsExpanded ? 'chevron-up' : 'chevron-down'}
-                    size={15}
-                    color={isNegative ? '#FCA5A5' : THEME_COLORS.gold}
                   />
-                </TouchableOpacity>
 
-                {/* Reservas Programadas */}
-                <TouchableOpacity
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    router.push('/(home)/scheduled-trips' as any);
-                  }}
-                  accessibilityRole="button"
-                  accessibilityLabel="Ver mis reservas programadas"
-                  hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
-                  className="w-12 h-12 rounded-2xl bg-[#13141E] items-center justify-center border border-white/25 shadow-xl shadow-black relative overflow-hidden active:scale-95"
-                >
-                  <View className="absolute top-0 left-2 right-2 h-[1px] bg-white/20 pointer-events-none" />
-                  <View className="w-8 h-8 rounded-xl bg-white/10 items-center justify-center">
-                    <Ionicons name="calendar" size={17} color={THEME_COLORS.gold} />
-                  </View>
-                </TouchableOpacity>
-              </View>
-            );
-          })()}
+                  {/* Bóveda Financiera */}
+                  <TouchableOpacity
+                    onPress={() => {
+                      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      router.push('/wallet' as any);
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Ir a la Bóveda"
+                    hitSlop={{ top: 8, bottom: 8, left: 6, right: 4 }}
+                    className="w-10 h-10 rounded-2xl bg-gold/15 border border-gold/35 items-center justify-center relative active:scale-95"
+                  >
+                    <Ionicons name="wallet" size={17} color={THEME_COLORS.gold} />
+                    {summary?.pending_payout && (
+                      <View className="w-2.5 h-2.5 rounded-full bg-amber-400 absolute top-1.5 right-1.5 border border-[#0B0C12]" />
+                    )}
+                  </TouchableOpacity>
 
-          {/* Perfil del Conductor */}
-          <TouchableOpacity
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push('/(home)/profile' as any);
-            }}
-            accessibilityRole="button"
-            accessibilityLabel="Ver perfil del conductor"
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            className="w-12 h-12 rounded-2xl bg-[#13141E] items-center justify-center border border-gold/55 shadow-xl shadow-black relative overflow-hidden active:scale-95"
-          >
-            <View className="absolute top-0 left-2 right-2 h-[1px] bg-gold/50 pointer-events-none" />
-            {user?.avatar_url ? (
-              <Image 
-                source={{ uri: user.avatar_url }} 
-                className="w-full h-full rounded-2xl" 
-                contentFit="cover"
+                  {/* Central Earnings / Balance Console Trigger */}
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => {
+                      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setIsStatsExpanded(!isStatsExpanded);
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Desplegar estadísticas de hoy"
+                    hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+                    className="flex-row items-center px-3 py-1"
+                  >
+                    <View className="items-center mr-2">
+                      <Text
+                        className={`font-montserrat-bold text-[8px] uppercase tracking-widest ${
+                          isNegative ? 'text-red-400' : 'text-gold'
+                        }`}
+                      >
+                        {isNegative ? 'SALDO DEUDA' : 'CAJA HOY'}
+                      </Text>
+                      <Text
+                        style={{ fontVariant: ['tabular-nums'] }}
+                        className={`font-montserrat-bold text-sm leading-tight ${
+                          isNegative ? 'text-red-300' : 'text-white'
+                        }`}
+                      >
+                        {formattedAmount}
+                      </Text>
+                    </View>
+                    <View
+                      className={`w-5 h-5 rounded-full items-center justify-center ${
+                        isNegative ? 'bg-red-500/20' : 'bg-gold/15'
+                      }`}
+                    >
+                      <Ionicons
+                        name={isStatsExpanded ? 'chevron-up' : 'chevron-down'}
+                        size={12}
+                        color={isNegative ? '#FCA5A5' : THEME_COLORS.gold}
+                      />
+                    </View>
+                  </TouchableOpacity>
+
+                  {/* Reservas Programadas */}
+                  <TouchableOpacity
+                    onPress={() => {
+                      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      router.push('/(home)/scheduled-trips' as any);
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Ver mis reservas programadas"
+                    hitSlop={{ top: 8, bottom: 8, left: 4, right: 6 }}
+                    className="w-10 h-10 rounded-2xl bg-white/[0.07] border border-white/15 items-center justify-center active:scale-95"
+                  >
+                    <Ionicons name="calendar" size={16} color={THEME_COLORS.gold} />
+                  </TouchableOpacity>
+                </View>
+              );
+            })()}
+
+            {/* Right: VIP Chauffeur Profile Avatar Capsule */}
+            <TouchableOpacity
+              onPress={() => {
+                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push('/(home)/profile' as any);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Ver perfil del conductor"
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              className="w-12 h-12 rounded-2xl bg-[#0B0C12]/95 p-0.5 items-center justify-center border border-gold/65 shadow-2xl shadow-black relative overflow-hidden active:scale-95"
+            >
+              <View className="absolute top-0 left-2.5 right-2.5 h-[1px] bg-gold/60 pointer-events-none" />
+              {user?.avatar_url ? (
+                <Image
+                  source={{ uri: user.avatar_url }}
+                  className="w-full h-full rounded-[14px]"
+                  contentFit="cover"
+                />
+              ) : (
+                <View className="w-9 h-9 rounded-xl bg-gold/20 border border-gold/35 items-center justify-center">
+                  <Text className="text-gold font-montserrat-bold text-sm">
+                    {user?.first_name?.charAt(0).toUpperCase() || 'C'}
+                  </Text>
+                </View>
+              )}
+              {/* Status Online Micro-Badge */}
+              <View
+                className={`w-3 h-3 rounded-full absolute bottom-1 right-1 border-2 border-[#0B0C12] ${
+                  isAvailable ? 'bg-emerald-400' : 'bg-zinc-500'
+                }`}
               />
-            ) : (
-              <View className="w-8 h-8 rounded-xl bg-gold/20 items-center justify-center">
-                <Text className="text-gold font-montserrat-bold text-sm">
-                  {user?.first_name?.charAt(0).toUpperCase() || 'C'}
-                </Text>
-              </View>
-            )}
-            {/* Status Online Micro-Badge */}
-            <View className="w-2.5 h-2.5 rounded-full bg-emerald-400 absolute bottom-1 right-1 border-2 border-[#13141E]" />
-          </TouchableOpacity>
-        </View>
+            </TouchableOpacity>
+          </View>
 
         )}
 

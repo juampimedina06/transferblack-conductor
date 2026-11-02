@@ -22,9 +22,11 @@ import {
   calculateTripDistanceKm,
   getPaymentMethodInfo,
 } from '../../../core/trip/interface/trip.interface';
+import { THEME_COLORS } from '../../../core/constants/theme';
 import { useOfferTimer } from '../../trip/hooks/useOfferTimer';
 import { CountdownRing } from './ui/CountdownRing';
 import { getTripOfferTheme } from './theme/tripOfferTheme';
+import { AmbientGlow } from '../ui/AmbientGlow';
 
 export interface TripOfferCardProps {
   offer: TripOfferPayload;
@@ -38,9 +40,8 @@ export interface TripOfferCardProps {
 }
 
 /**
- * Tarjeta de nuevo viaje entrante:
- * Diseño limpio, minimalista, en blanco de alto contraste sobre Liquid Glass.
- * Sin mini-tarjetas anidadas; información crucial (tarifa, tiempo y direcciones) grande y legible al conducir.
+ * Tarjeta Ejecutiva de Solicitud de Viaje (TransferBlack VIP):
+ * Estética Liquid Glass en Obsidiana y Oro Champán con jerarquía de alto contraste para conducción.
  */
 export const TripOfferCard: React.FC<TripOfferCardProps> = ({
   offer,
@@ -55,21 +56,20 @@ export const TripOfferCard: React.FC<TripOfferCardProps> = ({
   const baseTheme = useMemo(() => getTripOfferTheme(true), []);
   const reduceMotion = useReducedMotion();
 
-  // Tema en blanco puro para el anillo de cuenta regresiva
-  const whiteTheme = useMemo(
+  // Tema en Oro Champán para el anillo de cuenta regresiva
+  const vipRingTheme = useMemo(
     () => ({
       ...baseTheme,
-      accent: '#FFFFFF',
-      urgentAccent: '#FFFFFF',
+      accent: THEME_COLORS.gold,
+      urgentAccent: '#F43F5E',
       textPrimary: '#FFFFFF',
-      textSecondary: 'rgba(255, 255, 255, 0.7)',
+      textSecondary: 'rgba(255, 255, 255, 0.8)',
       textMuted: 'rgba(255, 255, 255, 0.6)',
       textSubtle: 'rgba(255, 255, 255, 0.4)',
     }),
     [baseTheme]
   );
 
-  // Cálculo de tiempo restante
   const ttlSeconds = offer?.ttlSeconds || 25;
   const [secondsLeft, setSecondsLeft] = useState(ttlSeconds);
 
@@ -102,7 +102,6 @@ export const TripOfferCard: React.FC<TripOfferCardProps> = ({
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }, [offer?.offerId]);
 
-  // Datos del viaje
   const paymentInfo = useMemo(
     () => getPaymentMethodInfo(offer?.fare?.paymentMethod),
     [offer?.fare?.paymentMethod]
@@ -110,6 +109,10 @@ export const TripOfferCard: React.FC<TripOfferCardProps> = ({
   const totalFareAmount = useMemo(
     () => Number(offer?.fare?.totalFare || offer?.fare?.netEarnings || 0),
     [offer?.fare]
+  );
+  const netEarningsAmount = useMemo(
+    () => Number(offer?.fare?.netEarnings || Math.round(totalFareAmount * 0.8)),
+    [offer?.fare, totalFareAmount]
   );
   const isCashOffer = paymentInfo.isCash;
 
@@ -127,18 +130,24 @@ export const TripOfferCard: React.FC<TripOfferCardProps> = ({
   const pickupEta = offer?.pickup?.etaMinutes || 2;
   const pickupDistance = (offer?.pickup as any)?.distanceKm;
 
-  // Pasajero
   const isThirdParty = Boolean(offer?.third_party?.name);
   const passengerName = isThirdParty
     ? `Viaja: ${offer.third_party?.name}`
-    : offer?.passenger?.fullName || 'Pasajero VIP';
+    : offer?.passenger?.fullName || 'Pasajero Ejecutivo';
+  const passengerInitial = (
+    offer?.third_party?.name ||
+    offer?.passenger?.fullName ||
+    'P'
+  )
+    .charAt(0)
+    .toUpperCase();
   const ratingAvg = offer?.passengerRating?.average ?? offer?.passenger?.rating ?? 5.0;
 
   if (isLoading) {
     return (
       <View
         onLayout={(e) => onHeightChange?.(e.nativeEvent.layout.height)}
-        className="absolute bottom-0 left-0 right-0 w-full z-50 overflow-hidden rounded-t-[32px] border-t border-white/20 bg-[#0A0A0C]/90 px-6 pt-3"
+        className="absolute bottom-0 left-0 right-0 w-full z-50 overflow-hidden rounded-t-[32px] border-t border-gold/40 bg-[#090A0F]/95 px-6 pt-3"
         style={{ paddingBottom: Math.max(bottomInset, 24) }}
       >
         <View className="w-10 h-1 bg-white/20 rounded-full self-center mb-4" />
@@ -154,117 +163,170 @@ export const TripOfferCard: React.FC<TripOfferCardProps> = ({
       onLayout={(e) => onHeightChange?.(e.nativeEvent.layout.height)}
       entering={reduceMotion ? FadeIn : FadeInDown.springify().damping(16).mass(0.9)}
       exiting={reduceMotion ? undefined : FadeOutDown.duration(200)}
-      className="absolute bottom-0 left-0 right-0 w-full z-50 overflow-hidden rounded-t-[32px] border-t border-white/20 shadow-2xl px-6 pt-3"
-      style={{ paddingBottom: Math.max(bottomInset, 24) }}
+      className="absolute bottom-0 left-0 right-0 w-full z-50 overflow-hidden rounded-t-[34px] border-t border-gold/55 shadow-2xl px-5 pt-3"
+      style={{ paddingBottom: Math.max(bottomInset, 22) }}
     >
       {/* Capa Liquid Glass de desenfoque */}
       <BlurView
-        intensity={Platform.OS === 'ios' ? 70 : 85}
+        intensity={Platform.OS === 'ios' ? 75 : 90}
         tint="dark"
         style={StyleSheet.absoluteFill}
       />
       <View
         pointerEvents="none"
         style={StyleSheet.absoluteFill}
-        className="bg-[#0A0A0C]/90"
+        className="bg-[#090A0F]/92"
       />
 
-      {/* Resplandor especular superior */}
+      {/* Ambient Champagne Gold Glow */}
+      <AmbientGlow
+        position="top"
+        height={220}
+        opacity={isUrgent ? 0.22 : 0.18}
+        color={isUrgent ? '#F43F5E' : THEME_COLORS.gold}
+      />
+
+      {/* Resplandor especular superior en Oro */}
       <View
         pointerEvents="none"
-        className="absolute top-0 left-8 right-8 h-[1px] bg-white/35 rounded-full"
+        className="absolute top-0 left-10 right-10 h-[1.5px] bg-gold/65 rounded-full"
       />
 
-      {/* Handle indicador minimalista */}
-      <View className="w-10 h-1 rounded-full bg-white/25 self-center mb-3" />
+      {/* Handle indicador */}
+      <View className="w-11 h-1 rounded-full bg-white/25 self-center mb-3" />
 
       {/* ====================================================================
-          1. HEADER CON CUENTA REGRESIVA Y CATEGORÍA (BLANCO)
+          1. HEADER CON BADGE VIP Y ANILLO DE CUENTA REGRESIVA EN ORO
           ==================================================================== */}
-      <View className="flex-row items-center justify-between mb-2">
+      <View className="flex-row items-center justify-between mb-3">
         <View className="flex-row items-center">
-          <Text className="font-montserrat-bold text-[11px] tracking-widest text-white/70 uppercase">
-            NUEVA SOLICITUD · {offer?.passenger?.category || 'TRANSFERBLACK VIP'}
-          </Text>
-          {queueCount > 0 && (
-            <Text className="font-montserrat-semibold text-[10px] text-white/50 ml-2">
-              (+{queueCount} en cola)
+          <View className="flex-row items-center bg-gold/15 border border-gold/45 px-3 py-1 rounded-full">
+            <Ionicons name="diamond" size={11} color={THEME_COLORS.gold} />
+            <Text className="font-montserrat-bold text-[10px] tracking-widest text-gold uppercase ml-1.5">
+              {offer?.passenger?.category || 'TRANSFERBLACK VIP'}
             </Text>
+          </View>
+          {queueCount > 0 && (
+            <View className="bg-white/10 border border-white/15 px-2.5 py-1 rounded-full ml-2">
+              <Text className="font-montserrat-bold text-[10px] text-platinum">
+                +{queueCount} en espera
+              </Text>
+            </View>
           )}
         </View>
 
         <CountdownRing
-          theme={whiteTheme}
+          theme={vipRingTheme}
           progress={progress}
           secondsLeft={remainingSeconds}
-          size={38}
-          strokeWidth={3}
+          size={40}
+          strokeWidth={3.5}
           isUrgent={isUrgent}
         />
       </View>
 
       {/* ====================================================================
-          2. TARIFA PROTAGONISTA ENORME (BLANCO PURO)
+          2. TARIFA PROTAGONISTA Y MODALIDAD DE COBRO
           ==================================================================== */}
-      <View className="mb-3">
-        <Text
-          className="font-montserrat-bold text-5xl text-white tracking-tight"
-          style={{ fontVariant: ['tabular-nums'] }}
-        >
-          ${totalFareAmount.toLocaleString('es-AR', { minimumFractionDigits: 0 })}
-        </Text>
-        <Text className="font-montserrat-semibold text-xs text-white/60 tracking-wider uppercase mt-1">
-          {isCashOffer ? 'Cobro en efectivo al pasajero' : 'Pago electrónico acreditado'}
-        </Text>
+      <View className="flex-row items-end justify-between mb-3.5">
+        <View className="flex-1 mr-2">
+          <Text className="font-montserrat-bold text-[10px] tracking-widest text-ash uppercase mb-0.5">
+            VALOR DEL SERVICIO
+          </Text>
+          <Text
+            className="font-montserrat-bold text-5xl text-white tracking-tight"
+            style={{ fontVariant: ['tabular-nums'] }}
+          >
+            ${totalFareAmount.toLocaleString('es-AR', { minimumFractionDigits: 0 })}
+          </Text>
+        </View>
+
+        <View className="items-end">
+          <View
+            className={`flex-row items-center px-3 py-1.5 rounded-xl border mb-1 ${
+              isCashOffer
+                ? 'bg-emerald-500/15 border-emerald-400/40'
+                : 'bg-gold/15 border-gold/40'
+            }`}
+          >
+            <Ionicons
+              name={paymentInfo.icon}
+              size={14}
+              color={isCashOffer ? '#34D399' : THEME_COLORS.gold}
+            />
+            <Text
+              className={`font-montserrat-bold text-[11px] uppercase tracking-wider ml-1.5 ${
+                isCashOffer ? 'text-emerald-400' : 'text-gold'
+              }`}
+            >
+              {isCashOffer ? 'Efectivo' : 'Pago Digital'}
+            </Text>
+          </View>
+          {netEarningsAmount > 0 && (
+            <Text
+              className="text-gold/90 font-montserrat-semibold text-[11px]"
+              style={{ fontVariant: ['tabular-nums'] }}
+            >
+              Neto: ${netEarningsAmount.toLocaleString('es-AR')}
+            </Text>
+          )}
+        </View>
       </View>
 
       {/* ====================================================================
-          3. MÉTRICAS CLAVE GRANDES: TIEMPO Y DISTANCIA (BLANCO)
+          3. CÁMARAS GEMELAS DE TELEMETRÍA (RETIRO Y RECORRIDO)
           ==================================================================== */}
-      <View className="flex-row items-center justify-between py-2.5 border-t border-white/10 mb-2">
-        <View className="flex-1">
-          <Text className="font-montserrat-bold text-[10px] tracking-wider text-white/50 uppercase mb-0.5">
-            Punto de retiro
-          </Text>
+      <View className="flex-row items-center gap-2.5 mb-3">
+        <View className="flex-1 bg-white/[0.04] border border-white/10 rounded-2xl p-3">
+          <View className="flex-row items-center mb-1">
+            <Ionicons name="navigate-circle" size={14} color="#34D399" />
+            <Text className="font-montserrat-bold text-[9px] tracking-widest text-emerald-400 uppercase ml-1">
+              PUNTO DE RETIRO
+            </Text>
+          </View>
           <Text className="font-montserrat-bold text-xl text-white">
             ~{pickupEta} min
           </Text>
-          <Text className="font-montserrat text-xs text-white/60 mt-0.5">
-            {pickupDistance ? `A ${pickupDistance} km de vos` : 'Llegada inmediata'}
+          <Text className="font-montserrat text-[11px] text-ash mt-0.5" numberOfLines={1}>
+            {pickupDistance ? `A ${pickupDistance} km de tu posición` : 'Cercano a tu ubicación'}
           </Text>
         </View>
 
-        <View className="w-[1px] h-9 bg-white/15 mx-4" />
-
-        <View className="flex-1">
-          <Text className="font-montserrat-bold text-[10px] tracking-wider text-white/50 uppercase mb-0.5">
-            Viaje estimado
-          </Text>
+        <View className="flex-1 bg-white/[0.04] border border-white/10 rounded-2xl p-3">
+          <View className="flex-row items-center mb-1">
+            <Ionicons name="time" size={14} color={THEME_COLORS.gold} />
+            <Text className="font-montserrat-bold text-[9px] tracking-widest text-gold uppercase ml-1">
+              VIAJE ESTIMADO
+            </Text>
+          </View>
           <Text className="font-montserrat-bold text-xl text-white">
             ~{durationMin} min
           </Text>
-          <Text className="font-montserrat text-xs text-white/60 mt-0.5">
-            Recorrido de {tripDistanceKm}
+          <Text className="font-montserrat text-[11px] text-ash mt-0.5" numberOfLines={1}>
+            Trayecto de {tripDistanceKm}
           </Text>
         </View>
       </View>
 
       {/* ====================================================================
-          4. RECORRIDO (ORIGEN Y DESTINO EN TEXTO GRANDE Y LEGIBLE)
+          4. ITINERARIO CONECTADO EN CÁMARA GLASS
           ==================================================================== */}
-      <View className="py-2.5 border-t border-white/10 mb-2.5">
+      <View className="bg-white/[0.03] border border-white/10 rounded-2xl p-3.5 mb-3">
         {/* Origen */}
-        <View className="flex-row items-center mb-2.5">
-          <View className="w-6 h-6 rounded-full bg-white/15 border border-white/40 items-center justify-center mr-3">
-            <View className="w-2 h-2 rounded-full bg-white" />
+        <View className="flex-row items-start">
+          <View className="items-center mr-3 pt-0.5">
+            <View className="w-6 h-6 rounded-full bg-emerald-500/15 border border-emerald-400/50 items-center justify-center">
+              <View className="w-2 h-2 rounded-full bg-emerald-400" />
+            </View>
+            <View className="w-[1.5px] h-5 bg-white/15 my-0.5" />
           </View>
-          <View className="flex-1">
-            <Text className="font-montserrat-bold text-[9px] uppercase tracking-wider text-white/50">
-              Retiro
+          <View className="flex-1 pb-1.5">
+            <Text className="font-montserrat-bold text-[9px] uppercase tracking-widest text-emerald-400/90">
+              ORIGEN DE RETIRO
             </Text>
             <Text
               numberOfLines={1}
-              className="font-montserrat-semibold text-sm text-white"
+              className="font-montserrat-semibold text-sm text-white mt-0.5"
             >
               {offer?.pickup?.address || 'Punto de encuentro fijado'}
             </Text>
@@ -272,17 +334,19 @@ export const TripOfferCard: React.FC<TripOfferCardProps> = ({
         </View>
 
         {/* Destino */}
-        <View className="flex-row items-center">
-          <View className="w-6 h-6 rounded-full bg-white/15 border border-white/40 items-center justify-center mr-3">
-            <Ionicons name="location" size={13} color="#FFFFFF" />
+        <View className="flex-row items-start">
+          <View className="items-center mr-3 pt-0.5">
+            <View className="w-6 h-6 rounded-full bg-gold/15 border border-gold/50 items-center justify-center">
+              <Ionicons name="location" size={13} color={THEME_COLORS.gold} />
+            </View>
           </View>
           <View className="flex-1">
-            <Text className="font-montserrat-bold text-[9px] uppercase tracking-wider text-white/50">
-              Destino
+            <Text className="font-montserrat-bold text-[9px] uppercase tracking-widest text-gold/90">
+              DESTINO FINAL
             </Text>
             <Text
               numberOfLines={1}
-              className="font-montserrat-semibold text-sm text-white"
+              className="font-montserrat-semibold text-sm text-white mt-0.5"
             >
               {offer?.dropoff?.address || 'Destino fijado por el pasajero'}
             </Text>
@@ -291,32 +355,39 @@ export const TripOfferCard: React.FC<TripOfferCardProps> = ({
       </View>
 
       {/* ====================================================================
-          5. PASAJERO (DATOS COMPACTOS Y LIMPIOS)
+          5. PASAJERO EJECUTIVO
           ==================================================================== */}
-      <View className="flex-row items-center justify-between py-2 border-t border-white/10 mb-4">
+      <View className="flex-row items-center justify-between px-1 mb-4">
         <View className="flex-row items-center flex-1 mr-2">
-          <Text numberOfLines={1} className="font-montserrat-medium text-xs text-white mr-2">
+          <View className="w-8 h-8 rounded-full bg-gold/15 border border-gold/45 items-center justify-center mr-2.5">
+            <Text className="text-gold font-montserrat-bold text-xs">
+              {passengerInitial}
+            </Text>
+          </View>
+          <Text numberOfLines={1} className="font-montserrat-bold text-xs text-white mr-2 flex-shrink">
             {passengerName}
           </Text>
-          <View className="flex-row items-center bg-white/10 px-2 py-0.5 rounded">
-            <Ionicons name="star" size={11} color="#FFFFFF" />
-            <Text className="font-montserrat-bold text-[10px] text-white ml-1">
+          <View className="flex-row items-center bg-gold/15 border border-gold/35 px-2 py-0.5 rounded-full">
+            <Ionicons name="star" size={10} color={THEME_COLORS.gold} />
+            <Text className="font-montserrat-bold text-[10px] text-gold ml-1">
               {Number(ratingAvg).toFixed(1)}
             </Text>
           </View>
         </View>
 
-        <View className="flex-row items-center">
-          <Ionicons name="shield-checkmark" size={12} color="#FFFFFF" />
-          <Text className="font-montserrat text-[10px] text-white/70 ml-1">Verificado</Text>
+        <View className="flex-row items-center bg-white/[0.05] border border-white/10 px-2.5 py-1 rounded-full">
+          <Ionicons name="shield-checkmark" size={11} color={THEME_COLORS.gold} />
+          <Text className="font-montserrat-semibold text-[10px] text-platinum ml-1">
+            Verificado
+          </Text>
         </View>
       </View>
 
       {/* ====================================================================
-          6. ACCIONES: BOTÓN ACEPTAR ENORME Y RECHAZAR ACCESIBLE
+          6. ACCIONES: BOTÓN ACEPTAR EN ORO CHAMPÁN + RECHAZAR
           ==================================================================== */}
       <View className="flex-row items-center gap-3">
-        {/* Botón Aceptar (Protagonista blanco puro de alto contraste) */}
+        {/* Botón Aceptar en Oro Champán */}
         <TouchableOpacity
           onPress={() => {
             void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -326,20 +397,21 @@ export const TripOfferCard: React.FC<TripOfferCardProps> = ({
           activeOpacity={0.85}
           accessibilityRole="button"
           accessibilityLabel={`Aceptar viaje por $${totalFareAmount.toLocaleString('es-AR')}`}
-          className="flex-1 h-14 rounded-2xl bg-white items-center justify-center active:opacity-90 shadow-xl"
+          className="flex-1 h-14 rounded-2xl bg-gold items-center justify-center active:opacity-90 shadow-xl shadow-gold/30 relative overflow-hidden"
         >
+          <View className="absolute top-0 left-4 right-4 h-[1px] bg-white/45 pointer-events-none" />
           {isAccepting ? (
-            <ActivityIndicator color="#000000" size="small" />
+            <ActivityIndicator color="#0A0A0C" size="small" />
           ) : (
             <View className="flex-row items-center">
               <Ionicons
                 name="checkmark-circle"
-                size={20}
-                color="#000000"
+                size={21}
+                color="#0A0A0C"
                 style={{ marginRight: 8 }}
               />
-              <Text className="font-montserrat-bold text-sm text-black tracking-widest uppercase">
-                ACEPTAR VIAJE
+              <Text className="font-montserrat-bold text-sm text-obsidian tracking-widest uppercase">
+                ACEPTAR VIAJE VIP
               </Text>
             </View>
           )}
@@ -352,11 +424,11 @@ export const TripOfferCard: React.FC<TripOfferCardProps> = ({
             onReject();
           }}
           disabled={isAccepting}
-          activeOpacity={0.7}
+          activeOpacity={0.75}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           accessibilityRole="button"
           accessibilityLabel="Rechazar y descartar oferta"
-          className="w-14 h-14 rounded-2xl bg-white/10 border border-white/20 items-center justify-center active:bg-white/20"
+          className="w-14 h-14 rounded-2xl bg-white/[0.08] border border-white/20 items-center justify-center active:bg-white/15"
         >
           <Ionicons name="close" size={24} color="#FFFFFF" />
         </TouchableOpacity>

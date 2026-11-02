@@ -20,8 +20,10 @@ import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Trip, getPaymentMethodInfo } from '../../../core/trip/interface/trip.interface';
+import { THEME_COLORS } from '../../../core/constants/theme';
 import { SlideToComplete } from './ui/SlideToComplete';
 import { getTripOfferTheme } from './theme/tripOfferTheme';
+import { AmbientGlow } from '../ui/AmbientGlow';
 
 export type RideCardStatus =
   | 'SEARCHING'
@@ -48,7 +50,7 @@ export interface RideCardProps {
   pinDigits?: string[];
   isPinError?: boolean;
   onPinChange?: (digits: string[]) => void;
-  progressPercent?: number; // 0 a 100
+  progressPercent?: number;
   waitingTimeText?: string;
   isCourtesyExpired?: boolean;
   isLoading?: boolean;
@@ -67,10 +69,9 @@ export interface RideCardProps {
 }
 
 // ============================================================================
-// SUB-COMPONENTES REUTILIZABLES (NATIVEWIND / TAILWIND)
+// SUB-COMPONENTES REUTILIZABLES (TRANSFERBLACK VIP COCKPIT)
 // ============================================================================
 
-/** Badge de estado sutil con punto pulsante */
 interface StatusBadgeProps {
   label: string;
   variant?: 'gold' | 'emerald' | 'rose' | 'white';
@@ -79,33 +80,33 @@ interface StatusBadgeProps {
 
 export const StatusBadge: React.FC<StatusBadgeProps> = ({
   label,
-  variant = 'white',
+  variant = 'gold',
   pulse = true,
 }) => {
   const containerClasses = {
     white: 'border-white/25 bg-white/10',
-    gold: 'border-white/25 bg-white/10',
-    emerald: 'border-emerald-500/40 bg-emerald-500/15',
-    rose: 'border-rose-500/40 bg-rose-500/15',
+    gold: 'border-gold/45 bg-gold/15',
+    emerald: 'border-emerald-500/45 bg-emerald-500/15',
+    rose: 'border-rose-500/45 bg-rose-500/15',
   }[variant];
 
   const dotClasses = {
     white: 'bg-white',
-    gold: 'bg-white',
+    gold: 'bg-gold',
     emerald: 'bg-emerald-400',
     rose: 'bg-rose-400',
   }[variant];
 
   const textClasses = {
     white: 'text-white',
-    gold: 'text-white',
+    gold: 'text-gold',
     emerald: 'text-emerald-400',
     rose: 'text-rose-400',
   }[variant];
 
   return (
     <View
-      className={`flex-row items-center px-3 py-1 rounded-full border ${containerClasses}`}
+      className={`flex-row items-center px-3 py-1.5 rounded-full border ${containerClasses}`}
       accessibilityRole="text"
     >
       {pulse && <View className={`w-1.5 h-1.5 rounded-full mr-2 ${dotClasses}`} />}
@@ -116,7 +117,6 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   );
 };
 
-/** Fila con datos del pasajero, calificación y accesos de contacto estilo TripOfferCard */
 interface PassengerProfileRowProps {
   name: string;
   rating?: string | number;
@@ -151,29 +151,31 @@ export const PassengerProfileRow: React.FC<PassengerProfileRowProps> = ({
   };
 
   return (
-    <View className="flex-row items-center justify-between py-2 mb-3 border-b border-white/10 pb-3">
+    <View className="flex-row items-center justify-between bg-white/[0.04] border border-white/10 rounded-2xl p-3 mb-3">
       <View className="flex-row items-center flex-1 mr-2.5">
-        <View className="w-11 h-11 rounded-full bg-white/15 border border-white/30 items-center justify-center mr-3">
-          <Text className="font-montserrat-bold text-base text-white">{avatarLetter}</Text>
+        <View className="w-12 h-12 rounded-2xl bg-gold/15 border border-gold/45 items-center justify-center mr-3">
+          <Text className="font-montserrat-bold text-base text-gold">{avatarLetter}</Text>
         </View>
 
         <View className="flex-1">
-          <Text numberOfLines={1} className="font-montserrat-bold text-base text-white mb-0.5">
+          <Text numberOfLines={1} className="font-montserrat-bold text-base text-white mb-1">
             {name}
           </Text>
           <View className="flex-row items-center">
-            <View className="flex-row items-center bg-white/10 px-2 py-0.5 rounded mr-2 border border-white/10">
-              <Ionicons name="star" size={11} color="#FFFFFF" />
-              <Text className="font-montserrat-bold text-[10px] text-white ml-1">{rating}</Text>
+            <View className="flex-row items-center bg-gold/15 border border-gold/35 px-2 py-0.5 rounded-md mr-2">
+              <Ionicons name="star" size={10} color={THEME_COLORS.gold} />
+              <Text className="font-montserrat-bold text-[10px] text-gold ml-1">{rating}</Text>
             </View>
             {preferences.length > 0 ? (
-              <Text numberOfLines={1} className="font-montserrat text-xs text-white/60 flex-1">
+              <Text numberOfLines={1} className="font-montserrat text-xs text-ash flex-1">
                 · {preferences.slice(0, 2).join(', ')}
               </Text>
             ) : (
               <View className="flex-row items-center">
-                <Ionicons name="shield-checkmark" size={11} color="#FFFFFF" />
-                <Text className="font-montserrat text-[10px] text-white/70 ml-1">Verificado</Text>
+                <Ionicons name="shield-checkmark" size={11} color={THEME_COLORS.gold} />
+                <Text className="font-montserrat-semibold text-[10px] text-platinum ml-1">
+                  Pasajero VIP
+                </Text>
               </View>
             )}
           </View>
@@ -188,7 +190,7 @@ export const PassengerProfileRow: React.FC<PassengerProfileRowProps> = ({
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             accessibilityRole="button"
             accessibilityLabel="Chatear con el pasajero"
-            className="w-11 h-11 rounded-2xl bg-white/10 border border-white/20 items-center justify-center active:bg-white/20"
+            className="w-11 h-11 rounded-2xl bg-white/[0.08] border border-white/20 items-center justify-center active:bg-white/15"
           >
             <Ionicons name="chatbubble-ellipses" size={18} color="#FFFFFF" />
           </TouchableOpacity>
@@ -200,16 +202,15 @@ export const PassengerProfileRow: React.FC<PassengerProfileRowProps> = ({
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           accessibilityRole="button"
           accessibilityLabel="Llamar al pasajero"
-          className="w-11 h-11 rounded-2xl bg-white/10 border border-white/20 items-center justify-center active:bg-white/20"
+          className="w-11 h-11 rounded-2xl bg-gold/15 border border-gold/45 items-center justify-center active:opacity-80"
         >
-          <Ionicons name="call" size={18} color="#FFFFFF" />
+          <Ionicons name="call" size={18} color={THEME_COLORS.gold} />
         </TouchableOpacity>
       </View>
     </View>
   );
 };
 
-/** Fila de Dirección origen o destino con diseño limpio idéntico a TripOfferCard */
 interface RouteAddressRowProps {
   type: 'pickup' | 'dropoff';
   address: string;
@@ -226,18 +227,28 @@ export const RouteAddressRow: React.FC<RouteAddressRowProps> = ({
   const isPickup = type === 'pickup';
 
   return (
-    <View className="flex-row items-center py-2 mb-2">
-      <View className="w-6 h-6 rounded-full bg-white/15 border border-white/40 items-center justify-center mr-3">
+    <View className="flex-row items-center bg-white/[0.03] border border-white/10 rounded-2xl px-3.5 py-3 mb-3">
+      <View
+        className={`w-8 h-8 rounded-xl items-center justify-center mr-3 border ${
+          isPickup
+            ? 'bg-emerald-500/15 border-emerald-400/50'
+            : 'bg-gold/15 border-gold/50'
+        }`}
+      >
         {isPickup ? (
-          <View className="w-2 h-2 rounded-full bg-white" />
+          <View className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
         ) : (
-          <Ionicons name="location" size={13} color="#FFFFFF" />
+          <Ionicons name="location" size={15} color={THEME_COLORS.gold} />
         )}
       </View>
 
       <View className="flex-1">
-        <Text className="font-montserrat-bold text-[9px] tracking-wider text-white/50 mb-0.5 uppercase">
-          {isPickup ? 'Punto de retiro' : 'Destino final'}
+        <Text
+          className={`font-montserrat-bold text-[9px] tracking-widest mb-0.5 uppercase ${
+            isPickup ? 'text-emerald-400' : 'text-gold'
+          }`}
+        >
+          {isPickup ? 'PUNTO DE RETIRO' : 'DESTINO EJECUTIVO'}
         </Text>
         <Text
           numberOfLines={isSingleLine ? 1 : 2}
@@ -246,7 +257,7 @@ export const RouteAddressRow: React.FC<RouteAddressRowProps> = ({
           {address || (isPickup ? 'Punto de encuentro' : 'Destino fijado')}
         </Text>
         {subtitle && (
-          <Text numberOfLines={1} className="font-montserrat text-xs text-white/60 mt-0.5">
+          <Text numberOfLines={1} className="font-montserrat text-xs text-ash mt-0.5">
             {subtitle}
           </Text>
         )}
@@ -255,7 +266,6 @@ export const RouteAddressRow: React.FC<RouteAddressRowProps> = ({
   );
 };
 
-/** Resumen de cobro final con monto destacado en grande y ganancia más chica */
 interface FareReceiptWidgetProps {
   amount: number;
   earningsAmount?: number;
@@ -272,15 +282,14 @@ export const FareReceiptWidget: React.FC<FareReceiptWidgetProps> = ({
   onRatingScoreChange,
 }) => {
   const methodInfo = getPaymentMethodInfo(paymentMethod);
-  const methodColor = methodInfo.isCash ? '#10B981' : '#FFFFFF';
   const netEarnings = earningsAmount ?? Math.round(amount * 0.8);
 
   return (
-    <View className="py-2 mb-3 border-b border-white/10 pb-3.5">
-      <View className="flex-row justify-between items-start mb-3">
+    <View className="bg-white/[0.04] border border-gold/30 rounded-3xl p-4 mb-3">
+      <View className="flex-row justify-between items-start mb-3 pb-3 border-b border-white/10">
         <View className="flex-1 mr-3">
-          <Text className="font-montserrat-bold text-[10px] tracking-wider text-white/50 uppercase mb-0.5">
-            {methodInfo.isCash ? 'Total a cobrar al pasajero' : 'Total del viaje'}
+          <Text className="font-montserrat-bold text-[10px] tracking-widest text-gold uppercase mb-1">
+            {methodInfo.isCash ? 'TOTAL A COBRAR AL PASAJERO' : 'VALOR TOTAL DEL SERVICIO'}
           </Text>
           <Text
             className="font-montserrat-bold text-5xl text-white tracking-tight"
@@ -288,27 +297,43 @@ export const FareReceiptWidget: React.FC<FareReceiptWidgetProps> = ({
           >
             ${amount.toLocaleString('es-AR', { minimumFractionDigits: 0 })}
           </Text>
-          <Text className="font-montserrat-semibold text-xs text-white/70 mt-1">
-            Tu ganancia neta: ${netEarnings.toLocaleString('es-AR', { minimumFractionDigits: 0 })}
-          </Text>
+          <View className="flex-row items-center mt-2">
+            <View className="bg-gold/15 border border-gold/35 px-2.5 py-1 rounded-lg">
+              <Text className="font-montserrat-bold text-xs text-gold">
+                Tu ganancia neta: ${netEarnings.toLocaleString('es-AR', { minimumFractionDigits: 0 })}
+              </Text>
+            </View>
+          </View>
         </View>
 
-        <View className="flex-row items-center bg-white/10 px-3 py-1.5 rounded-xl border border-white/15 gap-1.5 mt-1">
-          <Ionicons name={methodInfo.icon} size={15} color={methodColor} />
+        <View
+          className={`flex-row items-center px-3 py-1.5 rounded-xl border gap-1.5 mt-1 ${
+            methodInfo.isCash
+              ? 'bg-emerald-500/15 border-emerald-400/40'
+              : 'bg-gold/15 border-gold/40'
+          }`}
+        >
+          <Ionicons
+            name={methodInfo.icon}
+            size={15}
+            color={methodInfo.isCash ? '#34D399' : THEME_COLORS.gold}
+          />
           <Text
-            className="font-montserrat-semibold text-xs text-white"
+            className={`font-montserrat-bold text-xs ${
+              methodInfo.isCash ? 'text-emerald-400' : 'text-gold'
+            }`}
           >
             {methodInfo.label}
           </Text>
         </View>
       </View>
 
-      {/* Calificación al pasajero */}
-      <View className="pt-1">
-        <Text className="font-montserrat-medium text-xs text-white/70 mb-2">
-          Calificá la experiencia del pasajero:
+      {/* Calificación al pasajero en Oro Champán */}
+      <View className="items-center pt-1">
+        <Text className="font-montserrat-semibold text-xs text-platinum mb-2">
+          Calificá la experiencia con el pasajero:
         </Text>
-        <View className="flex-row gap-2.5">
+        <View className="flex-row gap-3">
           {[1, 2, 3, 4, 5].map((star) => (
             <TouchableOpacity
               key={star}
@@ -322,8 +347,8 @@ export const FareReceiptWidget: React.FC<FareReceiptWidgetProps> = ({
             >
               <Ionicons
                 name={star <= (ratingScore || 5) ? 'star' : 'star-outline'}
-                size={26}
-                color="#FFFFFF"
+                size={28}
+                color={THEME_COLORS.gold}
               />
             </TouchableOpacity>
           ))}
@@ -334,7 +359,7 @@ export const FareReceiptWidget: React.FC<FareReceiptWidgetProps> = ({
 };
 
 // ============================================================================
-// COMPONENTE PRINCIPAL UNIFICADO: RideCard (CardContainer)
+// COMPONENTE PRINCIPAL UNIFICADO: RideCard (Cockpit Inferior VIP)
 // ============================================================================
 
 export const RideCard: React.FC<RideCardProps> = ({
@@ -377,8 +402,7 @@ export const RideCard: React.FC<RideCardProps> = ({
   const screenHeight = Dimensions.get('window').height;
   const theme = getTripOfferTheme(true);
 
-  // Derivación de datos combinando props directas o del objeto trip
-  const displayName = passengerName || trip?.passenger?.fullName || 'Pasajero';
+  const displayName = passengerName || trip?.passenger?.fullName || 'Pasajero Ejecutivo';
   const displayRating = passengerRating || trip?.passenger?.rating || '5.0';
   const displayPhone = passengerPhone || trip?.passenger?.phone || '';
   const displayPickup = pickupAddress || trip?.pickup?.address || 'Punto de encuentro';
@@ -393,48 +417,64 @@ export const RideCard: React.FC<RideCardProps> = ({
   const isPinComplete = pinDigits.every((d) => d.length > 0);
   const canStart = !isPinRequired || isPinComplete;
 
+  const glowColor =
+    status === 'ARRIVING' && isCourtesyExpired
+      ? '#F43F5E'
+      : status === 'IN_PROGRESS'
+      ? '#10B981'
+      : THEME_COLORS.gold;
+
   return (
     <Animated.View
       layout={LinearTransition.springify().damping(18).stiffness(120)}
-      className="w-full overflow-hidden rounded-t-[32px] rounded-b-none px-5 pt-3.5 border-t border-white/20 shadow-2xl"
-      style={{ paddingBottom: Math.max(effectiveBottomInset, 24) }}
+      className="w-full overflow-hidden rounded-t-[34px] rounded-b-none px-5 pt-3 border-t border-gold/45 shadow-2xl"
+      style={{ paddingBottom: Math.max(effectiveBottomInset, 22) }}
       accessible={true}
       accessibilityRole="summary"
     >
-      {/* Capa de desenfoque Liquid Glass (frosted glass sobre el mapa) */}
+      {/* Capa de desenfoque Liquid Glass */}
       <BlurView
-        intensity={Platform.OS === 'ios' ? 65 : 80}
+        intensity={Platform.OS === 'ios' ? 75 : 90}
         tint="dark"
         style={StyleSheet.absoluteFill}
       />
 
-      {/* Tinte translúcido Liquid Glass para contraste y legibilidad óptima */}
+      {/* Tinte Obsidiana profundo */}
       <View
         pointerEvents="none"
         style={StyleSheet.absoluteFill}
-        className="bg-[#0A0A0C]/85"
+        className="bg-[#090A0F]/92"
       />
 
-      {/* Resplandor especular superior característico de Liquid Glass */}
+      {/* Ambient Glow Superior */}
+      <AmbientGlow
+        position="top"
+        height={200}
+        opacity={0.17}
+        color={glowColor}
+      />
+
+      {/* Resplandor especular superior en Oro */}
       <View
         pointerEvents="none"
-        className="absolute top-0 left-8 right-8 h-[1px] bg-white/35 rounded-full"
+        className="absolute top-0 left-10 right-10 h-[1.5px] bg-gold/60 rounded-full"
       />
 
       {/* Handle indicador de Bottom Sheet */}
       <View className="items-center pb-2.5">
-        <View className="w-10 h-1 rounded-full bg-white/25" />
+        <View className="w-11 h-1 rounded-full bg-white/25" />
       </View>
+
       {/* ====================================================================
-          1. HEADER UNIFICADO (Badge de Estado + ETA / Distancia destacada)
+          1. HEADER UNIFICADO (Badge de Estado + Telemetría ETA / Distancia)
           ==================================================================== */}
-      <View className="flex-row items-center justify-between mb-3.5">
+      <View className="flex-row items-center justify-between mb-3">
         <View className="flex-1 items-start">
           {status === 'SEARCHING' && (
-            <StatusBadge label="BUSCANDO VIAJE" variant="white" />
+            <StatusBadge label="BUSCANDO VIAJE" variant="gold" />
           )}
           {status === 'DRIVER_ASSIGNED' && (
-            <StatusBadge label="EN CAMINO AL RETIRO" variant="white" />
+            <StatusBadge label="EN CAMINO AL RETIRO" variant="gold" />
           )}
           {status === 'ARRIVING' && (
             <StatusBadge
@@ -443,22 +483,23 @@ export const RideCard: React.FC<RideCardProps> = ({
             />
           )}
           {status === 'IN_PROGRESS' && (
-            <StatusBadge label="VIAJE EN CURSO" variant="emerald" />
+            <StatusBadge label="TRASLADO VIP EN CURSO" variant="emerald" />
           )}
           {status === 'COMPLETED' && (
-            <StatusBadge label="VIAJE FINALIZADO" variant="white" pulse={false} />
+            <StatusBadge label="SERVICIO FINALIZADO" variant="gold" pulse={false} />
           )}
         </View>
 
         {(displayEta || displayDistance) &&
           status !== 'COMPLETED' &&
           status !== 'IN_PROGRESS' && (
-          <View className="flex-row items-center bg-white/10 px-3 py-1 rounded-full border border-white/15">
+          <View className="flex-row items-center bg-gold/15 px-3 py-1.5 rounded-full border border-gold/40">
+            <Ionicons name="time-outline" size={13} color={THEME_COLORS.gold} style={{ marginRight: 4 }} />
             {displayEta && (
-              <Text className="font-montserrat-bold text-xs text-white">{displayEta}</Text>
+              <Text className="font-montserrat-bold text-xs text-gold">{displayEta}</Text>
             )}
             {displayDistance && (
-              <Text className="font-montserrat-medium text-[11px] text-white/60">
+              <Text className="font-montserrat-semibold text-[11px] text-platinum">
                 {' '}· {displayDistance}
               </Text>
             )}
@@ -467,10 +508,10 @@ export const RideCard: React.FC<RideCardProps> = ({
       </View>
 
       {/* ====================================================================
-          2. CUERPO DINÁMICO SEGÚN ESTADO (Con transiciones Fade)
+          2. CUERPO DINÁMICO SEGÚN ESTADO
           ==================================================================== */}
 
-      {/* ESTADO 1: SEARCHING (Buscando viaje / esperando confirmación) */}
+      {/* ESTADO 1: SEARCHING */}
       {status === 'SEARCHING' && (
         <Animated.View
           entering={FadeIn.duration(200)}
@@ -478,9 +519,9 @@ export const RideCard: React.FC<RideCardProps> = ({
           className="w-full"
         >
           <View className="flex-row items-center py-2 mb-3 border-b border-white/10 pb-3">
-            <ActivityIndicator size="small" color="#FFFFFF" />
-            <Text className="font-montserrat-medium text-xs text-white/80 ml-3 flex-1">
-              Buscando mejores solicitudes en tu zona...
+            <ActivityIndicator size="small" color={THEME_COLORS.gold} />
+            <Text className="font-montserrat-medium text-xs text-platinum ml-3 flex-1">
+              Buscando solicitudes prioritarias en tu zona...
             </Text>
           </View>
 
@@ -529,7 +570,7 @@ export const RideCard: React.FC<RideCardProps> = ({
             subtitle={displayEta ? `Tiempo estimado de llegada: ${displayEta}` : undefined}
           />
 
-          <View className="w-full mt-2 gap-2">
+          <View className="w-full mt-1 gap-2">
             <TouchableOpacity
               onPress={() => {
                 void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -539,19 +580,20 @@ export const RideCard: React.FC<RideCardProps> = ({
               activeOpacity={0.85}
               accessibilityRole="button"
               accessibilityLabel="Notificar llegada al punto de encuentro"
-              className="w-full h-14 rounded-2xl bg-white items-center justify-center active:opacity-90 shadow-xl"
+              className="w-full h-14 rounded-2xl bg-gold items-center justify-center active:opacity-90 shadow-xl shadow-gold/30 relative overflow-hidden"
             >
+              <View className="absolute top-0 left-6 right-6 h-[1px] bg-white/40 pointer-events-none" />
               {isLoading ? (
-                <ActivityIndicator size="small" color="#000000" />
+                <ActivityIndicator size="small" color="#0A0A0C" />
               ) : (
                 <View className="flex-row items-center">
                   <Ionicons
                     name="checkmark-circle"
-                    size={19}
-                    color="#000000"
+                    size={20}
+                    color="#0A0A0C"
                     style={{ marginRight: 8 }}
                   />
-                  <Text className="font-montserrat-bold text-sm text-black tracking-widest uppercase">
+                  <Text className="font-montserrat-bold text-sm text-obsidian tracking-widest uppercase">
                     NOTIFICAR LLEGADA AL RETIRO
                   </Text>
                 </View>
@@ -566,7 +608,7 @@ export const RideCard: React.FC<RideCardProps> = ({
                 accessibilityLabel="Cancelar viaje asignado"
                 className="items-center justify-center py-2"
               >
-                <Text className="font-montserrat-medium text-xs text-white/50">
+                <Text className="font-montserrat-medium text-xs text-ash">
                   Cancelar viaje
                 </Text>
               </TouchableOpacity>
@@ -591,23 +633,30 @@ export const RideCard: React.FC<RideCardProps> = ({
             onChat={onChat}
           />
 
-          {/* Cronómetro de Cortesía integrado limpiamente en dark glass */}
-          <View className="flex-row items-center justify-between py-2.5 px-3.5 rounded-2xl bg-white/10 border border-white/15 mb-3">
+          {/* Cronómetro de Cortesía */}
+          <View
+            className={`flex-row items-center justify-between py-3 px-4 rounded-2xl border mb-3 ${
+              isCourtesyExpired
+                ? 'bg-rose-500/15 border-rose-500/40'
+                : 'bg-gold/10 border-gold/35'
+            }`}
+          >
             <View className="flex-row items-center">
               <Ionicons
                 name="timer-outline"
-                size={16}
-                color={isCourtesyExpired ? '#F43F5E' : '#FFFFFF'}
+                size={17}
+                color={isCourtesyExpired ? '#F43F5E' : THEME_COLORS.gold}
               />
               <Text
-                className={`font-montserrat-semibold text-xs ml-2 ${
-                  isCourtesyExpired ? 'text-rose-400' : 'text-white'
+                className={`font-montserrat-bold text-xs ml-2 ${
+                  isCourtesyExpired ? 'text-rose-400' : 'text-gold'
                 }`}
               >
-                {isCourtesyExpired ? 'Tiempo tarifado por espera' : 'Tiempo de cortesía'}
+                {isCourtesyExpired ? 'Tiempo tarifado por espera' : 'Tiempo de cortesía VIP'}
               </Text>
             </View>
             <Text
+              style={{ fontVariant: ['tabular-nums'] }}
               className={`font-montserrat-bold text-sm ${
                 isCourtesyExpired ? 'text-rose-400' : 'text-white'
               }`}
@@ -626,29 +675,35 @@ export const RideCard: React.FC<RideCardProps> = ({
               activeOpacity={0.8}
               accessibilityRole="button"
               accessibilityLabel="Abrir pantalla para ingresar PIN del viaje"
-              className="flex-row items-center justify-between py-3 px-4 rounded-2xl bg-white/10 border border-white/20 mb-3"
+              className={`flex-row items-center justify-between py-3.5 px-4 rounded-2xl border mb-3 ${
+                isPinComplete
+                  ? 'bg-emerald-500/15 border-emerald-400/45'
+                  : 'bg-white/[0.06] border-gold/45'
+              }`}
             >
               <View className="flex-row items-center flex-1 mr-2">
                 <Ionicons
                   name={isPinComplete ? 'shield-checkmark' : 'keypad'}
                   size={18}
-                  color={isPinComplete ? '#10B981' : '#FFFFFF'}
+                  color={isPinComplete ? '#10B981' : THEME_COLORS.gold}
                   style={{ marginRight: 10 }}
                 />
-                <Text className="font-montserrat-medium text-xs text-white">
+                <Text className="font-montserrat-semibold text-xs text-white">
                   {isPinComplete
-                    ? `PIN validado: ${pinDigits.join(' ')}`
-                    : 'PIN de abordaje requerido'}
+                    ? `PIN verificado: ${pinDigits.join(' ')}`
+                    : 'Código PIN de seguridad requerido'}
                 </Text>
               </View>
 
-              <Text className="font-montserrat-bold text-xs text-white">
-                {isPinComplete ? 'Cambiar' : 'Ingresar'}
-              </Text>
+              <View className="bg-gold/20 border border-gold/40 px-2.5 py-1 rounded-lg">
+                <Text className="font-montserrat-bold text-[11px] text-gold uppercase">
+                  {isPinComplete ? 'Cambiar' : 'Ingresar'}
+                </Text>
+              </View>
             </TouchableOpacity>
           )}
 
-          <View className="w-full mt-2 gap-2">
+          <View className="w-full mt-1 gap-2">
             <TouchableOpacity
               onPress={() => {
                 if (!canStart) {
@@ -667,38 +722,36 @@ export const RideCard: React.FC<RideCardProps> = ({
                   ? 'Iniciar viaje con pasajero a bordo'
                   : 'Ingresar PIN para iniciar viaje'
               }
-              className={`w-full h-14 rounded-2xl items-center justify-center shadow-xl ${
+              className={`w-full h-14 rounded-2xl items-center justify-center shadow-xl relative overflow-hidden ${
                 canStart
-                  ? 'bg-white active:opacity-90'
-                  : 'bg-white/15 border border-white/30 active:bg-white/25'
+                  ? 'bg-gold shadow-gold/30 active:opacity-90'
+                  : 'bg-gold/20 border border-gold/50 active:bg-gold/30'
               }`}
             >
               {isLoading ? (
-                <ActivityIndicator size="small" color="#000000" />
+                <ActivityIndicator size="small" color="#0A0A0C" />
               ) : (
                 <View className="flex-row items-center">
-                  {!canStart && (
-                    <Ionicons
-                      name="keypad"
-                      size={18}
-                      color="#FFFFFF"
-                      style={{ marginRight: 8 }}
-                    />
-                  )}
+                  <Ionicons
+                    name={canStart ? 'play-circle' : 'keypad'}
+                    size={20}
+                    color={canStart ? '#0A0A0C' : THEME_COLORS.gold}
+                    style={{ marginRight: 8 }}
+                  />
                   <Text
                     className={`font-montserrat-bold text-sm tracking-widest uppercase ${
-                      canStart ? 'text-black' : 'text-white'
+                      canStart ? 'text-obsidian' : 'text-gold'
                     }`}
                   >
-                    {canStart ? 'INICIAR VIAJE' : 'INGRESAR PIN PARA INICIAR'}
+                    {canStart ? 'INICIAR VIAJE EJECUTIVO' : 'INGRESAR PIN PARA INICIAR'}
                   </Text>
                 </View>
               )}
             </TouchableOpacity>
 
             {isPinRequired && !isPinComplete && (
-              <Text className="font-montserrat text-[11px] text-white/50 text-center mt-0.5">
-                El destino se revelará una vez validado el PIN a bordo.
+              <Text className="font-montserrat text-[11px] text-ash text-center mt-0.5">
+                El destino final se habilitará al validar el PIN del pasajero.
               </Text>
             )}
 
@@ -708,7 +761,7 @@ export const RideCard: React.FC<RideCardProps> = ({
                 activeOpacity={0.7}
                 className="items-center justify-center py-2"
               >
-                <Text className="font-montserrat-medium text-xs text-white/50">
+                <Text className="font-montserrat-medium text-xs text-ash">
                   Cancelar / Pasajero ausente
                 </Text>
               </TouchableOpacity>
@@ -717,14 +770,13 @@ export const RideCard: React.FC<RideCardProps> = ({
         </Animated.View>
       )}
 
-      {/* ESTADO 4: IN_PROGRESS (Ultra simple, enfocado en navegación y mapa despejado) */}
+      {/* ESTADO 4: IN_PROGRESS (Telemetría de Cabina VIP despejada para conducción) */}
       {status === 'IN_PROGRESS' && (
         <Animated.View
           entering={FadeIn.duration(200)}
           exiting={FadeOut.duration(150)}
           className="w-full"
         >
-          {/* Tarjeta interactiva: al tocarla se expande/colapsa el slider para finalizar */}
           <TouchableOpacity
             activeOpacity={0.85}
             onPress={() => {
@@ -739,34 +791,39 @@ export const RideCard: React.FC<RideCardProps> = ({
             }
             className="w-full items-center py-1"
           >
-            {/* KM que faltan en el centro bien destacados */}
-            <Text className="font-montserrat-bold text-5xl text-white tracking-tight mb-1 text-center">
+            {/* Distancia restante en tipografía de velocímetro digital */}
+            <Text
+              style={{ fontVariant: ['tabular-nums'] }}
+              className="font-montserrat-bold text-5xl text-white tracking-tight mb-1.5 text-center"
+            >
               {displayDistance || '0.0 km'}
             </Text>
 
-            {/* Dirección de destino y ETA sutil en el centro */}
-            <Text
-              numberOfLines={1}
-              className="font-montserrat-medium text-xs text-white/70 text-center max-w-[90%] mb-3"
-            >
-              Hacia {displayDropoff} {displayEta ? `· ${displayEta}` : ''}
-            </Text>
+            {/* Destino y ETA con ícono en Oro Champán */}
+            <View className="flex-row items-center justify-center max-w-[92%] mb-3.5">
+              <Ionicons name="location" size={14} color={THEME_COLORS.gold} />
+              <Text
+                numberOfLines={1}
+                className="font-montserrat-semibold text-xs text-platinum text-center ml-1.5"
+              >
+                Hacia {displayDropoff} {displayEta ? `· ${displayEta}` : ''}
+              </Text>
+            </View>
 
-            {/* Pill indicador para expandir / finalizar */}
-            <View className="flex-row items-center px-4 py-2 rounded-full bg-white/10 border border-white/20">
+            {/* Pill ejecutivo para desplegar el deslizador de cierre */}
+            <View className="flex-row items-center px-4 py-2 rounded-full bg-gold/15 border border-gold/45">
               <Ionicons
                 name={isFinishActionExpanded ? 'chevron-down' : 'flag'}
                 size={14}
-                color="#FFFFFF"
+                color={THEME_COLORS.gold}
                 style={{ marginRight: 6 }}
               />
-              <Text className="font-montserrat-bold text-[11px] tracking-wider text-white uppercase">
-                {isFinishActionExpanded ? 'Ocultar acción' : 'Tocá para finalizar viaje'}
+              <Text className="font-montserrat-bold text-[11px] tracking-widest text-gold uppercase">
+                {isFinishActionExpanded ? 'Ocultar control' : 'Tocá para finalizar viaje'}
               </Text>
             </View>
           </TouchableOpacity>
 
-          {/* Deslizador para finalizar que aparece al apretar la tarjeta */}
           {isFinishActionExpanded && (
             <Animated.View
               entering={FadeIn.duration(200)}
@@ -788,7 +845,7 @@ export const RideCard: React.FC<RideCardProps> = ({
         </Animated.View>
       )}
 
-      {/* ESTADO 5: COMPLETED (Viaje finalizado con cobro al pasajero) */}
+      {/* ESTADO 5: COMPLETED (Liquidación ejecutiva del servicio) */}
       {status === 'COMPLETED' && (
         <Animated.View
           entering={FadeIn.duration(200)}
@@ -807,7 +864,7 @@ export const RideCard: React.FC<RideCardProps> = ({
           <RouteAddressRow
             type="dropoff"
             address={displayDropoff}
-            subtitle="Viaje finalizado con éxito"
+            subtitle="Servicio ejecutivo completado con éxito"
             isSingleLine
           />
 
@@ -820,9 +877,9 @@ export const RideCard: React.FC<RideCardProps> = ({
               activeOpacity={0.85}
               accessibilityRole="button"
               accessibilityLabel="Confirmar y volver al mapa"
-              className="w-full h-14 rounded-2xl bg-white items-center justify-center active:opacity-90 shadow-xl"
+              className="w-full h-14 rounded-2xl bg-gold items-center justify-center active:opacity-90 shadow-xl shadow-gold/30"
             >
-              <Text className="font-montserrat-bold text-sm text-black tracking-widest uppercase">
+              <Text className="font-montserrat-bold text-sm text-obsidian tracking-widest uppercase">
                 CONFIRMAR Y FINALIZAR
               </Text>
             </TouchableOpacity>

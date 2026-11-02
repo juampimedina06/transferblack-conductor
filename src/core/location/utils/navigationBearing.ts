@@ -108,3 +108,4 @@ export const getNavigationBearing = (
 
   return 0;
 };
+

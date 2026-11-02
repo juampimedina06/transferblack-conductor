@@ -267,38 +267,54 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
     <View
       onLayout={(e) => onHeightChange?.(e.nativeEvent.layout.height)}
       key="connection-bottom-bar"
-      className="absolute bottom-0 left-0 right-0 w-full bg-[#0A0B10]/95 rounded-t-[32px] border-t border-white/15 shadow-2xl shadow-black z-50 overflow-hidden"
-      style={{ paddingBottom: Math.max(insets.bottom, 16) }}
+      className={`absolute bottom-0 left-0 right-0 w-full bg-[#090A0F]/96 rounded-t-[32px] border-t shadow-2xl shadow-black z-50 overflow-hidden ${
+        isAvailable
+          ? isSuspended
+            ? 'border-amber-500/40'
+            : 'border-emerald-500/40'
+          : 'border-gold/45'
+      }`}
+      style={{ paddingBottom: Math.max(insets.bottom, 18) }}
     >
       {/* Top Specular Edge Glass Highlight */}
-      <View className="absolute top-0 left-8 right-8 h-[1px] bg-white/25 pointer-events-none" />
+      <View
+        className={`absolute top-0 left-10 right-10 h-[1px] pointer-events-none ${
+          isAvailable
+            ? isSuspended
+              ? 'bg-amber-400/50'
+              : 'bg-emerald-400/50'
+            : 'bg-gold/55'
+        }`}
+      />
 
       {/* Ambient Glow Flare */}
       <AmbientGlow
         position="top-left"
-        height={180}
-        opacity={0.16}
-        color={isAvailable ? (isSuspended ? '#F59E0B' : '#10B981') : '#EF4444'}
+        height={200}
+        opacity={0.18}
+        color={isAvailable ? (isSuspended ? '#F59E0B' : '#10B981') : '#D4AF37'}
       />
 
       {/* Drag Indicator Pill */}
-      <View style={{ width: 44, height: 4, backgroundColor: 'rgba(255, 255, 255, 0.22)', borderRadius: 2, alignSelf: 'center', marginTop: 10, marginBottom: 6 }} />
+      <View className="w-11 h-1 rounded-full bg-white/25 self-center mt-2.5 mb-2" />
 
       <View className="w-full px-5 py-2">
         <View className="w-full flex-row items-center justify-between">
-          {/* Left: Status with Radar Beacon */}
+          {/* Left: Status with Radar Beacon or Executive Emblem */}
           <View className="flex-row items-center flex-1 pr-3">
             {isAvailable ? (
-              <View key="radar-active" className="w-12 h-12 items-center justify-center mr-3 relative">
+              <View key="radar-active" className="w-13 h-13 w-[50px] h-[50px] items-center justify-center mr-3.5 relative">
                 <Animated.View
                   style={[
                     radarWave1Style,
                     {
                       position: 'absolute',
-                      width: 32,
-                      height: 32,
-                      borderRadius: 16,
-                      backgroundColor: isSuspended ? 'rgba(245, 158, 11, 0.35)' : 'rgba(16, 185, 129, 0.35)',
+                      width: 34,
+                      height: 34,
+                      borderRadius: 17,
+                      backgroundColor: isSuspended
+                        ? 'rgba(245, 158, 11, 0.35)'
+                        : 'rgba(16, 185, 129, 0.35)',
                     },
                   ]}
                 />
@@ -307,26 +323,54 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
                     radarWave2Style,
                     {
                       position: 'absolute',
-                      width: 32,
-                      height: 32,
-                      borderRadius: 16,
-                      backgroundColor: isSuspended ? 'rgba(245, 158, 11, 0.22)' : 'rgba(16, 185, 129, 0.22)',
+                      width: 34,
+                      height: 34,
+                      borderRadius: 17,
+                      backgroundColor: isSuspended
+                        ? 'rgba(245, 158, 11, 0.22)'
+                        : 'rgba(16, 185, 129, 0.22)',
                     },
                   ]}
                 />
                 <View
-                  className={`w-4 h-4 rounded-full ${
-                    isSuspended ? 'bg-amber-400 shadow-amber-400' : 'bg-emerald-400 shadow-emerald-400'
-                  } shadow-md`}
-                />
+                  className={`w-9 h-9 rounded-full items-center justify-center border ${
+                    isSuspended
+                      ? 'bg-amber-500/20 border-amber-400'
+                      : 'bg-emerald-500/20 border-emerald-400'
+                  }`}
+                >
+                  <Ionicons
+                    name="radio"
+                    size={16}
+                    color={isSuspended ? '#FBBF24' : '#34D399'}
+                  />
+                </View>
               </View>
             ) : (
-              <View key="radar-inactive" className="w-12 h-12 items-center justify-center mr-3">
-                <View className="w-3.5 h-3.5 rounded-full bg-red-500/80 shadow-md shadow-red-500/50" />
+              <View
+                key="radar-inactive"
+                className="w-[50px] h-[50px] rounded-2xl bg-gold/15 border border-gold/40 items-center justify-center mr-3.5 shadow-md shadow-black"
+              >
+                <Ionicons name="car-sport" size={22} color="#D4AF37" />
               </View>
             )}
 
             <View className="flex-1">
+              <Text
+                className={`font-montserrat-bold text-[9px] uppercase tracking-widest mb-0.5 ${
+                  isAvailable
+                    ? isSuspended
+                      ? 'text-amber-400'
+                      : 'text-emerald-400'
+                    : 'text-gold'
+                }`}
+              >
+                {isAvailable
+                  ? isSuspended
+                    ? 'DESPACHO EN PAUSA'
+                    : 'RADAR EJECUTIVO ACTIVO'
+                  : 'CENTRAL TRANSFERBLACK'}
+              </Text>
               <Text className="text-white font-montserrat-bold text-base tracking-wide">
                 {isAvailable ? (isSuspended ? 'EN LÍNEA (PAUSADO)' : 'EN LÍNEA') : 'DESCONECTADO'}
               </Text>
@@ -334,27 +378,27 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
                 {isAvailable
                   ? isSuspended
                     ? 'Despacho pausado por cancelaciones'
-                    : 'Buscando viajes en tu zona...'
-                  : 'Tocá para comenzar tu jornada'}
+                    : 'Prioridad activa para solicitudes VIP...'
+                  : 'Conectate para recibir viajes exclusivos'}
               </Text>
             </View>
           </View>
 
-          {/* Right: Connect / Disconnect Action Button (48px Touch Target for Driving) */}
+          {/* Right: Connect / Disconnect Executive Action Button */}
           <TouchableOpacity
-            activeOpacity={0.82}
+            activeOpacity={0.85}
             accessibilityRole="button"
             accessibilityLabel={isAvailable ? 'Desconectarse del servicio' : 'Conectarse para recibir viajes'}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
               if (!isAvailable && compliance.status === 'suspended_documents') {
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
                 setIsDocBlockModalVisible(true);
                 return;
               }
               if (!isAvailable && !hasAcceptedCurrentTerms()) {
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
                 setIsTermsModalVisible(true);
                 return;
               }
@@ -368,20 +412,20 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
             }}
             className={`h-12 px-5 rounded-2xl border flex-row items-center justify-center relative overflow-hidden shadow-lg ${
               isAvailable
-                ? 'bg-red-500/15 border-red-500/40'
-                : 'bg-emerald-500/15 border-emerald-500/45'
+                ? 'bg-red-500/15 border-red-500/45 shadow-black'
+                : 'bg-gold border-gold shadow-gold/25'
             }`}
           >
-            <View className="absolute top-0 left-2 right-2 h-[1px] bg-white/30 pointer-events-none" />
+            <View className="absolute top-0 left-2 right-2 h-[1px] bg-white/35 pointer-events-none" />
             <Ionicons
               name="power"
               size={17}
-              color={isAvailable ? '#F87171' : '#34D399'}
-              style={{ marginRight: 8 }}
+              color={isAvailable ? '#F87171' : '#0A0A0C'}
+              style={{ marginRight: 7 }}
             />
             <Text
               className={`font-montserrat-bold text-xs tracking-wider uppercase ${
-                isAvailable ? 'text-red-400' : 'text-emerald-400'
+                isAvailable ? 'text-red-400' : 'text-obsidian'
               }`}
             >
               {isAvailable ? 'Desconectar' : 'Conectar'}

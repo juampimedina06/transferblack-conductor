@@ -95,3 +95,4 @@ describe('Navigation Bearing & Heading Calculations', () => {
     });
   });
 });
+

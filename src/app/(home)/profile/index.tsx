@@ -13,6 +13,7 @@ import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Image } from 'expo-image';
 import { useQuery } from '@tanstack/react-query';
+import * as Haptics from 'expo-haptics';
 
 import { THEME_COLORS } from '@/core/constants/theme';
 import { socket } from '@/core/socket/socket';
@@ -25,7 +26,8 @@ import { ProfileOptionItem } from '@/presentation/components/profile/ProfileOpti
 import { DriverDocumentsModal } from '@/presentation/components/compliance/DriverDocumentsModal';
 import { DeleteAccountModal } from '@/presentation/components/profile/DeleteAccountModal';
 import { usePushNotifications } from '@/presentation/hooks/usePushNotifications';
-
+import { LiquidGlassContainer } from '@/presentation/components/ui/LiquidGlassContainer';
+import { AmbientGlow } from '@/presentation/components/ui/AmbientGlow';
 
 export default function DriverProfileScreen() {
   const user = useAuthStore((state) => state.user);
@@ -37,11 +39,9 @@ export default function DriverProfileScreen() {
   const [isDocsModalVisible, setIsDocsModalVisible] = useState<boolean>(false);
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState<boolean>(false);
 
-  // Hook para acceder al estado y acciones de notificaciones push sin duplicar listeners globales
   const { isRegistered: isPushRegistered, syncDeviceToken, expoPushToken, isExpoGoOnAndroid } =
     usePushNotifications({ enableListeners: false });
 
-  // Consulta del perfil del conductor y vehículo asignado (GET /api/v1/driver/me)
   const {
     data: driverData,
     isLoading,
@@ -51,36 +51,31 @@ export default function DriverProfileScreen() {
   } = useQuery({
     queryKey: ['driver', 'me'],
     queryFn: getDriverMe,
-    staleTime: 1000 * 60 * 3, // 3 minutos
+    staleTime: 1000 * 60 * 3,
   });
 
   const driverProfile = driverData?.driverProfile;
   const vehicle = driverData?.vehicle ?? null;
 
-  // Rating formateado
   const ratingAverage = driverProfile?.ratingAverage
     ? driverProfile.ratingAverage.toFixed(1)
     : '5.0';
   const ratingCount = driverProfile?.ratingCount ?? 0;
 
-  // Nombre y Avatar del usuario
   const fullName =
-    `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || 'Conductor';
+    `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || 'Conductor Ejecutivo';
   const avatarUrl = user?.avatar_url;
   const driverEmail = user?.email || '';
 
-  // Flujo técnico de cierre de sesión
-  const performLogout = async () => {
+  const performLogout = async (): Promise<void> => {
     try {
       setIsLoggingOut(true);
 
-      // 1. Desconectar Socket (informa al backend que el chofer pasa a OFFLINE)
       setIsAvailable(false);
       if (socket.connected) {
         socket.disconnect();
       }
 
-      // 2. Limpieza local de viajes activos (salvo que sea un viaje en curso que deba persistirse)
       const currentTrip = useDriverTripStore.getState().activeTrip;
       const isTripLive =
         !!currentTrip &&
@@ -91,10 +86,8 @@ export default function DriverProfileScreen() {
         useDriverTripStore.getState().setActiveTrip(null);
       }
 
-      // 3. Invalidar Refresh Token en la API y purgar credenciales de SecureStore + Zustand (ejecuta cleanup de push, socket y stores)
       await logout();
 
-      // 5. Redirección limpia al Stack de Login impidiendo volver atrás
       router.replace('/auth/login' as any);
     } catch (err) {
       console.error('Error durante el cierre de sesión:', err);
@@ -104,7 +97,8 @@ export default function DriverProfileScreen() {
     }
   };
 
-  const handleLogoutPress = () => {
+  const handleLogoutPress = (): void => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const isTripLive =
       !!activeTrip &&
       activeTrip.status !== 'completed' &&
@@ -140,11 +134,11 @@ export default function DriverProfileScreen() {
     );
   };
 
-  const handleDocumentsPress = () => {
+  const handleDocumentsPress = (): void => {
     setIsDocsModalVisible(true);
   };
 
-  const handleSupportPress = () => {
+  const handleSupportPress = (): void => {
     Alert.alert(
       'Soporte TransferBlack',
       'Centro de atención a conductores disponible 24/7.\n\nLínea exclusiva: +54 9 351 000-0000\nCorreo: soporte@transferblack.com',
@@ -152,7 +146,7 @@ export default function DriverProfileScreen() {
     );
   };
 
-  const handleSettingsPress = () => {
+  const handleSettingsPress = (): void => {
     const pushStatusText = isPushRegistered
       ? 'Activas y vinculadas al servidor'
       : isExpoGoOnAndroid
@@ -182,34 +176,41 @@ export default function DriverProfileScreen() {
   return (
     <View className="flex-1 bg-obsidian">
       <StatusBar style="light" />
+
+      {/* Top Ambient Champagne Gold Glow */}
+      <AmbientGlow color="#D4AF37" position="top" height={360} opacity={0.18} />
+
       <SafeAreaView className="flex-1" edges={['top', 'bottom']}>
-        {/* Navigation Header */}
-        <View className="flex-row items-center justify-between px-5 py-3 border-b border-white/[0.08]">
+        {/* Executive Navigation Header */}
+        <View className="flex-row items-center justify-between px-5 py-3.5 border-b border-white/10">
           <View className="flex-row items-center">
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={() => {
+                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.back();
+              }}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               accessibilityRole="button"
               accessibilityLabel="Volver a la pantalla principal"
-              className="w-10 h-10 rounded-full bg-charcoal items-center justify-center border border-charcoal mr-3 shadow-sm shadow-black"
+              className="w-11 h-11 rounded-2xl bg-[#13141E] border border-gold/40 items-center justify-center mr-3.5 shadow-lg shadow-black active:scale-95"
             >
-              <Ionicons name="arrow-back" size={20} color={THEME_COLORS.platinum} />
+              <Ionicons name="arrow-back" size={20} color={THEME_COLORS.gold} />
             </TouchableOpacity>
             <View>
-              <Text className="text-white font-montserrat-bold text-lg">
-                Mi Cuenta
+              <Text className="text-gold font-montserrat-bold text-[10px] uppercase tracking-widest mb-0.5">
+                CREDENCIAL OPERATIVA
               </Text>
-              <Text className="text-zinc-400 font-montserrat text-xs">
-                Perfil operativo y vehículo
+              <Text className="text-white font-montserrat-bold text-xl">
+                Mi Perfil VIP
               </Text>
             </View>
           </View>
 
-          {/* Quick status pill */}
-          <View className="flex-row items-center bg-[#1A1A1C] border border-[#2C2C2E] px-2.5 py-1 rounded-full">
+          {/* Quick VIP Status Pill */}
+          <View className="flex-row items-center bg-gold/15 border border-gold/45 px-3 py-1.5 rounded-full">
             <View className="w-2 h-2 rounded-full bg-emerald-400 mr-1.5" />
-            <Text className="text-zinc-300 font-montserrat-medium text-xs">
-              Chofer
+            <Text className="text-gold font-montserrat-bold text-[11px] uppercase tracking-wider">
+              Chofer VIP
             </Text>
           </View>
         </View>
@@ -219,29 +220,34 @@ export default function DriverProfileScreen() {
           <ProfileSkeleton />
         ) : error ? (
           <View className="flex-1 items-center justify-center px-6">
-            <View className="w-14 h-14 rounded-full bg-red-950/60 border border-red-500/30 items-center justify-center mb-3">
-              <Ionicons name="alert-circle-outline" size={32} color="#EF4444" />
-            </View>
-            <Text className="text-white font-montserrat-bold text-base mb-1 text-center">
-              No se pudo cargar el perfil
-            </Text>
-            <Text className="text-ash font-montserrat text-xs text-center mb-4 leading-relaxed">
-              Ocurrió un inconveniente al consultar los datos del conductor. Verificá tu conexión a internet.
-            </Text>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => refetch()}
-              className="bg-charcoal border border-[#3A3A3C] px-5 py-2.5 rounded-xl"
+            <LiquidGlassContainer
+              variant="danger"
+              className="rounded-3xl p-7 items-center justify-center w-full max-w-[340px]"
             >
-              <Text className="text-platinum font-montserrat-semibold text-xs">
-                Reintentar
+              <View className="w-16 h-16 rounded-2xl bg-red-500/15 border border-red-500/40 items-center justify-center mb-4">
+                <Ionicons name="alert-circle-outline" size={32} color="#EF4444" />
+              </View>
+              <Text className="text-white font-montserrat-bold text-base mb-1.5 text-center">
+                No se pudo cargar el perfil
               </Text>
-            </TouchableOpacity>
+              <Text className="text-ash font-montserrat text-xs text-center mb-5 leading-5">
+                Ocurrió un inconveniente al consultar los datos del conductor. Verificá tu conexión a internet.
+              </Text>
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => refetch()}
+                className="bg-gold w-full py-3.5 rounded-2xl items-center justify-center"
+              >
+                <Text className="text-obsidian font-montserrat-bold text-xs uppercase tracking-widest">
+                  Reintentar
+                </Text>
+              </TouchableOpacity>
+            </LiquidGlassContainer>
           </View>
         ) : (
           <ScrollView
             className="flex-1"
-            contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 }}
+            contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 18, paddingBottom: 44 }}
             showsVerticalScrollIndicator={false}
             refreshControl={
               <RefreshControl
@@ -252,100 +258,168 @@ export default function DriverProfileScreen() {
               />
             }
           >
-            {/* Header: Avatar, Name & Rating */}
-            <View className="items-center py-3 mb-5">
-              {/* Avatar */}
-              <View className="w-24 h-24 rounded-full bg-[#1A1A1C] border-2 border-[#D4AF37]/50 items-center justify-center overflow-hidden mb-3 shadow-md shadow-black">
-                {avatarUrl ? (
-                  <Image
-                    source={{ uri: avatarUrl }}
-                    style={{ width: '100%', height: '100%' }}
-                    contentFit="cover"
-                    transition={200}
-                  />
+            {/* VIP Chauffeur Credential Hero Card */}
+            <LiquidGlassContainer
+              variant="gold"
+              className="rounded-[32px] p-6 mb-6 border border-gold/40"
+            >
+              <View className="items-center">
+                {/* Double-Ring Champagne Gold Avatar Bezel */}
+                <View className="relative mb-3.5">
+                  <View className="w-28 h-28 rounded-full p-1 bg-gold/20 border-2 border-gold shadow-xl shadow-black items-center justify-center">
+                    <View className="w-full h-full rounded-full bg-[#13141E] overflow-hidden items-center justify-center">
+                      {avatarUrl ? (
+                        <Image
+                          source={{ uri: avatarUrl }}
+                          style={{ width: '100%', height: '100%' }}
+                          contentFit="cover"
+                          transition={200}
+                        />
+                      ) : (
+                        <Text className="text-gold font-montserrat-bold text-3xl">
+                          {fullName.slice(0, 2).toUpperCase()}
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+
+                  {/* Floating Verified Emblem */}
+                  <View className="absolute -bottom-1 right-0 bg-gold border-2 border-[#0A0A0C] w-8 h-8 rounded-full items-center justify-center shadow-md shadow-black">
+                    <Ionicons name="shield-checkmark" size={16} color="#0A0A0C" />
+                  </View>
+                </View>
+
+                {/* Micro Badge */}
+                <View className="bg-white/[0.06] border border-white/15 px-3 py-0.5 rounded-full mb-2">
+                  <Text className="text-gold font-montserrat-bold text-[9px] uppercase tracking-widest">
+                    TRANSFERBLACK EXECUTIVE DRIVER
+                  </Text>
+                </View>
+
+                {/* Full Name */}
+                <Text className="text-white font-montserrat-bold text-2xl text-center mb-0.5">
+                  {fullName}
+                </Text>
+
+                {/* Email */}
+                {driverEmail ? (
+                  <Text className="text-ash font-montserrat text-xs text-center mb-5">
+                    {driverEmail}
+                  </Text>
                 ) : (
-                  <View className="w-full h-full items-center justify-center bg-charcoal">
-                    <Text className="text-gold font-montserrat-bold text-2xl">
-                      {fullName.slice(0, 2).toUpperCase()}
+                  <View className="mb-4" />
+                )}
+
+                {/* 3-Column VIP Telemetry Metrics Strip */}
+                <View className="w-full flex-row items-center justify-between bg-white/[0.04] border border-white/10 rounded-2xl py-3.5 px-2">
+                  {/* Metric 1: Rating */}
+                  <View className="flex-1 items-center">
+                    <View className="flex-row items-center mb-0.5">
+                      <Ionicons name="star" size={16} color={THEME_COLORS.gold} />
+                      <Text
+                        className="text-white font-montserrat-bold text-xl ml-1"
+                        style={{ fontVariant: ['tabular-nums'] }}
+                      >
+                        {ratingAverage}
+                      </Text>
+                    </View>
+                    <Text className="text-ash font-montserrat-semibold text-[10px] uppercase tracking-wider">
+                      Calificación
                     </Text>
                   </View>
-                )}
+
+                  <View className="w-[1px] h-8 bg-white/10" />
+
+                  {/* Metric 2: Reviews */}
+                  <View className="flex-1 items-center">
+                    <Text
+                      className="text-gold font-montserrat-bold text-xl mb-0.5"
+                      style={{ fontVariant: ['tabular-nums'] }}
+                    >
+                      {ratingCount}
+                    </Text>
+                    <Text className="text-ash font-montserrat-semibold text-[10px] uppercase tracking-wider">
+                      {ratingCount === 1 ? 'Reseña' : 'Evaluaciones'}
+                    </Text>
+                  </View>
+
+                  <View className="w-[1px] h-8 bg-white/10" />
+
+                  {/* Metric 3: Tier */}
+                  <View className="flex-1 items-center">
+                    <View className="flex-row items-center mb-0.5">
+                      <Ionicons name="diamond" size={15} color={THEME_COLORS.gold} />
+                      <Text className="text-white font-montserrat-bold text-sm ml-1 uppercase">
+                        BLACK
+                      </Text>
+                    </View>
+                    <Text className="text-ash font-montserrat-semibold text-[10px] uppercase tracking-wider">
+                      Categoría
+                    </Text>
+                  </View>
+                </View>
               </View>
-
-              {/* Full Name */}
-              <Text className="text-white font-montserrat-bold text-xl text-center mb-0.5">
-                {fullName}
-              </Text>
-
-              {/* Email / ID */}
-              {driverEmail ? (
-                <Text className="text-ash font-montserrat text-xs text-center mb-3">
-                  {driverEmail}
-                </Text>
-              ) : null}
-
-              {/* Rating Promedio Destacado en Oro Champán */}
-              <View className="flex-row items-center bg-[#1A1A1C] border border-[#2C2C2E] px-4 py-1.5 rounded-full shadow-sm shadow-black mt-1">
-                <Ionicons name="star" size={20} color="#D4AF37" />
-                <Text className="text-gold font-montserrat-bold text-2xl ml-2 mr-2">
-                  {ratingAverage}
-                </Text>
-                <View className="h-4 w-px bg-[#2C2C2E] mr-2" />
-                <Text className="text-ash font-montserrat-medium text-xs">
-                  {ratingCount} {ratingCount === 1 ? 'reseña' : 'calificaciones'}
-                </Text>
-              </View>
-            </View>
+            </LiquidGlassContainer>
 
             {/* Tarjeta Resumen de Vehículo Activo */}
             <View className="mb-6">
+              <View className="flex-row items-center justify-between px-1 mb-2.5">
+                <Text className="text-gold/90 font-montserrat-bold text-[11px] uppercase tracking-widest">
+                  Mi Unidad Asignada
+                </Text>
+                <Text className="text-ash font-montserrat text-[11px]">
+                  Flota Oficial
+                </Text>
+              </View>
               <VehicleCard vehicle={vehicle} />
             </View>
 
-            {/* Opciones (Glassmorphism) */}
-            <View className="mb-8">
-              <Text className="text-zinc-500 font-montserrat-semibold text-xs uppercase tracking-wider mb-3 px-1">
-                Gestión y Preferencias
+            {/* Opciones de Gestión y Preferencias */}
+            <View className="mb-6">
+              <Text className="text-gold/90 font-montserrat-bold text-[11px] uppercase tracking-widest mb-3 px-1">
+                Gestión y Preferencias Ejecutivas
               </Text>
-              
-              <View className="space-y-2.5">
-                <ProfileOptionItem
-                  title="Mis Documentos"
-                  subtitle="Licencia, cédula y seguro aprobados"
-                  iconName="document-text-outline"
-                  onPress={handleDocumentsPress}
-                  badge="Verificado"
-                />
 
-                <ProfileOptionItem
-                  title="Soporte y Asistencia"
-                  subtitle="Canal directo para conductores 24/7"
-                  iconName="headset-outline"
-                  onPress={handleSupportPress}
-                />
+              <ProfileOptionItem
+                title="Mis Documentos"
+                subtitle="Licencia profesional, cédula y póliza"
+                iconName="document-text-outline"
+                onPress={handleDocumentsPress}
+                badge="Verificado"
+              />
 
-                <ProfileOptionItem
-                  title="Configuración"
-                  subtitle="Notificaciones, permisos y app"
-                  iconName="settings-outline"
-                  onPress={handleSettingsPress}
-                  badge={isPushRegistered ? 'Push OK' : undefined}
-                />
-              </View>
+              <ProfileOptionItem
+                title="Mesa de Ayuda VIP 24/7"
+                subtitle="Asistencia exclusiva para conductores"
+                iconName="headset-outline"
+                onPress={handleSupportPress}
+              />
+
+              <ProfileOptionItem
+                title="Configuración del Sistema"
+                subtitle="Notificaciones push, permisos y versión"
+                iconName="settings-outline"
+                onPress={handleSettingsPress}
+                badge={isPushRegistered ? 'Push OK' : undefined}
+              />
             </View>
 
             {/* Acciones de Cuenta */}
-            <View className="pt-2 space-y-3">
+            <View className="pt-1">
               <TouchableOpacity
-                activeOpacity={0.8}
+                activeOpacity={0.82}
                 onPress={handleLogoutPress}
                 disabled={isLoggingOut}
                 accessibilityRole="button"
                 accessibilityLabel="Cerrar sesión"
-                className="w-full bg-[#1A1A1C]/90 border border-red-900/40 rounded-2xl py-4 flex-row items-center justify-center space-x-2"
+                className="w-full bg-red-950/35 border border-red-500/40 rounded-2xl py-4 flex-row items-center justify-center shadow-lg shadow-black mb-3 relative overflow-hidden"
               >
-                <Ionicons name="log-out-outline" size={20} color="#FF3B30" />
-                <Text className="text-[#FF3B30] font-montserrat-semibold text-sm ml-2">
+                <View
+                  pointerEvents="none"
+                  className="absolute top-0 left-6 right-6 h-[1px] bg-red-400/25"
+                />
+                <Ionicons name="log-out-outline" size={20} color="#F87171" />
+                <Text className="text-red-400 font-montserrat-bold text-xs uppercase tracking-widest ml-2.5">
                   {isLoggingOut ? 'Cerrando sesión...' : 'Cerrar Sesión'}
                 </Text>
               </TouchableOpacity>
@@ -356,10 +430,10 @@ export default function DriverProfileScreen() {
                 disabled={isLoggingOut}
                 accessibilityRole="button"
                 accessibilityLabel="Eliminar cuenta"
-                className="w-full py-2.5 items-center justify-center"
+                className="w-full py-3 items-center justify-center"
               >
                 <Text className="text-zinc-500 font-montserrat-medium text-xs">
-                  Eliminar cuenta
+                  Solicitar baja y eliminar cuenta
                 </Text>
               </TouchableOpacity>
             </View>
