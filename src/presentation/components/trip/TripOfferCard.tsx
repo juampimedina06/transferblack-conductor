@@ -161,14 +161,14 @@ export const TripOfferCard: React.FC<TripOfferCardProps> = ({
 
   return (
     <>
-      {/* Aura perimetral de pantalla completa estilo Apple Intelligence */}
-      <AppleIntelligenceOfferAura isUrgent={isUrgent} variant="screen" />
+      {/* Aura perimetral en los bordes de la pantalla estilo Apple Intelligence */}
+      <AppleIntelligenceOfferAura isUrgent={isUrgent} />
 
       <Animated.View
         onLayout={(e) => onHeightChange?.(e.nativeEvent.layout.height)}
         entering={reduceMotion ? FadeIn : FadeInDown.springify().damping(16).mass(0.9)}
         exiting={reduceMotion ? undefined : FadeOutDown.duration(200)}
-        className="absolute bottom-0 left-0 right-0 w-full z-50 overflow-hidden rounded-t-[34px] shadow-2xl px-5 pt-3"
+        className="absolute bottom-0 left-0 right-0 w-full z-50 overflow-hidden rounded-t-[34px] border-t border-gold/55 shadow-2xl px-5 pt-3"
         style={{ paddingBottom: Math.max(bottomInset, 22) }}
       >
         {/* Capa Liquid Glass de desenfoque */}
@@ -191,8 +191,11 @@ export const TripOfferCard: React.FC<TripOfferCardProps> = ({
           color={isUrgent ? '#F43F5E' : THEME_COLORS.gold}
         />
 
-        {/* Border-shadow difuminado y en movimiento alrededor del contorno de la tarjeta */}
-        <AppleIntelligenceOfferAura isUrgent={isUrgent} variant="card" />
+        {/* Resplandor especular superior en Oro */}
+        <View
+          pointerEvents="none"
+          className="absolute top-0 left-10 right-10 h-[1.5px] bg-gold/65 rounded-full"
+        />
 
         {/* Handle indicador */}
         <View className="w-11 h-1 rounded-full bg-white/25 self-center mb-3" />

@@ -17,27 +17,22 @@ import Svg, { Defs, LinearGradient, RadialGradient, Rect, Stop } from 'react-nat
 export interface AppleIntelligenceOfferAuraProps {
   /** Si está en los últimos segundos de la oferta, intensifica el pulso cálido */
   isUrgent?: boolean;
-  /** 'screen' cubre el perímetro de toda la pantalla; 'card' envuelve el contorno interno de la tarjeta */
-  variant?: 'screen' | 'card';
 }
 
 /**
- * Efecto de aura perimetral inspirado en Apple Intelligence (iOS 18):
- * - No dibuja un borde duro, sino un "border-shadow" difuminado hacia adentro (vignette luminoso).
+ * Efecto de aura perimetral en los bordes de la pantalla inspirado en Apple Intelligence (iOS 18):
+ * - Ilumina ÚNICAMENTE el perímetro exterior de la pantalla del dispositivo (border-shadow difuminado hacia adentro).
  * - Ondas de luz en Oro Champán (#FFFBEB -> #FDE047 -> #D4AF37 -> #F59E0B) orbitan continuamente
- *   por todo el perímetro cuando entra una nueva solicitud de viaje.
+ *   por los bordes exteriores de la pantalla cuando entra una nueva solicitud de viaje.
  * - 100% pointerEvents="none" y ejecutado en el UI thread con Reanimated.
  */
 export const AppleIntelligenceOfferAura: React.FC<AppleIntelligenceOfferAuraProps> = React.memo(
-  ({ isUrgent = false, variant = 'screen' }) => {
+  ({ isUrgent = false }) => {
     const { width: screenWidth, height: screenHeight } = useWindowDimensions();
     const reduceMotion = useReducedMotion();
     const rawId = useId().replace(/[^a-zA-Z0-9_-]/g, '');
 
-    const isCard = variant === 'card';
-    const effectiveHeight = isCard ? Math.min(screenHeight * 0.58, 460) : screenHeight;
-
-    // Ciclo continuo 0 -> 1 para orbitar las ondas luminosas alrededor del perímetro
+    // Ciclo continuo 0 -> 1 para orbitar las ondas luminosas alrededor del perímetro exterior de la pantalla
     const orbit = useSharedValue(0);
     // Pulso de respiración secundaria para efecto orgánico tipo Apple Intelligence
     const breathe = useSharedValue(0);
@@ -81,35 +76,35 @@ export const AppleIntelligenceOfferAura: React.FC<AppleIntelligenceOfferAuraProp
     const topEdgeStyle = useAnimatedStyle(() => {
       const wave = Math.sin(orbit.value * Math.PI * 2);
       return {
-        opacity: interpolate(wave, [-1, 1], [0.5, 1]),
+        opacity: interpolate(wave, [-1, 1], [0.55, 1]),
       };
     });
 
     const rightEdgeStyle = useAnimatedStyle(() => {
       const wave = Math.sin(orbit.value * Math.PI * 2 - Math.PI / 2);
       return {
-        opacity: interpolate(wave, [-1, 1], [0.5, 1]),
+        opacity: interpolate(wave, [-1, 1], [0.55, 1]),
       };
     });
 
     const bottomEdgeStyle = useAnimatedStyle(() => {
       const wave = Math.sin(orbit.value * Math.PI * 2 - Math.PI);
       return {
-        opacity: interpolate(wave, [-1, 1], [0.55, 1]),
+        opacity: interpolate(wave, [-1, 1], [0.58, 1]),
       };
     });
 
     const leftEdgeStyle = useAnimatedStyle(() => {
       const wave = Math.sin(orbit.value * Math.PI * 2 - (3 * Math.PI) / 2);
       return {
-        opacity: interpolate(wave, [-1, 1], [0.5, 1]),
+        opacity: interpolate(wave, [-1, 1], [0.55, 1]),
       };
     });
 
-    // 2. Orbes viajeros sin bordes duros que recorren cada arista
+    // 2. Orbes viajeros sin bordes duros que recorren cada borde de la pantalla
     const topTravelerStyle = useAnimatedStyle(() => {
       const angle = orbit.value * Math.PI * 2;
-      const translateX = Math.sin(angle) * (screenWidth * 0.36);
+      const translateX = Math.sin(angle) * (screenWidth * 0.38);
       const scaleX = interpolate(breathe.value, [0, 1], [0.95, 1.22]);
       return {
         transform: [{ translateX }, { scaleX }],
@@ -118,7 +113,7 @@ export const AppleIntelligenceOfferAura: React.FC<AppleIntelligenceOfferAuraProp
 
     const rightTravelerStyle = useAnimatedStyle(() => {
       const angle = orbit.value * Math.PI * 2 - Math.PI / 2;
-      const translateY = Math.sin(angle) * (effectiveHeight * 0.3);
+      const translateY = Math.sin(angle) * (screenHeight * 0.32);
       const scaleY = interpolate(breathe.value, [0, 1], [0.95, 1.25]);
       return {
         transform: [{ translateY }, { scaleY }],
@@ -127,7 +122,7 @@ export const AppleIntelligenceOfferAura: React.FC<AppleIntelligenceOfferAuraProp
 
     const bottomTravelerStyle = useAnimatedStyle(() => {
       const angle = orbit.value * Math.PI * 2 - Math.PI;
-      const translateX = Math.sin(angle) * (screenWidth * 0.36);
+      const translateX = Math.sin(angle) * (screenWidth * 0.38);
       const scaleX = interpolate(breathe.value, [0, 1], [0.98, 1.25]);
       return {
         transform: [{ translateX }, { scaleX }],
@@ -136,15 +131,15 @@ export const AppleIntelligenceOfferAura: React.FC<AppleIntelligenceOfferAuraProp
 
     const leftTravelerStyle = useAnimatedStyle(() => {
       const angle = orbit.value * Math.PI * 2 - (3 * Math.PI) / 2;
-      const translateY = Math.sin(angle) * (effectiveHeight * 0.3);
+      const translateY = Math.sin(angle) * (screenHeight * 0.32);
       const scaleY = interpolate(breathe.value, [0, 1], [0.95, 1.25]);
       return {
         transform: [{ translateY }, { scaleY }],
       };
     });
 
-    const horizontalOrbWidth = Math.round(screenWidth * 0.92);
-    const verticalOrbHeight = Math.round(effectiveHeight * 0.65);
+    const horizontalOrbWidth = Math.round(screenWidth * 0.95);
+    const verticalOrbHeight = Math.round(screenHeight * 0.62);
 
     return (
       <Animated.View
@@ -152,19 +147,19 @@ export const AppleIntelligenceOfferAura: React.FC<AppleIntelligenceOfferAuraProp
         entering={FadeIn.duration(350)}
         exiting={FadeOut.duration(250)}
         style={StyleSheet.absoluteFill}
-        className={isCard ? 'overflow-hidden rounded-t-[34px]' : 'z-40 overflow-hidden'}
+        className="z-40 overflow-hidden"
       >
         {/* ==================================================================
             CAPA 1: VIGNETTE PERIMETRAL DIFUMINADO HACIA ADENTRO (BORDER SHADOW)
             ================================================================== */}
 
-        {/* Borde Superior (difumina de arriba hacia abajo) */}
+        {/* Borde Superior Exterior */}
         <Animated.View pointerEvents="none" style={[styles.topStrip, topEdgeStyle]}>
           <Svg width="100%" height="100%">
             <Defs>
               <LinearGradient id={`top-edge-${rawId}`} x1="0%" y1="0%" x2="0%" y2="100%">
-                <Stop offset="0%" stopColor={primaryGold} stopOpacity={isCard ? 0.55 : 0.62} />
-                <Stop offset="24%" stopColor={richGold} stopOpacity={isCard ? 0.3 : 0.36} />
+                <Stop offset="0%" stopColor={primaryGold} stopOpacity={0.62} />
+                <Stop offset="24%" stopColor={richGold} stopOpacity={0.36} />
                 <Stop offset="58%" stopColor={warmAmber} stopOpacity={0.11} />
                 <Stop offset="100%" stopColor={warmAmber} stopOpacity={0} />
               </LinearGradient>
@@ -173,14 +168,14 @@ export const AppleIntelligenceOfferAura: React.FC<AppleIntelligenceOfferAuraProp
           </Svg>
         </Animated.View>
 
-        {/* Borde Inferior (difumina de abajo hacia arriba) */}
+        {/* Borde Inferior Exterior */}
         <Animated.View pointerEvents="none" style={[styles.bottomStrip, bottomEdgeStyle]}>
           <Svg width="100%" height="100%">
             <Defs>
               <LinearGradient id={`bottom-edge-${rawId}`} x1="0%" y1="100%" x2="0%" y2="0%">
-                <Stop offset="0%" stopColor={primaryGold} stopOpacity={isCard ? 0.45 : 0.65} />
-                <Stop offset="25%" stopColor={richGold} stopOpacity={isCard ? 0.25 : 0.38} />
-                <Stop offset="60%" stopColor={warmAmber} stopOpacity={0.1} />
+                <Stop offset="0%" stopColor={primaryGold} stopOpacity={0.65} />
+                <Stop offset="25%" stopColor={richGold} stopOpacity={0.38} />
+                <Stop offset="60%" stopColor={warmAmber} stopOpacity={0.12} />
                 <Stop offset="100%" stopColor={warmAmber} stopOpacity={0} />
               </LinearGradient>
             </Defs>
@@ -188,14 +183,14 @@ export const AppleIntelligenceOfferAura: React.FC<AppleIntelligenceOfferAuraProp
           </Svg>
         </Animated.View>
 
-        {/* Borde Izquierdo (difumina de izquierda a derecha) */}
+        {/* Borde Izquierdo Exterior */}
         <Animated.View pointerEvents="none" style={[styles.leftStrip, leftEdgeStyle]}>
           <Svg width="100%" height="100%">
             <Defs>
               <LinearGradient id={`left-edge-${rawId}`} x1="0%" y1="0%" x2="100%" y2="0%">
-                <Stop offset="0%" stopColor={primaryGold} stopOpacity={isCard ? 0.5 : 0.58} />
-                <Stop offset="25%" stopColor={richGold} stopOpacity={isCard ? 0.28 : 0.32} />
-                <Stop offset="60%" stopColor={warmAmber} stopOpacity={0.09} />
+                <Stop offset="0%" stopColor={primaryGold} stopOpacity={0.58} />
+                <Stop offset="25%" stopColor={richGold} stopOpacity={0.32} />
+                <Stop offset="60%" stopColor={warmAmber} stopOpacity={0.1} />
                 <Stop offset="100%" stopColor={warmAmber} stopOpacity={0} />
               </LinearGradient>
             </Defs>
@@ -203,14 +198,14 @@ export const AppleIntelligenceOfferAura: React.FC<AppleIntelligenceOfferAuraProp
           </Svg>
         </Animated.View>
 
-        {/* Borde Derecho (difumina de derecha a izquierda) */}
+        {/* Borde Derecho Exterior */}
         <Animated.View pointerEvents="none" style={[styles.rightStrip, rightEdgeStyle]}>
           <Svg width="100%" height="100%">
             <Defs>
               <LinearGradient id={`right-edge-${rawId}`} x1="100%" y1="0%" x2="0%" y2="0%">
-                <Stop offset="0%" stopColor={primaryGold} stopOpacity={isCard ? 0.5 : 0.58} />
-                <Stop offset="25%" stopColor={richGold} stopOpacity={isCard ? 0.28 : 0.32} />
-                <Stop offset="60%" stopColor={warmAmber} stopOpacity={0.09} />
+                <Stop offset="0%" stopColor={primaryGold} stopOpacity={0.58} />
+                <Stop offset="25%" stopColor={richGold} stopOpacity={0.32} />
+                <Stop offset="60%" stopColor={warmAmber} stopOpacity={0.1} />
                 <Stop offset="100%" stopColor={warmAmber} stopOpacity={0} />
               </LinearGradient>
             </Defs>
@@ -219,7 +214,7 @@ export const AppleIntelligenceOfferAura: React.FC<AppleIntelligenceOfferAuraProp
         </Animated.View>
 
         {/* ==================================================================
-            CAPA 2: ONDAS DE LUZ DORADA EN MOVIMIENTO (ORBITANDO LOS 4 BORDES)
+            CAPA 2: ONDAS DE LUZ DORADA EN MOVIMIENTO (ORBITANDO EL PERÍMETRO)
             ================================================================== */}
 
         {/* Onda viajera Superior */}
