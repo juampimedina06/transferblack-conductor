@@ -187,7 +187,11 @@ export default function DriverDashboardScreen() {
           </TouchableOpacity>
         )}
 
-        <View className="px-4 py-3 flex-row items-center justify-between" pointerEvents="box-none">
+        {/* Si hay viaje activo: Muestra el cartel de indicaciones estilo Uber y oculta los botones */}
+        {activeTrip && activeTrip.status !== 'completed' ? (
+          <ActiveTripTopHeader trip={activeTrip} />
+        ) : (
+          <View className="px-4 py-3 flex-row items-center justify-between" pointerEvents="box-none">
           {/* Logout Button */}
           <TouchableOpacity
             onPress={() => {
@@ -292,10 +296,6 @@ export default function DriverDashboardScreen() {
             );
           })()}
 
-          {activeTrip && (
-            <ActiveTripTopHeader trip={activeTrip} />
-          )}
-
           {/* Perfil del Conductor */}
           <TouchableOpacity
             onPress={() => {
@@ -325,6 +325,8 @@ export default function DriverDashboardScreen() {
             <View className="w-2.5 h-2.5 rounded-full bg-emerald-400 absolute bottom-1 right-1 border-2 border-[#13141E]" />
           </TouchableOpacity>
         </View>
+
+        )}
 
         {/* Dashboard Carousel */}
         {isStatsExpanded && !activeTrip && (
