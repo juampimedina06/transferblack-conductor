@@ -177,12 +177,25 @@ class PushNotificationService {
 
       const platform = Platform.OS === 'ios' ? 'ios' : 'android';
 
-      // 5. Enviar al backend vía PUT /driver/me/push-token
-      await registerDriverPushToken({
-        token: nativeToken,
-        platform,
-        provider: 'fcm',
-      });
+      // 5. Enviar al backend vía PUT /driver/me/push-token (con resiliencia a timeouts/cold-starts)
+      try {
+        await registerDriverPushToken({
+          token: nativeToken,
+          platform,
+          provider: 'fcm',
+        });
+      } catch (tokenErr) {
+        console.warn('⚠️ [PushService] Primer intento de registrar push token falló, reintentando en background:', tokenErr);
+        setTimeout(() => {
+          void registerDriverPushToken({
+            token: nativeToken,
+            platform,
+            provider: 'fcm',
+          }).catch((retryErr) => {
+            console.warn('⚠️ [PushService] Reintento de push token falló definitivamente:', retryErr);
+          });
+        }, 3000);
+      }
 
       // 6. Listener para cambios de token del sistema
       this.tokenListenerSubscription = notif.addPushTokenListener(async (tokenData) => {

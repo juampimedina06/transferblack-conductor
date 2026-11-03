@@ -5,7 +5,7 @@ import { refreshSocketToken } from '../socket/socket';
 
 export const transferApi = create({
   baseURL: process.env.EXPO_PUBLIC_API_URL,
-  timeout: 15000,
+  timeout: 30000,
   headers: {
     "Content-Type": "application/json",
   },
@@ -49,12 +49,32 @@ const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue = [];
 };
 
-// Interceptor para respuestas y manejo de errores globales (401 refresh token)
+// Interceptor para respuestas y manejo de errores globales (401 refresh token, reintentos de timeout)
 transferApi.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
     const status = error.response?.status;
+
+    // Manejo de timeouts y cold-starts del backend (Render) en peticiones GET o registro de push
+    const isTimeoutOrNetwork =
+      error.code === 'ECONNABORTED' ||
+      error.message?.toLowerCase().includes('timeout') ||
+      (!error.response && error.message?.toLowerCase().includes('network'));
+
+    if (
+      isTimeoutOrNetwork &&
+      originalRequest &&
+      (originalRequest.method?.toLowerCase() === 'get' || originalRequest.url?.includes('/driver/me/push-token'))
+    ) {
+      originalRequest._networkRetryCount = (originalRequest._networkRetryCount || 0) + 1;
+      if (originalRequest._networkRetryCount <= 2) {
+        const delayMs = originalRequest._networkRetryCount * 2000;
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+        return transferApi(originalRequest);
+      }
+    }
+
     const isForbidden = status === 403 && (
       error.response?.data?.error?.code === 'FORBIDDEN' ||
       error.response?.data?.code === 'FORBIDDEN' ||
