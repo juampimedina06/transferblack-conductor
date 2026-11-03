@@ -23,8 +23,8 @@
       }
     },
     "android": {
-      "package": "com.transferblack.driver",
       "googleServicesFile": "./google-services.json",
+      "package": "com.transferblack.driver",
       "adaptiveIcon": {
         "backgroundColor": "#0A0A0C",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
