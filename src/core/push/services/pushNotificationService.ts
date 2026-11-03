@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import Constants, { AppOwnership } from 'expo-constants';
+import * as Device from 'expo-device';
 import type * as ExpoNotifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
 import { registerDriverPushToken, revokeDriverPushToken } from '../actions/pushToken.actions';
@@ -160,6 +161,13 @@ class PushNotificationService {
         return null;
       }
 
+      // En simuladores (especialmente iOS) no se soportan notificaciones remotas en background ni push tokens nativos
+      if (!Device.isDevice) {
+        console.log('ℹ️ [PushService] Ejecutando en simulador: omitiendo registro de tarea en segundo plano y token nativo (requiere dispositivo físico).');
+        this.isInitialized = true;
+        return null;
+      }
+
       // 3. Registrar Background Task
       try {
         const isRegistered = await TaskManager.isTaskRegisteredAsync(BACKGROUND_NOTIFICATION_TASK);
@@ -167,7 +175,7 @@ class PushNotificationService {
           await notif.registerTaskAsync(BACKGROUND_NOTIFICATION_TASK);
         }
       } catch (taskErr) {
-        console.warn('⚠️ [PushService] No se pudo registrar la tarea en background:', taskErr);
+        console.warn('⚠️ [PushService] No se pudo registrar la tarea en background (verificar "Actualización en 2° plano" en Ajustes de iOS):', taskErr);
       }
 
       // 4. Obtener Device Push Token nativo (FCM / APNs)
@@ -177,12 +185,25 @@ class PushNotificationService {
 
       const platform = Platform.OS === 'ios' ? 'ios' : 'android';
 
-      // 5. Enviar al backend vía PUT /driver/me/push-token
-      await registerDriverPushToken({
-        token: nativeToken,
-        platform,
-        provider: 'fcm',
-      });
+      // 5. Enviar al backend vía PUT /driver/me/push-token (con resiliencia a timeouts/cold-starts)
+      try {
+        await registerDriverPushToken({
+          token: nativeToken,
+          platform,
+          provider: 'fcm',
+        });
+      } catch (tokenErr) {
+        console.warn('⚠️ [PushService] Primer intento de registrar push token falló, reintentando en background:', tokenErr);
+        setTimeout(() => {
+          void registerDriverPushToken({
+            token: nativeToken,
+            platform,
+            provider: 'fcm',
+          }).catch((retryErr) => {
+            console.warn('⚠️ [PushService] Reintento de push token falló definitivamente:', retryErr);
+          });
+        }, 3000);
+      }
 
       // 6. Listener para cambios de token del sistema
       this.tokenListenerSubscription = notif.addPushTokenListener(async (tokenData) => {

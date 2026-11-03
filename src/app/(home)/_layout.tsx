@@ -134,6 +134,14 @@ export default function HomeLayout() {
         await applyRoutingDecision(nextState);
       } catch (error) {
         console.error('Error comprobando estado de onboarding en HomeLayout', error);
+        // Si falló por timeout o red y el componente sigue montado, reintentamos tras 4s para recuperar estado
+        if (!isCancelled && useAuthStore.getState().isAuthenticated) {
+          setTimeout(() => {
+            if (!isCancelled && useAuthStore.getState().isAuthenticated) {
+              void checkOnboardingStatus();
+            }
+          }, 4000);
+        }
       }
     };
 
