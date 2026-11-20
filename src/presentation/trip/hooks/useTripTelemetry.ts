@@ -50,7 +50,7 @@ export const useTripTelemetry = (options?: UseTripTelemetryOptions): void => {
 
   const intervalIdRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isMountedRef = useRef<boolean>(true);
-  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+  const appStateRef = useRef<AppStateStatus>((AppState.currentState as AppStateStatus) || 'active');
 
   const activeTripIdRef = useRef<string | null>(activeTripId);
   useEffect(() => {

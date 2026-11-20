@@ -177,7 +177,13 @@ export default function RegisterScreen(): React.JSX.Element {
         />
 
         <View className="mt-8">
-          <Button label="Crear mi cuenta" onPress={handleSubmit(onSubmit)} isLoading={isLoading} />
+          <Button
+            label="Crear mi cuenta"
+            onPress={() => {
+              void handleSubmit(onSubmit)();
+            }}
+            isLoading={isLoading}
+          />
         </View>
 
         <View className="mt-8 flex-row justify-center items-center">

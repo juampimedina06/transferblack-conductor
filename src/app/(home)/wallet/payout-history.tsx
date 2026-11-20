@@ -333,7 +333,7 @@ export default function PayoutHistoryScreen() {
               <View className="py-4 items-center">
                 <ActivityIndicator size="small" color={THEME_COLORS.gold} />
               </View>
-            ) : null
+            ) : undefined
           }
           ListEmptyComponent={
             <View className="py-20 items-center justify-center px-6">

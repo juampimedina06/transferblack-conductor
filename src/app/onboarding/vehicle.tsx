@@ -146,7 +146,9 @@ export default function VehicleScreen() {
         refreshControl={
           <RefreshControl
             refreshing={isFetchingDrafts}
-            onRefresh={refetchDrafts}
+            onRefresh={() => {
+              void refetchDrafts();
+            }}
             tintColor="#C5A059"
             colors={['#C5A059']}
           />
@@ -365,7 +367,9 @@ export default function VehicleScreen() {
               placeholder="Número grabado en el motor"
               autoCapitalize="characters"
               returnKeyType="done"
-              onSubmitEditing={handleSubmit(onSubmit)}
+              onSubmitEditing={() => {
+                void handleSubmit(onSubmit)();
+              }}
               onBlur={onBlur}
               onChangeText={onChange}
               value={value}
@@ -401,7 +405,9 @@ export default function VehicleScreen() {
           <Button
             label="Continuar a Documentación Personal"
             variant="primary"
-            onPress={handleSubmit(onSubmit)}
+            onPress={() => {
+              void handleSubmit(onSubmit)();
+            }}
           />
         </View>
       </ScrollView>

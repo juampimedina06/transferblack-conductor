@@ -180,7 +180,9 @@ export default function DocumentsScreen() {
         refreshControl={
           <RefreshControl
             refreshing={isFetchingDrafts}
-            onRefresh={refetchDrafts}
+            onRefresh={() => {
+              void refetchDrafts();
+            }}
             tintColor={THEME_COLORS.gold}
             colors={[THEME_COLORS.gold]}
           />

@@ -221,7 +221,9 @@ export default function ScheduledTripsScreen() {
               refreshControl={
                 <RefreshControl
                   refreshing={isRefetching}
-                  onRefresh={() => refetch()}
+                  onRefresh={() => {
+                    void refetch();
+                  }}
                   tintColor={THEME_COLORS.gold}
                   colors={[THEME_COLORS.gold]}
                 />

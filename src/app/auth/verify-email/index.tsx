@@ -37,7 +37,7 @@ export default function VerifyEmailScreen(): React.JSX.Element {
   const [isLoading, setIsLoading] = useState(false);
   const [cooldown, setCooldown] = useState(45);
   const [isInputFocused, setIsInputFocused] = useState(false);
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<React.ComponentRef<typeof TextInput>>(null);
   const markEmailAsVerified = useAuthStore((state) => state.markEmailAsVerified);
   const logout = useAuthStore((state) => state.logout);
   const {
@@ -251,7 +251,9 @@ export default function VerifyEmailScreen(): React.JSX.Element {
                 ) : null}
                 <Button
                   label={isRateLimited ? `Esperá ${secondsLeft}s` : 'Validar Identidad'}
-                  onPress={handleSubmit(onSubmit)}
+                  onPress={() => {
+                    void handleSubmit(onSubmit)();
+                  }}
                   isLoading={isLoading}
                   disabled={value.length < 6 || isLoading || isRateLimited}
                 />

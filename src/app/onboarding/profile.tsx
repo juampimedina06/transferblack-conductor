@@ -264,7 +264,9 @@ export default function ProfileScreen() {
               autoComplete="street-address"
               textContentType="fullStreetAddress"
               returnKeyType="done"
-              onSubmitEditing={handleSubmit(onSubmit)}
+              onSubmitEditing={() => {
+                void handleSubmit(onSubmit)();
+              }}
               onBlur={onBlur}
               onChangeText={onChange}
               value={value}
@@ -279,7 +281,9 @@ export default function ProfileScreen() {
             label="Continuar a Vehículo"
             variant="primary"
             isLoading={updateProfile.isPending}
-            onPress={handleSubmit(onSubmit)}
+            onPress={() => {
+              void handleSubmit(onSubmit)();
+            }}
           />
         </View>
       </ScrollView>

@@ -8,7 +8,7 @@ import { useColorScheme } from '@/presentation/theme/hooks/use-color-scheme';
 
 export function useTheme() {
   const scheme = useColorScheme();
-  const theme: keyof typeof Colors = scheme === 'unspecified' || !scheme ? 'light' : scheme;
+  const theme: keyof typeof Colors = scheme === 'dark' ? 'dark' : 'light';
 
   return Colors[theme];
 }

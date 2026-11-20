@@ -33,7 +33,7 @@ export default function ForgotPasswordVerifyScreen(): React.JSX.Element {
   const [isLoading, setIsLoading] = useState(false);
   const [cooldown, setCooldown] = useState(60);
   const [isInputFocused, setIsInputFocused] = useState(false);
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<React.ComponentRef<typeof TextInput>>(null);
 
   const email = useForgotPasswordStore((state) => state.email);
   const setResetToken = useForgotPasswordStore((state) => state.setResetToken);
@@ -265,7 +265,9 @@ export default function ForgotPasswordVerifyScreen(): React.JSX.Element {
                 ) : null}
                 <Button
                   label={isRateLimited ? `Esperá ${secondsLeft}s` : 'Verificar'}
-                  onPress={handleSubmit(onSubmit)}
+                  onPress={() => {
+                    void handleSubmit(onSubmit)();
+                  }}
                   isLoading={isLoading}
                   disabled={value.length < 6 || isLoading || isRateLimited}
                 />

@@ -9,7 +9,7 @@ interface InputProps extends TextInputProps {
   isPassword?: boolean;
 }
 
-export const Input = React.forwardRef<TextInput, InputProps>(({
+export const Input = React.forwardRef<React.ComponentRef<typeof TextInput>, InputProps>(({
   label,
   error,
   isPassword,
