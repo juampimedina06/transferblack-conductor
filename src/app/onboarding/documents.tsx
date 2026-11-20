@@ -136,7 +136,24 @@ export default function DocumentsScreen() {
           router.replace('/pending-approval' as any);
         },
         onError: (err: unknown) => {
-          const apiErr = err as { response?: { data?: { error?: { message?: string } } } };
+          const apiErr = err as {
+            response?: { data?: { error?: { code?: string; message?: string } } };
+          };
+          const code = apiErr?.response?.data?.error?.code;
+
+          // Si el primer envío sí se guardó en el backend pero falló la respuesta en red,
+          // recuperar de forma idempotente llevando al conductor directo a revisión.
+          if (code === 'DRIVER_ALREADY_EXISTS') {
+            void resetOnboarding();
+            showBannerNotification({
+              type: 'success',
+              title: 'Tu solicitud ya está registrada',
+              message: 'Te llevamos a ver el estado de tu revisión.',
+            });
+            router.replace('/pending-approval' as any);
+            return;
+          }
+
           const message =
             apiErr?.response?.data?.error?.message ||
             'No se pudo enviar tu solicitud. Intentá nuevamente.';
