@@ -216,7 +216,6 @@ class PushNotificationService {
           lightColor: '#D4AF37',
           lockscreenVisibility: notif.AndroidNotificationVisibility.PUBLIC,
           bypassDnd: true,
-          sound: 'default',
           enableLights: true,
           enableVibrate: true,
           showBadge: true,

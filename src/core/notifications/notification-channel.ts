@@ -26,7 +26,6 @@ export async function ensureDefaultNotificationChannels(): Promise<void> {
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#D4AF37',
-      sound: 'default',
     });
 
     await Notifications.setNotificationChannelAsync(TRIP_OFFERS_CHANNEL_ID, {
@@ -34,7 +33,6 @@ export async function ensureDefaultNotificationChannels(): Promise<void> {
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 500, 250, 500],
       lightColor: '#D4AF37',
-      sound: 'default',
     });
   } catch (error) {
     console.warn('⚠️ [NotificationChannel] No se pudo crear el canal de notificación:', error);
