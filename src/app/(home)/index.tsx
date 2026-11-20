@@ -32,6 +32,9 @@ import { pushNotificationService } from '../../core/push/services/pushNotificati
 import { DispatchSuspensionBanner } from '../../presentation/components/dashboard/DispatchSuspensionBanner';
 import { ComplianceRenewalBanner } from '../../presentation/components/compliance/ComplianceRenewalBanner';
 import { useDriverStatusStore } from '../../presentation/driver/store/useDriverStatusStore';
+import { requestBackgroundLocationPermission } from '../../core/location/actions/permissions.actions';
+import { PermissionStatus } from '../../core/location/interface/permission.interface';
+import { startBackgroundLocationTracking } from '../../core/location/tasks/backgroundLocationTask';
 
 export default function DriverDashboardScreen() {
   const user = useAuthStore(state => state.user);
@@ -99,6 +102,13 @@ export default function DriverDashboardScreen() {
 
   const toggleAvailability = (value: boolean) => {
     setIsAvailable(value);
+    if (value) {
+      void requestBackgroundLocationPermission().then((status) => {
+        if (status === PermissionStatus.GRANTED) {
+          void startBackgroundLocationTracking();
+        }
+      });
+    }
   };
 
   const performLogout = async () => {

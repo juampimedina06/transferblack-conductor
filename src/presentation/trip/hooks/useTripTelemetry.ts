@@ -15,6 +15,10 @@ import {
   processTelemetryTick,
   ProcessTelemetryResult,
 } from '../../../core/location/services/telemetryProcessor';
+import {
+  startBackgroundLocationTracking,
+  stopBackgroundLocationTracking,
+} from '../../../core/location/tasks/backgroundLocationTask';
 
 export { processTelemetryTick, ProcessTelemetryResult };
 
@@ -72,6 +76,7 @@ export const useTripTelemetry = (options?: UseTripTelemetryOptions): void => {
         intervalIdRef.current = null;
       }
       clearWatchLocation();
+      void stopBackgroundLocationTracking();
       readingsHistoryRef.current = [];
       detectorStateRef.current = { ...initialTelemetryDetectorState };
       return;
@@ -79,6 +84,7 @@ export const useTripTelemetry = (options?: UseTripTelemetryOptions): void => {
 
     // Ensure location watching is active while available or on a trip
     void watchLocation();
+    void startBackgroundLocationTracking();
 
     const emitTelemetryPing = (): void => {
       if (!isMountedRef.current) return;

@@ -44,7 +44,8 @@
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.RECORD_AUDIO",
         "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_LOCATION"
+        "android.permission.FOREGROUND_SERVICE_LOCATION",
+        "android.permission.SYSTEM_ALERT_WINDOW"
       ]
     },
     "web": {
@@ -91,7 +92,9 @@
           "locationAlwaysAndWhenInUsePermission": "TransferBlack Conductor requiere tu ubicación en segundo plano para rastrear el vehículo durante viajes activos, calcular la tarifa con precisión, garantizar la seguridad en ruta y ofrecerte viajes cercanos mientras estás en servicio.",
           "locationAlwaysPermission": "TransferBlack Conductor requiere tu ubicación continua para rastrear viajes en curso, garantizar la seguridad del trayecto y asignarte viajes cercanos aun cuando la aplicación esté en segundo plano.",
           "locationWhenInUsePermission": "TransferBlack Conductor necesita tu ubicación en tiempo real mientras usás la app para mostrarte en el mapa, calcular distancias y navegar hacia los puntos de partida y destino de los pasajeros.",
-          "isAndroidBackgroundLocationEnabled": true
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
         }
       ]
     ],
