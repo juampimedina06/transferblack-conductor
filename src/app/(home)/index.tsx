@@ -10,7 +10,8 @@ import { authStorage } from '../../presentation/auth/store/authStorage';
 import { useAuthStore } from '../../presentation/auth/store/useAuthStore';
 import { CustomMap } from '../../presentation/components/maps/CustomMap';
 import * as Haptics from 'expo-haptics';
-import { Image } from 'expo-image';
+import { ProfileAvatarImage } from '../../presentation/components/profile/ProfileAvatarImage';
+import { useProfileAvatar } from '../../presentation/profile/hooks/useProfileAvatar';
 import { useDriverLocation } from '../../presentation/maps/hooks/useDriverLocation';
 import { DashboardCarousel } from '../../presentation/components/dashboard/DashboardCarousel';
 import { EmergencyFAB } from '../../presentation/components/dashboard/EmergencyFAB';
@@ -51,6 +52,7 @@ export default function DriverDashboardScreen() {
   const { location, errorMsg } = useDriverLocation(isAvailable || hasActiveTrip);
   const { stats } = useDashboardStats(isAvailable);
   const { summary, fetchSummary } = useWalletStore();
+  const { refreshAvatarUrl } = useProfileAvatar();
 
   useEffect(() => {
     fetchSummary();
@@ -318,19 +320,14 @@ export default function DriverDashboardScreen() {
               className="w-11 h-11 rounded-2xl bg-black/60 items-center justify-center border border-gold/50 shadow-lg relative overflow-hidden active:scale-95"
             >
               <View className="absolute top-0 left-2 right-2 h-[1px] bg-gold/50 pointer-events-none" />
-              {user?.avatar_url ? (
-                <Image
-                  source={{ uri: user.avatar_url }}
-                  className="w-full h-full"
-                  contentFit="cover"
-                />
-              ) : (
-                <View className="w-full h-full items-center justify-center bg-gold/15">
-                  <Text className="text-gold font-montserrat-bold text-sm">
-                    {user?.first_name?.charAt(0).toUpperCase() || 'C'}
-                  </Text>
-                </View>
-              )}
+              <ProfileAvatarImage
+                avatarUrl={user?.avatar_url}
+                expiresAt={user?.avatar_url_expires_at}
+                initials={user?.first_name?.charAt(0).toUpperCase() || 'C'}
+                initialsClassName="text-gold font-montserrat-bold text-sm"
+                fallbackContainerClassName="w-full h-full items-center justify-center bg-gold/15"
+                onRefreshUrl={refreshAvatarUrl}
+              />
               {/* Status Online Micro-Badge */}
               <View
                 className={`w-3 h-3 rounded-full absolute bottom-0.5 right-0.5 border-2 border-black ${

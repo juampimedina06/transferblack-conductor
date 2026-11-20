@@ -12,6 +12,7 @@ export interface UserProfile {
   last_name: string | null;
   phone_number: string | null;
   avatar_url: string | null;
+  avatar_url_expires_at?: string | null;
   birth_date: string | null;
   age: number | null;
   gender: Gender | string | null;

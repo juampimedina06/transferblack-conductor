@@ -21,6 +21,7 @@ interface AuthState {
   isAuthenticated: boolean;
   setSession: (authData: AuthResponse) => Promise<void>;
   updateUser: (userData: UserProfileResponse) => void;
+  updateAvatarUrl: (avatarUrl: string | null, expiresAt: string | null) => void;
   markEmailAsVerified: () => void;
   logout: () => Promise<void>;
 }
@@ -44,6 +45,18 @@ export const useAuthStore = create<AuthState>()(
 
       updateUser: (userData: UserProfileResponse) => {
         set({ user: userData.data });
+      },
+
+      updateAvatarUrl: (avatarUrl: string | null, expiresAt: string | null) => {
+        set((state) => ({
+          user: state.user
+            ? {
+                ...state.user,
+                avatar_url: avatarUrl,
+                avatar_url_expires_at: expiresAt,
+              }
+            : null,
+        }));
       },
 
       markEmailAsVerified: () => {

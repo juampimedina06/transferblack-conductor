@@ -1,43 +1,57 @@
 import React, { useState } from 'react';
 import {
-  View,
+  ActivityIndicator,
+  Alert,
+  RefreshControl,
+  ScrollView,
   Text,
   TouchableOpacity,
-  ScrollView,
-  RefreshControl,
-  Alert,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Image } from 'expo-image';
 import { useQuery } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
 
+import { transferApi } from '@/core/api/transferApi';
+import type { UserProfileResponse } from '@/core/auth/interface/auth.interface';
 import { THEME_COLORS } from '@/core/constants/theme';
 import { socket } from '@/core/socket/socket';
 import { useAuthStore } from '@/presentation/auth/store/useAuthStore';
 import { useDriverTripStore } from '@/presentation/trip/store/useDriverTripStore';
 import { getDriverMe } from '@/core/driver/actions/driver.actions';
+import { ProfileAvatarImage } from '@/presentation/components/profile/ProfileAvatarImage';
 import { ProfileSkeleton } from '@/presentation/components/profile/ProfileSkeleton';
 import { VehicleCard } from '@/presentation/components/profile/VehicleCard';
 import { ProfileOptionItem } from '@/presentation/components/profile/ProfileOptionItem';
 import { DriverDocumentsModal } from '@/presentation/components/compliance/DriverDocumentsModal';
 import { DeleteAccountModal } from '@/presentation/components/profile/DeleteAccountModal';
 import { usePushNotifications } from '@/presentation/hooks/usePushNotifications';
+import { useProfileAvatar } from '@/presentation/profile/hooks/useProfileAvatar';
 import { LiquidGlassContainer } from '@/presentation/components/ui/LiquidGlassContainer';
 import { AmbientGlow } from '@/presentation/components/ui/AmbientGlow';
 
 export default function DriverProfileScreen() {
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
+  const updateUser = useAuthStore((state) => state.updateUser);
   const activeTrip = useDriverTripStore((state) => state.activeTrip);
   const setIsAvailable = useDriverTripStore((state) => state.setIsAvailable);
 
   const [isLoggingOut, setIsLoggingOut] = useState<boolean>(false);
   const [isDocsModalVisible, setIsDocsModalVisible] = useState<boolean>(false);
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState<boolean>(false);
+
+  const {
+    isUploading,
+    isDeleting,
+    pickAndUploadAvatar,
+    removeAvatar,
+    refreshAvatarUrl,
+    cancelUpload,
+  } = useProfileAvatar();
 
   const { isRegistered: isPushRegistered, syncDeviceToken, expoPushToken, isExpoGoOnAndroid } =
     usePushNotifications({ enableListeners: false });
@@ -66,6 +80,69 @@ export default function DriverProfileScreen() {
     `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || 'Conductor Ejecutivo';
   const avatarUrl = user?.avatar_url;
   const driverEmail = user?.email || '';
+  const isAvatarBusy = isUploading || isDeleting;
+
+  const handleRefresh = async (): Promise<void> => {
+    await Promise.all([
+      refetch(),
+      transferApi
+        .get<UserProfileResponse>('/users/me')
+        .then((res) => updateUser(res.data))
+        .catch(() => undefined),
+    ]);
+  };
+
+  const handleAvatarPress = (): void => {
+    if (isAvatarBusy) {
+      return;
+    }
+
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    const options: {
+      text: string;
+      style?: 'default' | 'cancel' | 'destructive';
+      onPress?: () => void;
+    }[] = [
+      {
+        text: 'Tomar foto',
+        onPress: () => void pickAndUploadAvatar('camera'),
+      },
+      {
+        text: 'Elegir de la galería',
+        onPress: () => void pickAndUploadAvatar('library'),
+      },
+    ];
+
+    if (avatarUrl) {
+      options.push({
+        text: 'Eliminar foto actual',
+        style: 'destructive',
+        onPress: () => {
+          Alert.alert(
+            'Eliminar foto de perfil',
+            '¿Estás seguro de que querés quitar tu foto de perfil?',
+            [
+              { text: 'Cancelar', style: 'cancel' },
+              {
+                text: 'Eliminar',
+                style: 'destructive',
+                onPress: () => void removeAvatar(),
+              },
+            ],
+          );
+        },
+      });
+    }
+
+    options.push({ text: 'Cancelar', style: 'cancel' });
+
+    Alert.alert(
+      'Foto de perfil',
+      'Elegí cómo querés actualizar tu foto de perfil.',
+      options,
+    );
+  };
 
   const performLogout = async (): Promise<void> => {
     try {
@@ -252,7 +329,7 @@ export default function DriverProfileScreen() {
             refreshControl={
               <RefreshControl
                 refreshing={isRefetching}
-                onRefresh={refetch}
+                onRefresh={() => void handleRefresh()}
                 tintColor={THEME_COLORS.gold}
                 colors={[THEME_COLORS.gold]}
               />
@@ -265,29 +342,50 @@ export default function DriverProfileScreen() {
             >
               <View className="items-center">
                 {/* Double-Ring Champagne Gold Avatar Bezel */}
-                <View className="relative mb-3.5">
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={handleAvatarPress}
+                  disabled={isAvatarBusy}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cambiar foto de perfil"
+                  className="relative mb-3.5"
+                >
                   <View className="w-28 h-28 rounded-full p-1 bg-gold/20 border-2 border-gold shadow-xl shadow-black items-center justify-center">
-                    <View className="w-full h-full rounded-full bg-[#13141E] overflow-hidden items-center justify-center">
-                      {avatarUrl ? (
-                        <Image
-                          source={{ uri: avatarUrl }}
-                          style={{ width: '100%', height: '100%' }}
-                          contentFit="cover"
-                          transition={200}
-                        />
-                      ) : (
-                        <Text className="text-gold font-montserrat-bold text-3xl">
-                          {fullName.slice(0, 2).toUpperCase()}
-                        </Text>
+                    <View className="w-full h-full rounded-full bg-[#13141E] overflow-hidden items-center justify-center relative">
+                      <ProfileAvatarImage
+                        avatarUrl={avatarUrl}
+                        expiresAt={user?.avatar_url_expires_at}
+                        initials={fullName.slice(0, 2).toUpperCase()}
+                        initialsClassName="text-gold font-montserrat-bold text-3xl"
+                        onRefreshUrl={refreshAvatarUrl}
+                      />
+                      {isAvatarBusy && (
+                        <View className="absolute inset-0 bg-black/70 items-center justify-center">
+                          <ActivityIndicator size="small" color={THEME_COLORS.gold} />
+                        </View>
                       )}
                     </View>
                   </View>
 
-                  {/* Floating Verified Emblem */}
+                  {/* Floating Camera Edit Emblem */}
                   <View className="absolute -bottom-1 right-0 bg-gold border-2 border-[#0A0A0C] w-8 h-8 rounded-full items-center justify-center shadow-md shadow-black">
-                    <Ionicons name="shield-checkmark" size={16} color="#0A0A0C" />
+                    <Ionicons name="camera" size={15} color="#0A0A0C" />
                   </View>
-                </View>
+                </TouchableOpacity>
+
+                {isUploading && (
+                  <TouchableOpacity
+                    activeOpacity={0.75}
+                    onPress={cancelUpload}
+                    accessibilityRole="button"
+                    accessibilityLabel="Cancelar subida de foto"
+                    className="mb-2 px-3 py-1 rounded-full bg-white/10 border border-white/15"
+                  >
+                    <Text className="text-platinum font-montserrat-medium text-[11px]">
+                      Subiendo foto... Cancelar
+                    </Text>
+                  </TouchableOpacity>
+                )}
 
                 {/* Micro Badge */}
                 <View className="bg-white/[0.06] border border-white/15 px-3 py-0.5 rounded-full mb-2">
