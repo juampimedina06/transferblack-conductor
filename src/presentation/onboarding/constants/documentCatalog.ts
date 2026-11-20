@@ -106,9 +106,11 @@ export function formatDisplayDate(dateStr?: string | null): string {
 
 export function resolveDocumentPreviewUri(
   localUri?: string | null,
+  fileUrl?: string | null,
   filePath?: string | null
 ): string | null {
   if (localUri) return localUri;
+  if (fileUrl) return fileUrl;
   if (!filePath) return null;
   if (
     filePath.startsWith('http://') ||
@@ -117,6 +119,5 @@ export function resolveDocumentPreviewUri(
   ) {
     return filePath;
   }
-  const apiBase = process.env.EXPO_PUBLIC_API_URL?.replace(/\/api\/v1\/?$/, '') || '';
-  return `${apiBase}/${filePath.replace(/^\//, '')}`;
+  return null;
 }

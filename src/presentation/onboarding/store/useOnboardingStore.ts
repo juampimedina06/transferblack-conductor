@@ -15,21 +15,22 @@ export type DocumentType =
 export interface DocumentState {
   documentType: DocumentType;
   localUri: string | null;
-  filePath: string | null; // returned by backend
+  filePath: string | null; // returned by backend (S3 key or legacy path)
+  fileUrl?: string | null; // presigned preview URL returned by backend
   mimeType?: string | null;
   uploadStatus: 'pending' | 'uploading' | 'uploaded' | 'error';
   metadata: DocumentMetadataFormData | null;
 }
 
 export const createInitialDocuments = (): Record<DocumentType, DocumentState> => ({
-  dni: { documentType: 'dni', localUri: null, filePath: null, mimeType: null, uploadStatus: 'pending', metadata: null },
-  license_d1: { documentType: 'license_d1', localUri: null, filePath: null, mimeType: null, uploadStatus: 'pending', metadata: null },
-  insurance_policy: { documentType: 'insurance_policy', localUri: null, filePath: null, mimeType: null, uploadStatus: 'pending', metadata: null },
-  criminal_record_national: { documentType: 'criminal_record_national', localUri: null, filePath: null, mimeType: null, uploadStatus: 'pending', metadata: null },
-  criminal_record_provincial: { documentType: 'criminal_record_provincial', localUri: null, filePath: null, mimeType: null, uploadStatus: 'pending', metadata: null },
-  sex_offenses_registry: { documentType: 'sex_offenses_registry', localUri: null, filePath: null, mimeType: null, uploadStatus: 'pending', metadata: null },
-  vehicle_title: { documentType: 'vehicle_title', localUri: null, filePath: null, mimeType: null, uploadStatus: 'pending', metadata: null },
-  itv: { documentType: 'itv', localUri: null, filePath: null, mimeType: null, uploadStatus: 'pending', metadata: null },
+  dni: { documentType: 'dni', localUri: null, filePath: null, fileUrl: null, mimeType: null, uploadStatus: 'pending', metadata: null },
+  license_d1: { documentType: 'license_d1', localUri: null, filePath: null, fileUrl: null, mimeType: null, uploadStatus: 'pending', metadata: null },
+  insurance_policy: { documentType: 'insurance_policy', localUri: null, filePath: null, fileUrl: null, mimeType: null, uploadStatus: 'pending', metadata: null },
+  criminal_record_national: { documentType: 'criminal_record_national', localUri: null, filePath: null, fileUrl: null, mimeType: null, uploadStatus: 'pending', metadata: null },
+  criminal_record_provincial: { documentType: 'criminal_record_provincial', localUri: null, filePath: null, fileUrl: null, mimeType: null, uploadStatus: 'pending', metadata: null },
+  sex_offenses_registry: { documentType: 'sex_offenses_registry', localUri: null, filePath: null, fileUrl: null, mimeType: null, uploadStatus: 'pending', metadata: null },
+  vehicle_title: { documentType: 'vehicle_title', localUri: null, filePath: null, fileUrl: null, mimeType: null, uploadStatus: 'pending', metadata: null },
+  itv: { documentType: 'itv', localUri: null, filePath: null, fileUrl: null, mimeType: null, uploadStatus: 'pending', metadata: null },
 });
 
 interface OnboardingDraftData {

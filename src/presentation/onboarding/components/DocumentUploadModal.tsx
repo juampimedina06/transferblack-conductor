@@ -91,7 +91,11 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
   const isUploading = documentState.uploadStatus === 'uploading' || uploadDocument.isPending;
   const hasUploadError = documentState.uploadStatus === 'error';
 
-  const previewUri = resolveDocumentPreviewUri(documentState.localUri, documentState.filePath);
+  const previewUri = resolveDocumentPreviewUri(
+    documentState.localUri,
+    documentState.fileUrl,
+    documentState.filePath
+  );
   const isPdf =
     documentState.mimeType === 'application/pdf' ||
     Boolean(previewUri?.toLowerCase().endsWith('.pdf'));

@@ -45,7 +45,11 @@ export const DocumentItem: React.FC<DocumentItemProps> = ({
   const isComplete = isUploaded && isMetadataValid;
   const isIncompleteAfterUpload = isUploaded && !isMetadataValid;
 
-  const previewUri = resolveDocumentPreviewUri(documentState.localUri, documentState.filePath);
+  const previewUri = resolveDocumentPreviewUri(
+    documentState.localUri,
+    documentState.fileUrl,
+    documentState.filePath
+  );
   const isPdf =
     documentState.mimeType === 'application/pdf' ||
     Boolean(previewUri?.toLowerCase().endsWith('.pdf'));

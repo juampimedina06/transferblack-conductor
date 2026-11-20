@@ -16,6 +16,7 @@ export const useDraftDocuments = () => {
             const currentDoc = useOnboardingStore.getState().documents[draft.documentType];
             setDocumentState(draft.documentType, {
               filePath: draft.filePath,
+              fileUrl: draft.fileUrl ?? null,
               mimeType: draft.mimeType,
               uploadStatus: 'uploaded',
               metadata: {
@@ -64,6 +65,7 @@ export const useOnboardingMutations = () => {
     onSuccess: (data, variables) => {
       setDocumentState(variables.type, {
         filePath: data.filePath,
+        fileUrl: data.fileUrl ?? null,
         mimeType: variables.mimeType,
         uploadStatus: 'uploaded',
       });
@@ -81,6 +83,7 @@ export const useOnboardingMutations = () => {
       setDocumentState(type, {
         localUri: null,
         filePath: null,
+        fileUrl: null,
         uploadStatus: 'pending',
         metadata: null,
       });
