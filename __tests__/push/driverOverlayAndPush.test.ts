@@ -8,18 +8,18 @@ import {
   requestOverlayPermission,
   resetOverlayPromptStateForTests,
   showOfferOverlay,
-} from '@/core/overlay/driverOverlay';
-import { isPushTripCancel, parsePushTripOffer } from '@/core/push/utils/pushOfferParser';
+} from '../../src/core/overlay/driverOverlay';
+import { isPushTripCancel, parsePushTripOffer } from '../../src/core/push/utils/pushOfferParser';
 import {
   BACKGROUND_NOTIFICATION_TASK,
   TRIP_OFFERS_CHANNEL_ID,
   processBackgroundNotificationPayload,
   pushNotificationService,
   setNotificationsModuleForTests,
-} from '@/core/push/services/pushNotificationService';
-import { offerAlarmService } from '@/presentation/trip/services/offerAlarmService';
-import { useDriverTripStore } from '@/presentation/trip/store/useDriverTripStore';
-import { TripOfferPayload } from '@/core/trip/interface/trip.interface';
+} from '../../src/core/push/services/pushNotificationService';
+import { offerAlarmService } from '../../src/presentation/trip/services/offerAlarmService';
+import { useDriverTripStore } from '../../src/presentation/trip/store/useDriverTripStore';
+import { TripOfferPayload } from '../../src/core/trip/interface/trip.interface';
 
 const {
   mockPlatform,
@@ -140,12 +140,12 @@ vi.mock('@react-native-async-storage/async-storage', () => {
   };
 });
 
-vi.mock('@/core/push/actions/pushToken.actions', () => ({
+vi.mock('../../src/core/push/actions/pushToken.actions', () => ({
   registerDriverPushToken: mockRegisterDriverPushToken,
   revokeDriverPushToken: mockRevokeDriverPushToken,
 }));
 
-vi.mock('@/presentation/driver/store/useDriverStatusStore', () => ({
+vi.mock('../../src/presentation/driver/store/useDriverStatusStore', () => ({
   useDriverStatusStore: {
     getState: () => ({
       fetchStatus: mockFetchStatus,

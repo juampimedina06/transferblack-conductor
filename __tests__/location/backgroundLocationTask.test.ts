@@ -1,23 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as Location from 'expo-location';
 import type * as TaskManager from 'expo-task-manager';
-import { authStorage } from '@/presentation/auth/store/authStorage';
-import { useLocationStore } from '@/presentation/maps/store/useLocationStore';
-import { useDriverTripStore } from '@/presentation/trip/store/useDriverTripStore';
-import { transferApi } from '@/core/api/transferApi';
-import { Trip } from '@/core/trip/interface/trip.interface';
+import { authStorage } from '../../src/presentation/auth/store/authStorage';
+import { useLocationStore } from '../../src/presentation/maps/store/useLocationStore';
+import { useDriverTripStore } from '../../src/presentation/trip/store/useDriverTripStore';
+import { transferApi } from '../../src/core/api/transferApi';
+import { Trip } from '../../src/core/trip/interface/trip.interface';
 import {
   checkBackgroundLocationPermission,
   requestBackgroundLocationPermission,
-} from '@/core/location/actions/permissions.actions';
-import { PermissionStatus } from '@/core/location/interface/permission.interface';
+} from '../../src/core/location/actions/permissions.actions';
+import { PermissionStatus } from '../../src/core/location/interface/permission.interface';
 import {
   BACKGROUND_LOCATION_TASK,
   BackgroundLocationTaskData,
   executeBackgroundLocationTask,
   startBackgroundLocationTracking,
   stopBackgroundLocationTracking,
-} from '@/core/location/tasks/backgroundLocationTask';
+} from '../../src/core/location/tasks/backgroundLocationTask';
 
 const {
   mockPlatform,
@@ -83,13 +83,13 @@ vi.mock('expo-task-manager', () => ({
   defineTask: mockDefineTask,
 }));
 
-vi.mock('@/core/api/transferApi', () => ({
+vi.mock('../../src/core/api/transferApi', () => ({
   transferApi: {
     post: vi.fn(),
   },
 }));
 
-vi.mock('@/presentation/auth/store/authStorage', () => ({
+vi.mock('../../src/presentation/auth/store/authStorage', () => ({
   authStorage: {
     getAccessToken: vi.fn(),
     getRefreshToken: vi.fn(),

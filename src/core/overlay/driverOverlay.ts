@@ -1,5 +1,5 @@
 import { Alert, NativeModules, Platform } from 'react-native';
-import type { TripOfferPayload } from '@/core/trip/interface/trip.interface';
+import type { TripOfferPayload } from '../trip/interface/trip.interface';
 
 export interface DriverOverlayPayload {
   offerId: string;

@@ -9,10 +9,10 @@ import {
   isPushTripCancel,
   parsePushTripOffer,
 } from '../utils/pushOfferParser';
-import { driverOverlay } from '@/core/overlay/driverOverlay';
-import { offerAlarmService } from '@/presentation/trip/services/offerAlarmService';
-import { useDriverTripStore } from '@/presentation/trip/store/useDriverTripStore';
-import { useDriverStatusStore } from '@/presentation/driver/store/useDriverStatusStore';
+import { driverOverlay } from '../../overlay/driverOverlay';
+import { offerAlarmService } from '../../../presentation/trip/services/offerAlarmService';
+import { useDriverTripStore } from '../../../presentation/trip/store/useDriverTripStore';
+import { useDriverStatusStore } from '../../../presentation/driver/store/useDriverStatusStore';
 
 export const BACKGROUND_NOTIFICATION_TASK = 'BACKGROUND_TRIP_OFFER_TASK';
 export const TRIP_OFFERS_CHANNEL_ID = 'trip-offers';

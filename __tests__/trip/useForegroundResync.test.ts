@@ -137,18 +137,18 @@ vi.mock('@react-native-async-storage/async-storage', () => {
   };
 });
 
-vi.mock('@/core/api/transferApi', () => ({
+vi.mock('../../src/core/api/transferApi', () => ({
   transferApi: {
     get: mockTransferApiGet,
     post: vi.fn(),
   },
 }));
 
-vi.mock('@/core/socket/socket', () => ({
+vi.mock('../../src/core/socket/socket', () => ({
   socket: mockSocket,
 }));
 
-vi.mock('@/presentation/auth/store/authStorage', () => ({
+vi.mock('../../src/presentation/auth/store/authStorage', () => ({
   authStorage: {
     getAccessToken: mockAuthStorageGetAccessToken,
     getRefreshToken: vi.fn(async () => null),
@@ -160,20 +160,20 @@ vi.mock('@/presentation/auth/store/authStorage', () => ({
 import {
   getPendingDriverOffers,
   TripRequestError,
-} from '@/core/trip/actions/trip.actions';
+} from '../../src/core/trip/actions/trip.actions';
 import {
   ActiveTripSummary,
   Trip,
   TripOfferPayload,
-} from '@/core/trip/interface/trip.interface';
-import { driverOverlay } from '@/core/overlay/driverOverlay';
-import { offerAlarmService } from '@/presentation/trip/services/offerAlarmService';
-import { useDriverTripStore } from '@/presentation/trip/store/useDriverTripStore';
+} from '../../src/core/trip/interface/trip.interface';
+import { driverOverlay } from '../../src/core/overlay/driverOverlay';
+import { offerAlarmService } from '../../src/presentation/trip/services/offerAlarmService';
+import { useDriverTripStore } from '../../src/presentation/trip/store/useDriverTripStore';
 import {
   extractDeepLinkOfferParams,
   reconcileForegroundDriverState,
   useForegroundResync,
-} from '@/presentation/trip/hooks/useForegroundResync';
+} from '../../src/presentation/trip/hooks/useForegroundResync';
 
 const BASE_NOW_ISO = '2026-11-20T12:00:00.000Z';
 const BASE_NOW_MS = new Date(BASE_NOW_ISO).getTime();

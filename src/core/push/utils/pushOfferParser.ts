@@ -1,4 +1,4 @@
-import { TripOfferPayload } from '@/core/trip/interface/trip.interface';
+import { TripOfferPayload } from '../../trip/interface/trip.interface';
 import {
   PushTripOfferCancelPayload,
   PushTripOfferPayload,
