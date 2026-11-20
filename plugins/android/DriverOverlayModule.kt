@@ -128,7 +128,7 @@ class DriverOverlayModule(reactContext: ReactApplicationContext) :
           val cardView = buildOverlayCard(
             context = context,
             wm = wm,
-            layoutParams = layoutParams,
+            windowLayoutParams = layoutParams,
             offerId = offerId,
             tripId = tripId,
             priceDisplay = priceDisplay,
@@ -176,7 +176,7 @@ class DriverOverlayModule(reactContext: ReactApplicationContext) :
   private fun buildOverlayCard(
     context: Context,
     wm: WindowManager,
-    layoutParams: WindowManager.LayoutParams,
+    windowLayoutParams: WindowManager.LayoutParams,
     offerId: String,
     tripId: String,
     priceDisplay: String,
@@ -294,8 +294,8 @@ class DriverOverlayModule(reactContext: ReactApplicationContext) :
     container.setOnTouchListener { _, event ->
       when (event.action) {
         MotionEvent.ACTION_DOWN -> {
-          initialX = layoutParams.x
-          initialY = layoutParams.y
+          initialX = windowLayoutParams.x
+          initialY = windowLayoutParams.y
           initialTouchX = event.rawX
           initialTouchY = event.rawY
           isDragging = false
@@ -308,11 +308,11 @@ class DriverOverlayModule(reactContext: ReactApplicationContext) :
             isDragging = true
           }
           if (isDragging) {
-            layoutParams.x = initialX + dx
-            layoutParams.y = (initialY + dy).coerceAtLeast(0)
+            windowLayoutParams.x = initialX + dx
+            windowLayoutParams.y = (initialY + dy).coerceAtLeast(0)
             try {
               if (container.isAttachedToWindow) {
-                wm.updateViewLayout(container, layoutParams)
+                wm.updateViewLayout(container, windowLayoutParams)
               }
             } catch (_: Exception) {
               // Ignorar si la vista ya fue removida
