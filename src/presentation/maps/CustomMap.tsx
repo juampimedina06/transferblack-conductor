@@ -42,7 +42,7 @@ export const CustomMap = ({
 }: Props) => {
   const mapRef = useRef<MapView>(null);
   const [isFollowingUser, setIsFollowingUser] = useState(true);
-  const [isPolyline, setIsPolyline] = useState(true);
+  const [isPolyline, setIsPolyline] = useState(false);
   const prevActiveTripIdRef = useRef<string | null>(null);
 
   const currentOffer = useDriverTripStore((state) => state.currentOffer);
