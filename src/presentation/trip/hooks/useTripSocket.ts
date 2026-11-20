@@ -35,7 +35,7 @@ export const useTripSocket = () => {
       syncActiveTripState();
     };
     const handleConnectError = (err: any) => {
-      console.warn('⚠️ [Socket] Error de conexión:', err?.message || err);
+      console.warn('[Socket] Error de conexión:', err?.message || err);
     };
     const handleNewOffer = (payload: TripOfferPayload) => {
       enqueueOffer(payload);
@@ -137,7 +137,7 @@ export const useTripSocket = () => {
     };
 
     const handleSocketError = (err: any) => {
-      console.warn('⚠️ [Socket error]:', err);
+      console.warn('[Socket error]:', err);
     };
 
     // Unirse a la sala si el socket ya está conectado
