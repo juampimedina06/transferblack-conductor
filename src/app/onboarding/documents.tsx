@@ -133,7 +133,7 @@ export default function DocumentsScreen() {
             title: 'Solicitud enviada',
             message: 'Tu legajo ya está en revisión por nuestro equipo.',
           });
-          router.replace('/pending-approval' as any);
+          router.replace('/(home)/pending-approval' as any);
         },
         onError: (err: unknown) => {
           const apiErr = err as {
@@ -150,7 +150,7 @@ export default function DocumentsScreen() {
               title: 'Tu solicitud ya está registrada',
               message: 'Te llevamos a ver el estado de tu revisión.',
             });
-            router.replace('/pending-approval' as any);
+            router.replace('/(home)/pending-approval' as any);
             return;
           }
 
