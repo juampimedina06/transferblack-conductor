@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
-import { Alert, Platform } from 'react-native';
-import * as Haptics from 'expo-haptics';
+import { Platform } from 'react-native';
 import { router } from 'expo-router';
 import Constants, { AppOwnership } from 'expo-constants';
 import { socket } from '../../../core/socket/socket';
@@ -8,6 +7,7 @@ import { useDriverTripStore } from '../store/useDriverTripStore';
 import { TripOfferPayload } from '../../../core/trip/interface/trip.interface';
 import { syncActiveTripState } from './useActiveTripSync';
 import { offerAlarmService } from '../services/offerAlarmService';
+import { showBannerNotification } from '../../notifications/store/useBannerNotificationStore';
 
 const isExpoGoOnAndroid =
   Platform.OS === 'android' && Constants.appOwnership === AppOwnership.Expo;
@@ -47,22 +47,29 @@ export const useTripSocket = () => {
       pickupAddress?: string | null;
       dropoffAddress?: string | null;
     }) => {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       const timeStr = payload.scheduledAt
         ? new Date(payload.scheduledAt).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
         : '';
       const textMsg = timeStr
-        ? `Tenés un viaje programado para las ${timeStr}. Recordá conectarte antes de los 20 min previos para confirmar tu disponibilidad.`
-        : 'Tenés un viaje programado próximo. Recordá conectarte para confirmar tu disponibilidad.';
+        ? `Viaje programado a las ${timeStr}. Conectate 20 min antes para confirmar.`
+        : 'Tenés un viaje programado próximo. Conectate para confirmar disponibilidad.';
 
-      Alert.alert('Recordatorio de Reserva', textMsg, [
-        { text: 'Ver reservas', onPress: () => router.push('/(home)/scheduled-trips' as any) },
-        { text: 'Entendido', style: 'cancel' },
-      ]);
+      showBannerNotification({
+        type: 'trip',
+        title: 'Recordatorio de reserva',
+        message: textMsg,
+        actionLabel: 'Ver reservas',
+        durationMs: 6500,
+        onPress: () => router.push('/(home)/scheduled-trips' as any),
+      });
     };
 
     const handleTripAssigned = async (_payload: { tripId: string; chat?: any }) => {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      showBannerNotification({
+        type: 'trip',
+        title: 'Viaje asignado',
+        message: 'Dirigite al punto de encuentro del pasajero.',
+      });
       await syncActiveTripState();
     };
 
@@ -70,6 +77,12 @@ export const useTripSocket = () => {
       cancelOffer(payload.offerId || payload.tripId);
       void offerAlarmService.stop();
       void dismissAllNotificationsSafely();
+      showBannerNotification({
+        type: 'info',
+        title: 'Oferta ya no disponible',
+        message: 'La solicitud expiró o fue aceptada por otro conductor.',
+        durationMs: 3200,
+      });
     };
 
     socket.on('connect', handleConnect);
@@ -103,12 +116,12 @@ export const useTripSocket = () => {
 
     const handleStatusChanged = (payload: { status: string; chat?: any }) => {
       if (payload.status === 'cancelled') {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-        Alert.alert(
-          'Viaje Cancelado',
-          'El viaje ha sido cancelado por el pasajero o por el sistema.',
-          [{ text: 'Entendido', style: 'default' }]
-        );
+        showBannerNotification({
+          type: 'warning',
+          title: 'Viaje cancelado',
+          message: 'El viaje fue cancelado por el pasajero o por el sistema.',
+          durationMs: 5200,
+        });
         socket.emit('ride:leave', { rideId });
         setActiveTrip(null);
       } else if (payload.status === 'completed') {

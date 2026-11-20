@@ -9,6 +9,7 @@ import {
 import { getDriverStatus, getDriverDocuments } from '@/core/driver/actions/driverStatus.actions';
 import { socket } from '@/core/socket/socket';
 import { setOnDocumentExpiryHandler } from '@/core/api/transferApi';
+import { showBannerNotification } from '@/presentation/notifications/store/useBannerNotificationStore';
 
 interface DriverStatusState {
   consecutiveCancellations: number;
@@ -104,6 +105,12 @@ export const useDriverStatusStore = create<DriverStatusState>()(
         const handleSuspended = (payload: { dispatchSuspendedUntil?: string }) => {
           if (payload?.dispatchSuspendedUntil) {
             set({ dispatchSuspendedUntil: payload.dispatchSuspendedUntil });
+            showBannerNotification({
+              type: 'warning',
+              title: 'Despacho pausado temporalmente',
+              message: 'Tu recepción de viajes se pausó brevemente por cancelaciones consecutivas.',
+              durationMs: 5200,
+            });
           }
         };
 
@@ -115,6 +122,18 @@ export const useDriverStatusStore = create<DriverStatusState>()(
             get().setCompliance({
               status: payload.status,
               blockingDocuments: payload.blockingDocuments || [],
+            });
+            showBannerNotification({
+              type: payload.status === 'compliant' ? 'success' : 'warning',
+              title:
+                payload.status === 'compliant'
+                  ? 'Documentación al día'
+                  : 'Atención con tu documentación',
+              message:
+                payload.status === 'compliant'
+                  ? 'Tus documentos fueron aprobados y ya podés operar normalmente.'
+                  : 'Tenés documentos vencidos o próximos a vencer. Revisalos desde tu perfil.',
+              durationMs: 5200,
             });
           }
           void get().fetchStatus();

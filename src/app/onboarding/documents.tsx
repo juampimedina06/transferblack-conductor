@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ScrollView, Alert, Platform, RefreshControl, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, Platform, RefreshControl, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,6 +9,7 @@ import { DocumentItem } from '../../presentation/onboarding/components/DocumentI
 import { DOCUMENT_CATALOG } from '../../presentation/onboarding/constants/documentCatalog';
 import { documentMetadataSchema } from '../../presentation/onboarding/schemas/onboarding.schema';
 import { Button } from '../../presentation/components/ui/Button';
+import { showBannerNotification } from '../../presentation/notifications/store/useBannerNotificationStore';
 import { THEME_COLORS } from '../../core/constants/theme';
 
 const personalDocumentTypes: DocumentType[] = [
@@ -91,30 +92,34 @@ export default function DocumentsScreen() {
 
   const handleSubmit = () => {
     if (!vehicleData) {
-      Alert.alert(
-        'Faltan datos del vehículo',
-        'Por favor completá los datos del vehículo en el paso anterior.'
-      );
+      showBannerNotification({
+        type: 'warning',
+        title: 'Faltan datos del vehículo',
+        message: 'Completá los datos del vehículo en el paso anterior.',
+        actionLabel: 'Ir al paso 2',
+        onPress: () => router.replace('/onboarding/vehicle' as any),
+      });
       return;
     }
 
     if (missingVehicleDocs.length > 0) {
-      Alert.alert(
-        'Documentación del vehículo pendiente',
-        `Faltan completar documentos del vehículo:\n• ${missingVehicleDocs.join('\n• ')}\n\nVolvé al paso 2 para cargarlos.`,
-        [
-          { text: 'Ir al vehículo', onPress: () => router.replace('/onboarding/vehicle' as any) },
-          { text: 'Cancelar', style: 'cancel' },
-        ]
-      );
+      showBannerNotification({
+        type: 'warning',
+        title: 'Faltan documentos del vehículo',
+        message: `Pendientes: ${missingVehicleDocs.join(', ')}.`,
+        actionLabel: 'Completar',
+        onPress: () => router.replace('/onboarding/vehicle' as any),
+        durationMs: 5500,
+      });
       return;
     }
 
     if (missingPersonalDocs.length > 0) {
-      Alert.alert(
-        'Documentación incompleta',
-        'Completá todos los documentos requeridos antes de enviar tu solicitud.'
-      );
+      showBannerNotification({
+        type: 'warning',
+        title: 'Documentación incompleta',
+        message: 'Completá todos los documentos requeridos antes de enviar.',
+      });
       return;
     }
 
@@ -123,6 +128,11 @@ export default function DocumentsScreen() {
       {
         onSuccess: () => {
           void resetOnboarding();
+          showBannerNotification({
+            type: 'success',
+            title: 'Solicitud enviada',
+            message: 'Tu legajo ya está en revisión por nuestro equipo.',
+          });
           router.replace('/pending-approval' as any);
         },
         onError: (err: unknown) => {
@@ -130,7 +140,11 @@ export default function DocumentsScreen() {
           const message =
             apiErr?.response?.data?.error?.message ||
             'No se pudo enviar tu solicitud. Intentá nuevamente.';
-          Alert.alert('Error al enviar', message);
+          showBannerNotification({
+            type: 'error',
+            title: 'Error al enviar el legajo',
+            message,
+          });
         },
       }
     );
