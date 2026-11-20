@@ -1,751 +1,212 @@
-import React, { useState, useEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  TextInput,
-  Alert,
-  ActivityIndicator,
-  Linking,
-  LayoutAnimation,
-  Modal,
-} from 'react-native';
+import React, { useState } from 'react';
+import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 import { Image } from 'expo-image';
-import * as ImagePicker from 'expo-image-picker';
-import * as DocumentPicker from 'expo-document-picker';
 import { Ionicons } from '@expo/vector-icons';
-import { DocumentType, useOnboardingStore } from '../store/useOnboardingStore';
-import { useOnboardingMutations } from '../hooks/useOnboardingMutations';
 import { THEME_COLORS } from '../../../core/constants/theme';
-import { DatePickerInput } from '../../components/ui/DatePickerInput';
-import { DocumentScannerModal } from '../../components/ui/DocumentScannerModal';
-
-const documentLabels: Record<DocumentType, string> = {
-  dni: 'DNI (Frente y Dorso)',
-  license_d1: 'Licencia de Conducir (D1)',
-  insurance_policy: 'Póliza de Seguro al Día',
-  criminal_record_national: 'Antecedentes Penales Nacionales',
-  criminal_record_provincial: 'Antecedentes Penales Provinciales',
-  sex_offenses_registry: 'Registro de Ofensores Sexuales',
-  vehicle_title: 'Título de Propiedad Automotor',
-  itv: 'ITV / RTO (Revisión Técnica)',
-};
+import { DocumentType, useOnboardingStore } from '../store/useOnboardingStore';
+import { documentMetadataSchema } from '../schemas/onboarding.schema';
+import {
+  DOCUMENT_CATALOG,
+  formatDisplayDate,
+  resolveDocumentPreviewUri,
+} from '../constants/documentCatalog';
+import { DocumentUploadModal } from './DocumentUploadModal';
 
 interface DocumentItemProps {
   type: DocumentType;
   stepIndex?: number;
   totalSteps?: number;
+  isNextSuggested?: boolean;
 }
 
 export const DocumentItem: React.FC<DocumentItemProps> = ({
   type,
   stepIndex = 1,
   totalSteps = 8,
+  isNextSuggested = false,
 }) => {
   const documentState = useOnboardingStore((state) => state.documents[type]);
-  const setDocumentState = useOnboardingStore((state) => state.setDocumentState);
-  const { uploadDocument, deleteDocument } = useOnboardingMutations();
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const storeMetadata = {
-    documentNumber: documentState.metadata?.documentNumber || '',
-    issuedAt: documentState.metadata?.issuedAt || '',
-    expiresAt: documentState.metadata?.expiresAt || '',
-  };
-
-  const [docNumber, setDocNumber] = useState(storeMetadata.documentNumber);
-  const [issuedAt, setIssuedAt] = useState(storeMetadata.issuedAt);
-  const [expiresAt, setExpiresAt] = useState(storeMetadata.expiresAt);
-  const [isScannerOpen, setIsScannerOpen] = useState(false);
-  const [isViewerOpen, setIsViewerOpen] = useState(false);
-  const [lastStoreMetadata, setLastStoreMetadata] = useState(storeMetadata);
-
-  const label = documentLabels[type];
-  const isUploaded = documentState.uploadStatus === 'uploaded';
+  const catalog = DOCUMENT_CATALOG[type];
+  const metadata = documentState.metadata;
+  const isUploaded = documentState.uploadStatus === 'uploaded' && Boolean(documentState.filePath);
   const isUploading = documentState.uploadStatus === 'uploading';
+  const hasError = documentState.uploadStatus === 'error';
 
-  const getPreviewUri = (): string | null => {
-    if (documentState.localUri) return documentState.localUri;
-    if (documentState.filePath) {
-      if (
-        documentState.filePath.startsWith('http://') ||
-        documentState.filePath.startsWith('https://') ||
-        documentState.filePath.startsWith('file://')
-      ) {
-        return documentState.filePath;
-      }
-      const apiBase = process.env.EXPO_PUBLIC_API_URL?.replace(/\/api\/v1\/?$/, '') || '';
-      return `${apiBase}/${documentState.filePath.replace(/^\//, '')}`;
-    }
-    return null;
-  };
+  const hasDates = Boolean(metadata?.issuedAt) && Boolean(metadata?.expiresAt);
+  const hasRequiredNumber =
+    !catalog.requiresDocumentNumber || Boolean(metadata?.documentNumber?.trim());
+  const isMetadataValid =
+    hasDates &&
+    hasRequiredNumber &&
+    documentMetadataSchema.safeParse(metadata).success;
 
-  const previewUri = getPreviewUri();
+  const isComplete = isUploaded && isMetadataValid;
+  const isIncompleteAfterUpload = isUploaded && !isMetadataValid;
+
+  const previewUri = resolveDocumentPreviewUri(documentState.localUri, documentState.filePath);
   const isPdf =
     documentState.mimeType === 'application/pdf' ||
-    (previewUri ? previewUri.toLowerCase().endsWith('.pdf') : false);
-  const isImage = !isPdf && !!previewUri;
+    Boolean(previewUri?.toLowerCase().endsWith('.pdf'));
+  const isImage = !isPdf && Boolean(previewUri);
 
-  const isVehicleDoc = type === 'vehicle_title' || type === 'itv';
-  const isMetadataMissing = !issuedAt || !expiresAt || (isVehicleDoc && !docNumber?.trim());
+  const borderColor = isComplete
+    ? 'rgba(52, 211, 153, 0.35)'
+    : hasError
+      ? 'rgba(239, 68, 68, 0.45)'
+      : isIncompleteAfterUpload
+        ? 'rgba(245, 158, 11, 0.45)'
+        : isNextSuggested
+          ? 'rgba(212, 175, 55, 0.55)'
+          : 'rgba(255, 255, 255, 0.1)';
 
-  // Si ya está subido e ingresó metadatos inicia minimizado, si no, expandido
-  const shouldExpand = !isUploaded || isMetadataMissing;
-  const [isExpanded, setIsExpanded] = useState(shouldExpand);
-  const [lastShouldExpand, setLastShouldExpand] = useState(shouldExpand);
+  const backgroundColor = isComplete
+    ? 'rgba(16, 22, 20, 0.92)'
+    : isNextSuggested
+      ? 'rgba(24, 21, 16, 0.95)'
+      : 'rgba(18, 19, 26, 0.92)';
 
-  // Skip LayoutAnimation en el primer render para no interferir con la transición del Stack
-  const hasRendered = useRef(false);
-
-  // Colapsar o expandir al cambiar el estado del documento se ajusta durante el
-  // render. Antes de hacerlo en el efecto, isExpanded quedaba desactualizado
-  // cuando el documento ya llegaba subido desde el store.
-  if (shouldExpand !== lastShouldExpand) {
-    setLastShouldExpand(shouldExpand);
-    setIsExpanded(shouldExpand);
-  }
-
-  useEffect(() => {
-    if (!hasRendered.current) {
-      hasRendered.current = true;
-      return;
+  const getSubtitle = (): { text: string; colorClass: string } => {
+    if (isUploading) {
+      return { text: 'Subiendo archivo...', colorClass: 'text-gold' };
     }
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-  }, [shouldExpand]);
-
-  // Sincronizar campos cuando se rehidrata el borrador guardado. Se ajusta
-  // durante el render y no en un efecto: React vuelve a renderizar antes de
-  // pintar, así el usuario nunca llega a ver los campos del borrador anterior.
-  if (
-    lastStoreMetadata.documentNumber !== storeMetadata.documentNumber ||
-    lastStoreMetadata.issuedAt !== storeMetadata.issuedAt ||
-    lastStoreMetadata.expiresAt !== storeMetadata.expiresAt
-  ) {
-    setLastStoreMetadata(storeMetadata);
-    setDocNumber(storeMetadata.documentNumber);
-    setIssuedAt(storeMetadata.issuedAt);
-    setExpiresAt(storeMetadata.expiresAt);
-  }
-
-  const toggleExpand = () => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setIsExpanded((prev) => !prev);
-  };
-
-  const handlePickImage = async (useCamera: boolean) => {
-    try {
-      let result;
-      if (useCamera) {
-        const { status, canAskAgain } = await ImagePicker.getCameraPermissionsAsync();
-
-        if (status !== 'granted') {
-          if (!canAskAgain) {
-            Alert.alert(
-              "Permiso de cámara requerido",
-              `Para fotografiar tu ${label.toLowerCase()}, TransferBlack necesita acceso a la cámara.\n\nPodés habilitarlo fácilmente desde los Ajustes del sistema.`,
-              [
-                { text: "Cancelar", style: "cancel" },
-                { text: "Abrir Ajustes", onPress: () => Linking.openSettings() }
-              ]
-            );
-            return;
-          }
-
-          const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
-          if (!permissionResult.granted) {
-            Alert.alert(
-              "Permiso de cámara no concedido",
-              `No se pudo acceder a la cámara para tomar la foto de tu ${label.toLowerCase()}.\n\nSi querés subirla con la cámara, podés autorizar el permiso desde Ajustes.`,
-              [
-                { text: "Entendido", style: "cancel" },
-                { text: "Abrir Ajustes", onPress: () => Linking.openSettings() }
-              ]
-            );
-            return;
-          }
-        }
-
-        result = await ImagePicker.launchCameraAsync({
-          allowsEditing: false,
-          quality: 0.8,
-        });
-      } else {
-        const { status, canAskAgain } = await ImagePicker.getMediaLibraryPermissionsAsync();
-
-        if (status !== 'granted') {
-          if (!canAskAgain) {
-            Alert.alert(
-              "Permiso de fotos requerido",
-              `Para seleccionar la foto de tu ${label.toLowerCase()}, TransferBlack necesita acceso a tu galería.\n\nPodés habilitarlo en los Ajustes del sistema.`,
-              [
-                { text: "Cancelar", style: "cancel" },
-                { text: "Abrir Ajustes", onPress: () => Linking.openSettings() }
-              ]
-            );
-            return;
-          }
-
-          const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-          if (!permissionResult.granted) {
-            Alert.alert(
-              "Permiso de galería no concedido",
-              `No se pudo acceder a tus fotos para cargar tu ${label.toLowerCase()}.\n\nPodés autorizarlo cuando quieras desde Ajustes.`,
-              [
-                { text: "Entendido", style: "cancel" },
-                { text: "Abrir Ajustes", onPress: () => Linking.openSettings() }
-              ]
-            );
-            return;
-          }
-        }
-
-        result = await ImagePicker.launchImageLibraryAsync({
-          allowsEditing: false,
-          quality: 0.8,
-        });
-      }
-
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const asset = result.assets[0];
-        handleUpload(asset.uri, asset.mimeType || 'image/jpeg');
-      }
-    } catch (e) {
-      console.error(e);
-      Alert.alert("Error al procesar imagen", "Ocurrió un problema al seleccionar el archivo. Por favor, reintentá.");
+    if (hasError) {
+      return { text: 'Error al subir · Tocá para reintentar', colorClass: 'text-red-400' };
     }
-  };
-
-  const handlePickDocument = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: 'application/pdf',
-        copyToCacheDirectory: true,
-      });
-
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const asset = result.assets[0];
-        handleUpload(asset.uri, asset.mimeType || 'application/pdf');
-      }
-    } catch (e) {
-      console.error(e);
-      Alert.alert("Error al cargar documento", "No se pudo abrir el archivo PDF seleccionado. Por favor, verificá el documento e intentá nuevamente.");
+    if (isComplete) {
+      const exp = formatDisplayDate(metadata?.expiresAt);
+      return {
+        text: exp ? `Listo · Vence ${exp}` : 'Documento completo',
+        colorClass: 'text-emerald-400',
+      };
     }
+    if (isIncompleteAfterUpload) {
+      return {
+        text: catalog.requiresDocumentNumber
+          ? 'Faltan fechas o N° de trámite'
+          : 'Faltan fechas de vigencia',
+        colorClass: 'text-amber-400',
+      };
+    }
+    return { text: catalog.shortHint, colorClass: 'text-ash' };
   };
 
-  const handleUpload = (uri: string, mimeType: string) => {
-    setDocumentState(type, {
-      localUri: uri,
-      mimeType,
-      metadata: { documentNumber: docNumber, issuedAt, expiresAt },
-    });
+  const subtitle = getSubtitle();
 
-    uploadDocument.mutate(
-      {
-        fileUri: uri,
-        mimeType,
-        type,
-        issuedAt: issuedAt || null,
-        expiresAt: expiresAt || null,
-      },
-      {
-        onSuccess: () => {
-          Alert.alert('Archivo Subido', `${label} se cargó y verificó con éxito.`);
-        },
-        onError: () => {
-          Alert.alert('Error', `No se pudo subir ${label}. Intentá nuevamente.`);
-        },
-      }
-    );
-  };
-
-  const handleDelete = () => {
-    Alert.alert(
-      'Eliminar borrador',
-      `¿Estás seguro de que querés borrar ${label}? Vas a tener que cargarlo nuevamente.`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Borrar',
-          style: 'destructive',
-          onPress: () => {
-            deleteDocument.mutate(type, {
-              onError: () => {
-                Alert.alert('Error', `No se pudo borrar ${label}. Intentá nuevamente.`);
-              },
-            });
-          },
-        },
-      ]
-    );
-  };
-
-  const updateMetadata = () => {
-    setDocumentState(type, {
-      metadata: {
-        documentNumber: docNumber || null,
-        issuedAt: issuedAt || null,
-        expiresAt: expiresAt || null,
-      },
-    });
-  };
-
-  const renderViewerModal = () => (
-    <Modal
-      visible={isViewerOpen}
-      transparent={true}
-      animationType="fade"
-      onRequestClose={() => setIsViewerOpen(false)}
-    >
-      <View className="flex-1 justify-between" style={{ backgroundColor: 'rgba(0, 0, 0, 0.96)' }}>
-        {/* Header */}
-        <View
-          className="pt-14 pb-4 px-5 flex-row items-center justify-between border-b"
-          style={{ borderBottomColor: 'rgba(44, 44, 46, 0.8)', backgroundColor: 'rgba(10, 10, 12, 0.95)' }}
-        >
-          <View className="flex-1 pr-3">
-            <Text className="text-platinum font-montserrat-semibold text-base" numberOfLines={1}>
-              {label}
-            </Text>
-            <Text className="text-ash font-montserrat text-xs mt-0.5">
-              Vista previa del documento cargado
-            </Text>
-          </View>
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => setIsViewerOpen(false)}
-            className="w-10 h-10 rounded-full bg-charcoal items-center justify-center"
-            accessibilityLabel="Cerrar vista previa"
-          >
-            <Ionicons name="close" size={22} color="#FFF" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Central image */}
-        <View className="flex-1 items-center justify-center p-4">
-          {previewUri ? (
+  return (
+    <>
+      <TouchableOpacity
+        activeOpacity={0.78}
+        onPress={() => setIsModalOpen(true)}
+        className="p-3.5 mb-3 rounded-2xl border flex-row items-center"
+        style={{ backgroundColor, borderColor }}
+        accessibilityRole="button"
+        accessibilityLabel={`${catalog.label}, ${subtitle.text}`}
+      >
+        {/* Left: Thumbnail o ícono de documento */}
+        <View className="w-12 h-12 rounded-xl overflow-hidden items-center justify-center mr-3.5 relative bg-obsidian border border-white/10">
+          {isUploading ? (
+            <ActivityIndicator size="small" color={THEME_COLORS.gold} />
+          ) : isImage && previewUri ? (
             <Image
               source={{ uri: previewUri }}
               style={{ width: '100%', height: '100%' }}
-              contentFit="contain"
+              contentFit="cover"
               transition={200}
             />
+          ) : isPdf && isUploaded ? (
+            <Ionicons name="document-text" size={22} color="#F59E0B" />
           ) : (
-            <ActivityIndicator size="large" color={THEME_COLORS.gold} />
+            <Ionicons
+              name={catalog.icon}
+              size={22}
+              color={isNextSuggested ? THEME_COLORS.gold : THEME_COLORS.platinum}
+            />
+          )}
+
+          {isComplete && (
+            <View className="absolute bottom-0 right-0 bg-emerald-500 rounded-tl-lg px-1 py-0.5">
+              <Ionicons name="checkmark" size={10} color="#0A0A0C" />
+            </View>
+          )}
+          {isIncompleteAfterUpload && (
+            <View className="absolute bottom-0 right-0 bg-amber-500 rounded-tl-lg px-1 py-0.5">
+              <Ionicons name="alert" size={10} color="#0A0A0C" />
+            </View>
+          )}
+          {hasError && (
+            <View className="absolute bottom-0 right-0 bg-red-500 rounded-tl-lg px-1 py-0.5">
+              <Ionicons name="close" size={10} color="#FFFFFF" />
+            </View>
           )}
         </View>
 
-        {/* Footer */}
-        <View
-          className="pb-8 pt-3 px-5 border-t flex-row items-center justify-between"
-          style={{ borderTopColor: 'rgba(44, 44, 46, 0.8)', backgroundColor: 'rgba(10, 10, 12, 0.95)' }}
-        >
-          <Text className="text-ash font-montserrat text-xs">
-            {docNumber ? `N° ${docNumber}` : 'TransferBlack Conductor'}
+        {/* Center: Título + estado/guía */}
+        <View className="flex-1 pr-2">
+          <Text
+            className="text-platinum font-montserrat-semibold text-sm leading-5"
+            numberOfLines={1}
+          >
+            {catalog.label}
           </Text>
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => setIsViewerOpen(false)}
-            className="bg-gold px-4 py-2 rounded-xl"
+          <Text
+            className={`${subtitle.colorClass} font-montserrat text-xs mt-0.5`}
+            numberOfLines={1}
           >
-            <Text className="text-obsidian font-montserrat-semibold text-xs">Cerrar</Text>
-          </TouchableOpacity>
+            {subtitle.text}
+          </Text>
         </View>
-      </View>
-    </Modal>
-  );
 
-  if (!isExpanded && isUploaded) {
-    return (
-      <>
-        <View
-          className="p-3.5 mb-3 rounded-2xl border flex-row items-center justify-between"
-          style={{
-            backgroundColor: isMetadataMissing ? 'rgba(69, 26, 3, 0.35)' : 'rgba(15, 16, 22, 0.85)',
-            borderColor: isMetadataMissing ? 'rgba(245, 158, 11, 0.5)' : 'rgba(52, 211, 153, 0.3)',
-          }}
-        >
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={toggleExpand}
-            className="flex-row items-center flex-1 mr-2"
-          >
-            {/* Thumbnail Preview o Icono */}
-            {isImage && previewUri ? (
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={() => setIsViewerOpen(true)}
-                className="w-12 h-12 rounded-xl bg-obsidian border mr-3 overflow-hidden items-center justify-center relative"
-                style={{ borderColor: isMetadataMissing ? 'rgba(245, 158, 11, 0.6)' : 'rgba(52, 211, 153, 0.5)' }}
-              >
-                <Image
-                  source={{ uri: previewUri }}
-                  style={{ width: '100%', height: '100%' }}
-                  contentFit="cover"
-                  transition={200}
-                />
-                <View className="absolute bottom-0 right-0 bg-emerald-500 rounded-tl-md px-1 py-0.5">
-                  <Ionicons name="checkmark" size={10} color="#000" />
-                </View>
-              </TouchableOpacity>
-            ) : isPdf ? (
-              <View
-                className="w-12 h-12 rounded-xl border mr-3 items-center justify-center relative"
-                style={{ backgroundColor: 'rgba(69, 26, 3, 0.4)', borderColor: 'rgba(245, 158, 11, 0.4)' }}
-              >
-                <Ionicons name="document-text" size={22} color="#F59E0B" />
-                <View className="absolute bottom-0 right-0 bg-emerald-500 rounded-tl-md px-1 py-0.5">
-                  <Ionicons name="checkmark" size={10} color="#000" />
-                </View>
-              </View>
-            ) : (
-              <View
-                className="w-9 h-9 rounded-full border items-center justify-center mr-3"
-                style={{ backgroundColor: 'rgba(6, 78, 59, 0.7)', borderColor: 'rgba(52, 211, 153, 0.4)' }}
-              >
-                <Ionicons name="checkmark" size={18} color="#34D399" />
-              </View>
-            )}
-
-            <View className="flex-1 pr-1">
-              <Text className="text-platinum font-montserrat-semibold text-sm" numberOfLines={1}>
-                {label}
+        {/* Right: Pill de acción + chevron */}
+        <View className="flex-row items-center">
+          {isComplete ? (
+            <View className="px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/35 mr-1.5">
+              <Text className="text-emerald-400 font-montserrat-semibold text-[11px]">
+                Listo
               </Text>
-              {isMetadataMissing ? (
-                <Text className="text-amber-400 font-montserrat-medium text-xs mt-0.5">
-                  ⚠️ Faltan datos obligatorios
-                </Text>
-              ) : docNumber || expiresAt ? (
-                <Text className="text-ash font-montserrat text-xs mt-0.5" numberOfLines={1}>
-                  {docNumber ? `N° ${docNumber}` : ''}
-                  {docNumber && expiresAt ? ' • ' : ''}
-                  {expiresAt ? `Vence: ${expiresAt}` : ''}
-                </Text>
-              ) : (
-                <Text className="text-emerald-400 font-montserrat text-xs mt-0.5">
-                  Documento cargado con éxito
-                </Text>
-              )}
             </View>
-          </TouchableOpacity>
-
-          <View className="flex-row items-center gap-1.5">
-            {isImage && previewUri && (
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => setIsViewerOpen(true)}
-                className="p-2 rounded-lg bg-obsidian border border-charcoal"
-                accessibilityLabel="Ver foto completa"
-              >
-                <Ionicons name="eye-outline" size={16} color={THEME_COLORS.gold} />
-              </TouchableOpacity>
-            )}
-
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={handleDelete}
-              disabled={deleteDocument.isPending}
-              className="flex-row items-center gap-1.5 px-2.5 py-1.5 rounded-lg border"
-              style={{ backgroundColor: 'rgba(69, 10, 10, 0.4)', borderColor: 'rgba(239, 68, 68, 0.3)' }}
-            >
-              {deleteDocument.isPending ? (
-                <ActivityIndicator size="small" color="#EF4444" />
-              ) : (
-                <>
-                  <Ionicons name="trash-outline" size={14} color="#EF4444" />
-                  <Text className="text-xs font-montserrat-medium text-red-400">Borrar</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {renderViewerModal()}
-
-        <DocumentScannerModal
-          visible={isScannerOpen}
-          docType={type}
-          stepIndex={stepIndex}
-          totalSteps={totalSteps}
-          onClose={() => setIsScannerOpen(false)}
-          onPhotoCaptured={(uri, mimeType) => handleUpload(uri, mimeType)}
-          onPickFromGallery={() => {
-            setIsScannerOpen(false);
-            setTimeout(() => handlePickImage(false), 400);
-          }}
-        />
-      </>
-    );
-  }
-
-  return (
-    <View
-      className="p-4 mb-4 rounded-2xl border relative overflow-hidden"
-      style={{
-        borderColor: isUploaded ? 'rgba(212, 175, 55, 0.4)' : 'rgba(255, 255, 255, 0.1)',
-        backgroundColor: isUploaded ? 'rgba(18, 19, 26, 0.92)' : 'rgba(14, 15, 20, 0.88)',
-      }}
-    >
-      {/* Header card with status badge and collapse button if uploaded */}
-      <TouchableOpacity
-        activeOpacity={isUploaded ? 0.7 : 1}
-        onPress={isUploaded ? toggleExpand : undefined}
-        className="flex-row items-start justify-between mb-3"
-      >
-        <View className="flex-1 pr-3">
-          <Text className="text-platinum font-montserrat-semibold text-base leading-5">
-            {label}
-          </Text>
-          <Text className="text-gold font-montserrat text-xs mt-1">
-            {isVehicleDoc 
-              ? '* Requiere N° de trámite y fechas de vigencia' 
-              : '* Requiere fechas de emisión y vencimiento'}
-          </Text>
-        </View>
-
-        {/* Status Badge */}
-        <View className="flex-row items-center gap-2">
-          {isUploading ? (
-            <View
-              className="flex-row items-center px-2.5 py-1 rounded-full border"
-              style={{ backgroundColor: 'rgba(212, 175, 55, 0.1)', borderColor: 'rgba(212, 175, 55, 0.3)' }}
-            >
-              <ActivityIndicator size="small" color={THEME_COLORS.gold} style={{ marginRight: 4 }} />
-              <Text className="text-gold font-montserrat-medium text-xs">Subiendo</Text>
+          ) : isIncompleteAfterUpload ? (
+            <View className="px-2.5 py-1 rounded-full bg-amber-500/15 border border-amber-500/40 mr-1.5">
+              <Text className="text-amber-400 font-montserrat-semibold text-[11px]">
+                Completar
+              </Text>
             </View>
-          ) : isUploaded ? (
-            <View
-              className="flex-row items-center px-2.5 py-1 rounded-full border"
-              style={{ backgroundColor: 'rgba(6, 78, 59, 0.6)', borderColor: 'rgba(52, 211, 153, 0.4)' }}
-            >
-              <Ionicons name="checkmark-circle" size={14} color="#34D399" style={{ marginRight: 4 }} />
-              <Text className="text-emerald-400 font-montserrat-medium text-xs">Subido</Text>
+          ) : hasError ? (
+            <View className="px-2.5 py-1 rounded-full bg-red-500/15 border border-red-500/40 mr-1.5">
+              <Text className="text-red-400 font-montserrat-semibold text-[11px]">
+                Reintentar
+              </Text>
+            </View>
+          ) : isNextSuggested ? (
+            <View className="px-3 py-1 rounded-full bg-gold mr-1.5">
+              <Text className="text-obsidian font-montserrat-bold text-[11px]">
+                Subir
+              </Text>
             </View>
           ) : (
-            <View className="flex-row items-center bg-obsidian border border-charcoal px-2.5 py-1 rounded-full">
-              <Ionicons name="time-outline" size={14} color={THEME_COLORS.ash} style={{ marginRight: 4 }} />
-              <Text className="text-ash font-montserrat-medium text-xs">Pendiente</Text>
+            <View className="px-2.5 py-1 rounded-full bg-white/5 border border-white/10 mr-1.5">
+              <Text className="text-platinum font-montserrat-medium text-[11px]">
+                Subir
+              </Text>
             </View>
           )}
 
-          {isUploaded && (
-            <View className="p-1 rounded-full bg-obsidian border border-charcoal">
-              <Ionicons name="chevron-up" size={16} color={THEME_COLORS.gold} />
-            </View>
-          )}
+          <Ionicons
+            name="chevron-forward"
+            size={16}
+            color={isNextSuggested ? THEME_COLORS.gold : THEME_COLORS.ash}
+          />
         </View>
       </TouchableOpacity>
 
-      {/* Metadata Inputs (Required for all) */}
-      <View
-        className="rounded-xl p-3.5 gap-2.5 border mb-3"
-        style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)', borderColor: 'rgba(255, 255, 255, 0.08)' }}
-      >
-        <Text className="text-ash font-montserrat text-xs uppercase tracking-wider mb-0.5">
-          Fechas y Datos del Documento
-        </Text>
-        <TextInput
-          placeholder="Número de trámite / documento"
-          placeholderTextColor={THEME_COLORS.ash}
-          value={docNumber}
-          onChangeText={(val) => {
-            setDocNumber(val);
-            setDocumentState(type, {
-              metadata: {
-                documentNumber: val || null,
-                issuedAt: issuedAt || null,
-                expiresAt: expiresAt || null,
-              },
-            });
-          }}
-          onBlur={updateMetadata}
-          className="h-10 bg-white/5 text-white font-montserrat text-xs px-3 rounded-lg border border-white/10"
-        />
-        <View className="flex-row gap-2">
-          <View className="flex-1">
-            <DatePickerInput
-              placeholder="Emisión"
-              value={issuedAt}
-              containerClassName="mb-0"
-              minYear={2015}
-              maxYear={new Date().getFullYear()}
-              title="Fecha de Emisión"
-              onChangeDate={(d) => {
-                setIssuedAt(d);
-                setDocumentState(type, {
-                  metadata: {
-                    documentNumber: docNumber || null,
-                    issuedAt: d || null,
-                    expiresAt: expiresAt || null,
-                  },
-                });
-              }}
-            />
-          </View>
-          <View className="flex-1">
-            <DatePickerInput
-              placeholder="Vencimiento"
-              value={expiresAt}
-              containerClassName="mb-0"
-              minYear={new Date().getFullYear()}
-              maxYear={new Date().getFullYear() + 15}
-              title="Fecha de Vencimiento"
-              onChangeDate={(d) => {
-                setExpiresAt(d);
-                setDocumentState(type, {
-                  metadata: {
-                    documentNumber: docNumber || null,
-                    issuedAt: issuedAt || null,
-                    expiresAt: d || null,
-                  },
-                });
-              }}
-            />
-          </View>
-        </View>
-      </View>
-
-      {/* Action Buttons */}
-      <View className="flex-row gap-3 mb-3">
-        <TouchableOpacity
-          onPress={() => {
-            if (isMetadataMissing) {
-              Alert.alert('Faltan datos', isVehicleDoc ? 'Por favor ingresá el número de documento y las fechas de vigencia antes de cargar.' : 'Por favor ingresá la fecha de emisión y vencimiento antes de cargar el documento.');
-              return;
-            }
-            setIsScannerOpen(true);
-          }}
-          activeOpacity={0.8}
-          className="flex-1 flex-row items-center justify-center rounded-xl py-3 active:scale-98"
-          style={{ backgroundColor: 'rgba(212, 175, 55, 0.15)', borderWidth: 1, borderColor: 'rgba(212, 175, 55, 0.5)' }}
-        >
-          <Ionicons name="camera-outline" size={18} color={THEME_COLORS.gold} />
-          <Text className="text-gold font-montserrat-bold text-sm ml-2">
-            {isUploaded ? 'Reemplazar Foto' : 'Tomar Foto'}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => {
-            if (isMetadataMissing) {
-              Alert.alert('Faltan datos', isVehicleDoc ? 'Por favor ingresá el número de documento y las fechas de vigencia antes de cargar.' : 'Por favor ingresá la fecha de emisión y vencimiento antes de cargar el documento.');
-              return;
-            }
-            handlePickDocument();
-          }}
-          activeOpacity={0.8}
-          className="flex-row items-center justify-center bg-obsidian border border-charcoal rounded-xl px-5 active:scale-98"
-        >
-          <Ionicons name="document-text-outline" size={18} color={THEME_COLORS.platinum} />
-          <Text className="text-platinum font-montserrat-semibold text-sm ml-2">PDF</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Preview Card en la parte inferior (La foto abajo) */}
-      {previewUri && (
-        <View className="mb-3 rounded-2xl overflow-hidden border border-white/15 bg-black/60 shadow-lg shadow-black">
-          <View className="px-3.5 py-2 bg-white/5 border-b border-white/10 flex-row items-center justify-between">
-            <View className="flex-row items-center gap-1.5">
-              <Ionicons name="image-outline" size={14} color={THEME_COLORS.gold} />
-              <Text className="text-platinum font-montserrat-semibold text-xs">
-                Fotografía del Documento
-              </Text>
-            </View>
-            <View className="flex-row items-center bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-500/40">
-              <Ionicons name="checkmark-circle" size={12} color="#34D399" />
-              <Text className="text-emerald-400 font-montserrat-medium text-[10px] ml-1">
-                {isUploaded ? 'Subido y verificado' : 'Listo para enviar'}
-              </Text>
-            </View>
-          </View>
-
-          {isImage ? (
-            <TouchableOpacity
-              activeOpacity={0.9}
-              onPress={() => setIsViewerOpen(true)}
-              className="relative w-full h-44 bg-black items-center justify-center"
-            >
-              <Image
-                source={{ uri: previewUri }}
-                style={{ width: '100%', height: '100%' }}
-                contentFit="contain"
-                transition={200}
-              />
-              <View
-                className="absolute bottom-2.5 right-2.5 flex-row items-center px-3 py-1.5 rounded-full border shadow-md shadow-black"
-                style={{ backgroundColor: 'rgba(10, 10, 12, 0.88)', borderColor: 'rgba(212, 175, 55, 0.5)' }}
-              >
-                <Ionicons name="eye-outline" size={14} color={THEME_COLORS.gold} />
-                <Text className="text-gold font-montserrat-medium text-xs ml-1.5">
-                  Ver foto completa
-                </Text>
-              </View>
-            </TouchableOpacity>
-          ) : isPdf ? (
-            <View className="p-4 flex-row items-center">
-              <View
-                className="w-12 h-12 rounded-xl border items-center justify-center mr-3"
-                style={{ backgroundColor: 'rgba(69, 26, 3, 0.5)', borderColor: 'rgba(245, 158, 11, 0.4)' }}
-              >
-                <Ionicons name="document-text" size={26} color="#F59E0B" />
-              </View>
-              <View className="flex-1">
-                <Text className="text-platinum font-montserrat-medium text-xs">
-                  Documento PDF cargado
-                </Text>
-                <Text className="text-ash font-montserrat text-[11px] mt-0.5">
-                  Archivo listo para verificación
-                </Text>
-              </View>
-            </View>
-          ) : null}
-        </View>
-      )}
-
-      {/* Footer controls when uploaded */}
-      {isUploaded && (
-        <View
-          className="flex-row items-center justify-between mt-2 pt-3 border-t"
-          style={{ borderTopColor: 'rgba(44, 44, 46, 0.7)' }}
-        >
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={toggleExpand}
-            className="flex-row items-center"
-          >
-            <Ionicons name="chevron-up" size={16} color={THEME_COLORS.gold} />
-            <Text className="text-gold font-montserrat-medium text-xs ml-1">Minimizar</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={handleDelete}
-            disabled={deleteDocument.isPending}
-            className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-lg border"
-            style={{ backgroundColor: 'rgba(69, 10, 10, 0.4)', borderColor: 'rgba(239, 68, 68, 0.3)' }}
-          >
-            {deleteDocument.isPending ? (
-              <ActivityIndicator size="small" color="#EF4444" />
-            ) : (
-              <>
-                <Ionicons name="trash-outline" size={14} color="#EF4444" />
-                <Text className="text-xs font-montserrat-medium text-red-400">Borrar documento</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {renderViewerModal()}
-
-      {/* VIP Scanner Modal con revisión interactiva (Tick y X) */}
-      <DocumentScannerModal
-        visible={isScannerOpen}
-        docType={type}
+      <DocumentUploadModal
+        visible={isModalOpen}
+        type={type}
         stepIndex={stepIndex}
         totalSteps={totalSteps}
-        onClose={() => setIsScannerOpen(false)}
-        onPhotoCaptured={(uri, mimeType) => handleUpload(uri, mimeType)}
+        onClose={() => setIsModalOpen(false)}
       />
-    </View>
+    </>
   );
 };
-
