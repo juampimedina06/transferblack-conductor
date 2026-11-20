@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
-import { Alert, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Platform, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME_COLORS } from '../../core/constants/theme';
 import { socket } from '../../core/socket/socket';
@@ -22,6 +22,7 @@ import { useDashboardStats } from '../../presentation/hooks/useDashboardStats';
 import { useTripSocket } from '../../presentation/trip/hooks/useTripSocket';
 import { useTripTelemetry } from '../../presentation/trip/hooks/useTripTelemetry';
 import { useActiveTripSync } from '../../presentation/trip/hooks/useActiveTripSync';
+import { useForegroundResync } from '../../presentation/trip/hooks/useForegroundResync';
 import { useDriverTripStore } from '../../presentation/trip/store/useDriverTripStore';
 import { ActiveTripOverlay } from '../../presentation/components/trip/ActiveTripOverlay';
 import { ActiveTripTopHeader } from '../../presentation/components/trip/ActiveTripTopHeader';
@@ -32,6 +33,10 @@ import { pushNotificationService } from '../../core/push/services/pushNotificati
 import { DispatchSuspensionBanner } from '../../presentation/components/dashboard/DispatchSuspensionBanner';
 import { ComplianceRenewalBanner } from '../../presentation/components/compliance/ComplianceRenewalBanner';
 import { useDriverStatusStore } from '../../presentation/driver/store/useDriverStatusStore';
+import { requestBackgroundLocationPermission } from '../../core/location/actions/permissions.actions';
+import { PermissionStatus } from '../../core/location/interface/permission.interface';
+import { startBackgroundLocationTracking } from '../../core/location/tasks/backgroundLocationTask';
+import { driverOverlay } from '../../core/overlay/driverOverlay';
 
 export default function DriverDashboardScreen() {
   const user = useAuthStore(state => state.user);
@@ -96,9 +101,25 @@ export default function DriverDashboardScreen() {
 
   // Sincroniza el estado del viaje activo con GET /driver/me/active-trip al abrir o montar la app
   useActiveTripSync();
+  useForegroundResync();
 
   const toggleAvailability = (value: boolean) => {
     setIsAvailable(value);
+    if (value) {
+      void requestBackgroundLocationPermission()
+        .then((status) => {
+          if (status === PermissionStatus.GRANTED) {
+            void startBackgroundLocationTracking();
+          }
+        })
+        .finally(() => {
+          if (Platform.OS === 'android') {
+            void driverOverlay.ensureOverlayPermissionWithPrompt();
+          }
+        });
+    } else {
+      void driverOverlay.hideOfferOverlay();
+    }
   };
 
   const performLogout = async () => {

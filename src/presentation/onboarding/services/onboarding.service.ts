@@ -16,6 +16,7 @@ interface UpdateProfileDto {
 
 interface UploadResponse {
   filePath: string;
+  fileUrl?: string | null;
   mimeType: string;
   sizeBytes: number;
 }
@@ -104,6 +105,7 @@ export const OnboardingService = {
   getDraftDocuments: async (): Promise<{
     documentType: DocumentType;
     filePath: string;
+    fileUrl?: string | null;
     mimeType: string;
     metadata?: {
       issuedAt?: string | null;
@@ -116,6 +118,7 @@ export const OnboardingService = {
       data: {
         documentType: DocumentType;
         filePath: string;
+        fileUrl?: string | null;
         mimeType: string;
         metadata?: {
           issuedAt?: string | null;

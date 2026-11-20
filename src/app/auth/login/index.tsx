@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Image } from 'expo-image';
-import { Link, router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { Link, router, usePathname } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import * as z from 'zod';
@@ -25,7 +25,10 @@ export default function LoginScreen(): React.JSX.Element {
   const [isLoading, setIsLoading] = useState(false);
   const setSession = useAuthStore((state) => state.setSession);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const user = useAuthStore((state) => state.user);
+  const userId = useAuthStore((state) => state.user?.id);
+  const emailVerifiedAt = useAuthStore((state) => state.user?.email_verified_at);
+  const pathname = usePathname();
+  const hasRedirectedRef = useRef(false);
   const {
     isRateLimited,
     secondsLeft,
@@ -36,10 +39,12 @@ export default function LoginScreen(): React.JSX.Element {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      if (!isAuthenticated || !user) return;
+      if (!isAuthenticated || !userId || isLoading || hasRedirectedRef.current) return;
+      if (!pathname.startsWith('/auth/login')) return;
       const token = await authStorage.getAccessToken();
-      if (cancelled || !token) return;
-      if (!user.email_verified_at) {
+      if (cancelled || !token || hasRedirectedRef.current) return;
+      hasRedirectedRef.current = true;
+      if (!emailVerifiedAt) {
         router.replace('/auth/verify-email' as any);
       } else {
         router.replace('/(home)' as any);
@@ -48,7 +53,7 @@ export default function LoginScreen(): React.JSX.Element {
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, userId, emailVerifiedAt, isLoading, pathname]);
 
   const { control, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),

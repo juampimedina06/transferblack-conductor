@@ -20,15 +20,25 @@ export interface RegisterPushTokenResponse {
   };
 }
 
+export interface PushTripOfferFareObject {
+  totalFare?: string | number;
+  netEarnings?: string | number;
+  commission?: string | number;
+  currency?: string;
+  paymentMethod?: string;
+}
+
 export interface PushTripOfferPayload {
-  type: 'trip:offer';
+  type?: 'trip:offer' | 'NEW_TRIP_OFFER' | string;
+  eventType?: 'NEW_TRIP_OFFER' | string;
   offerId: string;
   tripId: string;
   expiresAt: string;
   ttlSeconds?: string | number;
   origin?: string;
   destination?: string;
-  price?: string | number;
+  price?: string | number | PushTripOfferFareObject;
+  fare?: string | number | PushTripOfferFareObject;
   passengerName?: string;
   passengerRating?: string | number;
   distanceKm?: string | number;
@@ -37,9 +47,10 @@ export interface PushTripOfferPayload {
 }
 
 export interface PushTripOfferCancelPayload {
-  type: 'trip:offer:cancel';
+  type?: 'trip:offer:cancel' | 'TRIP_OFFER_CANCELLED' | string;
+  eventType?: 'TRIP_OFFER_CANCELLED' | string;
   offerId: string;
   tripId: string;
-  reason: 'expired' | 'taken' | 'cancelled';
+  reason?: 'expired' | 'taken' | 'cancelled' | string;
   [key: string]: unknown;
 }
