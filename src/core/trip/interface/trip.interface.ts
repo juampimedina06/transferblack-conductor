@@ -235,6 +235,16 @@ export interface ActiveTripResponse {
   };
 }
 
+export interface PendingDriverOffersData {
+  offers: TripOfferPayload[];
+  serverNow: string;
+}
+
+export interface PendingDriverOffersResponse {
+  status: 'success';
+  data: PendingDriverOffersData;
+}
+
 export interface PaymentMethodInfo {
   label: string;
   icon: 'cash-outline' | 'card-outline' | 'business-outline';

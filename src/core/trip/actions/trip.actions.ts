@@ -10,6 +10,8 @@ import {
   ActiveTripResponse,
   DriverScheduledTrip,
   DriverScheduledTripsResponse,
+  PendingDriverOffersData,
+  PendingDriverOffersResponse,
 } from '../interface/trip.interface';
 export type {
   AcceptOfferInput,
@@ -19,6 +21,8 @@ export type {
   ActiveTripResponse,
   DriverScheduledTrip,
   DriverScheduledTripsResponse,
+  PendingDriverOffersData,
+  PendingDriverOffersResponse,
 };
 export { TripRequestError };
 
@@ -240,6 +244,26 @@ export const getDriverScheduledTrips = async (): Promise<DriverScheduledTrip[]> 
     throw new TripRequestError(
       rawMessage && !isGenericNotFound ? rawMessage : fallbackMessage,
       status,
+      apiError?.error?.code
+    );
+  }
+};
+
+export const getPendingDriverOffers = async (): Promise<PendingDriverOffersData> => {
+  try {
+    const response = await transferApi.get<PendingDriverOffersResponse>('/driver/me/offers/pending');
+    return {
+      offers: response.data?.data?.offers ?? [],
+      serverNow: response.data?.data?.serverNow ?? new Date().toISOString(),
+    };
+  } catch (error: unknown) {
+    const errWithResponse = error as {
+      response?: { status?: number; data?: ApiErrorResponse };
+    } | null;
+    const apiError = errWithResponse?.response?.data;
+    throw new TripRequestError(
+      apiError?.error?.message || 'Error al consultar ofertas pendientes del conductor',
+      errWithResponse?.response?.status,
       apiError?.error?.code
     );
   }
