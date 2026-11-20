@@ -1,4 +1,5 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { View } from 'react-native';
 import { Stack, router, usePathname, Redirect } from 'expo-router';
 import { transferApi } from '@/core/api/transferApi';
 import { useAuthStore } from '@/presentation/auth/store/useAuthStore';
@@ -19,10 +20,16 @@ export default function HomeLayout() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const pathname = usePathname();
   const cachedStateRef = useRef<CachedDriverRoutingState | null>(null);
+  const [allowedUserId, setAllowedUserId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated || !user?.id) {
       cachedStateRef.current = null;
+      return;
+    }
+
+    // No ejecutar el guard de (home) si el router ya está saliendo hacia onboarding o auth
+    if (pathname.startsWith('/onboarding') || pathname.startsWith('/auth')) {
       return;
     }
 
@@ -32,6 +39,7 @@ export default function HomeLayout() {
       if (isCancelled) return;
 
       if (state.isApproved) {
+        setAllowedUserId(state.userId);
         if (pathname.includes('confirmed-appointment') || pathname.includes('pending-approval')) {
           router.replace('/(home)' as any);
         }
@@ -39,6 +47,7 @@ export default function HomeLayout() {
       }
 
       if (state.hasDriverRole) {
+        setAllowedUserId(state.userId);
         if (state.hasScheduledMeeting) {
           if (!pathname.includes('confirmed-appointment')) {
             router.replace('/confirmed-appointment' as any);
@@ -52,6 +61,7 @@ export default function HomeLayout() {
         return;
       }
 
+      setAllowedUserId(null);
       await useOnboardingStore.getState().initUserSession(state.userId);
       if (isCancelled) return;
       const onboardingState = useOnboardingStore.getState();
@@ -89,7 +99,7 @@ export default function HomeLayout() {
 
         useAuthStore.getState().updateUser(response.data);
 
-        const hasDriverRole = Boolean(profile.roles?.includes('driver'));
+        let hasDriverRole = Boolean(profile.roles?.includes('driver'));
         let isApproved = profile.approvalStatus === 'approved';
         let hasScheduledMeeting = false;
 
@@ -105,8 +115,12 @@ export default function HomeLayout() {
             ) {
               isApproved = false;
             }
-          } catch {
-            // Ignore driver profile query error
+          } catch (driverErr: any) {
+            // Si el backend devuelve 404 (DRIVER_NOT_FOUND), el usuario aún no completó el alta de conductor
+            if (driverErr?.response?.status === 404) {
+              hasDriverRole = false;
+              isApproved = false;
+            }
           }
         }
 
@@ -155,6 +169,11 @@ export default function HomeLayout() {
   // Guard de seguridad: si no hay usuario ni sesión autenticada, redirigir al login
   if (!isAuthenticated || !user) {
     return <Redirect href="/auth/login" />;
+  }
+
+  // Evita montar el dashboard y disparar queries de /driver/me antes de resolver si el usuario debe ir a onboarding
+  if (allowedUserId !== user.id) {
+    return <View className="flex-1 bg-obsidian" />;
   }
 
   return (

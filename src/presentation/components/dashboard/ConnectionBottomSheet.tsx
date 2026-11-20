@@ -88,7 +88,9 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
           setVehicleId(vid);
         }
       } catch (err: any) {
-        console.warn('Could not load vehicle from /driver/me:', err?.response?.data || err?.message);
+        if (err?.response?.status !== 404) {
+          console.warn('Could not load vehicle from /driver/me:', err?.response?.data || err?.message);
+        }
       }
     };
 
