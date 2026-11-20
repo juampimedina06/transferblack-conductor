@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
-import { Alert, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Platform, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME_COLORS } from '../../core/constants/theme';
 import { socket } from '../../core/socket/socket';
@@ -35,6 +35,7 @@ import { useDriverStatusStore } from '../../presentation/driver/store/useDriverS
 import { requestBackgroundLocationPermission } from '../../core/location/actions/permissions.actions';
 import { PermissionStatus } from '../../core/location/interface/permission.interface';
 import { startBackgroundLocationTracking } from '../../core/location/tasks/backgroundLocationTask';
+import { driverOverlay } from '../../core/overlay/driverOverlay';
 
 export default function DriverDashboardScreen() {
   const user = useAuthStore(state => state.user);
@@ -103,11 +104,19 @@ export default function DriverDashboardScreen() {
   const toggleAvailability = (value: boolean) => {
     setIsAvailable(value);
     if (value) {
-      void requestBackgroundLocationPermission().then((status) => {
-        if (status === PermissionStatus.GRANTED) {
-          void startBackgroundLocationTracking();
-        }
-      });
+      void requestBackgroundLocationPermission()
+        .then((status) => {
+          if (status === PermissionStatus.GRANTED) {
+            void startBackgroundLocationTracking();
+          }
+        })
+        .finally(() => {
+          if (Platform.OS === 'android') {
+            void driverOverlay.ensureOverlayPermissionWithPrompt();
+          }
+        });
+    } else {
+      void driverOverlay.hideOfferOverlay();
     }
   };
 

@@ -20,6 +20,7 @@ import { useDriverTripStore } from '../../trip/store/useDriverTripStore';
 import { useAuthStore } from '../../auth/store/useAuthStore';
 import { AmbientGlow } from '../ui/AmbientGlow';
 import { offerAlarmService } from '../../trip/services/offerAlarmService';
+import { driverOverlay } from '../../../core/overlay/driverOverlay';
 import { useDriverStatusStore } from '../../driver/store/useDriverStatusStore';
 import { DocumentExpirationBlockModal } from '../compliance/DocumentExpirationBlockModal';
 import { TermsAcceptanceModal } from '../legal/TermsAcceptanceModal';
@@ -131,6 +132,7 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
       void offerAlarmService.start();
     } else {
       void offerAlarmService.stop();
+      void driverOverlay.hideOfferOverlay();
     }
     return () => {
       void offerAlarmService.stop();

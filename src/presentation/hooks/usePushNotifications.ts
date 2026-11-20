@@ -139,12 +139,18 @@ async function registerForPushNotificationsAsync(): Promise<{
     let currentPermissions = existingPermissions;
 
     if (!allowsNotifications(existingPermissions)) {
+      // Se solicita permiso time-sensitive en iOS, pero el entitlement no está activo por ahora en Apple Developer; en iPhone opera con notificación estándar.
+      const iosPermissions: ExpoNotifications.IosNotificationPermissionsRequest & {
+        allowTimeSensitive?: boolean;
+      } = {
+        allowAlert: true,
+        allowBadge: true,
+        allowSound: true,
+        allowTimeSensitive: true,
+      };
+
       currentPermissions = await Notifications.requestPermissionsAsync({
-        ios: {
-          allowAlert: true,
-          allowBadge: true,
-          allowSound: true,
-        },
+        ios: iosPermissions,
       });
     }
 

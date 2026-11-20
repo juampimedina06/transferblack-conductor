@@ -96,7 +96,8 @@
           "isAndroidBackgroundLocationEnabled": true,
           "isAndroidForegroundServiceEnabled": true
         }
-      ]
+      ],
+      "./plugins/withDriverOverlay"
     ],
     "experiments": {
       "typedRoutes": true
