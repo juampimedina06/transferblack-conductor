@@ -46,7 +46,7 @@ export const FullScreenPinModal: React.FC<FullScreenPinModalProps> = ({
   onChat,
 }) => {
   const insets = useSafeAreaInsets();
-  const inputRefs = useRef<TextInput[]>([]);
+  const inputRefs = useRef<React.ComponentRef<typeof TextInput>[]>([]);
 
   const isComplete = pinDigits.every((d) => d.length > 0);
 

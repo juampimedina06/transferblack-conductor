@@ -120,6 +120,9 @@ export default function HomeLayout() {
             if (driverErr?.response?.status === 404) {
               hasDriverRole = false;
               isApproved = false;
+            } else {
+              // Error transitorio (timeout, 5xx, etc.): no expulsar a pending-approval; reintentar
+              throw driverErr;
             }
           }
         }

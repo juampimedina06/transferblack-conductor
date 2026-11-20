@@ -102,7 +102,7 @@ export const TripInProgressSheet: React.FC<TripInProgressSheetProps> = ({
   const startDragHeight = useSharedValue(COLLAPSED_HEIGHT);
   const [snapIndex, setSnapIndex] = useState<0 | 1>(0);
 
-  const pinInputRefs = useRef<TextInput[]>([]);
+  const pinInputRefs = useRef<React.ComponentRef<typeof TextInput>[]>([]);
   const { location } = useDriverLocation(true);
   const updateTripStatus = useDriverTripStore((state) => state.updateTripStatus);
   const setActiveTrip = useDriverTripStore((state) => state.setActiveTrip);

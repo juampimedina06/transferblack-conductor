@@ -45,7 +45,7 @@ if (!isExpoGoOnAndroid) {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     Notifications = require('expo-notifications');
   } catch (err) {
-    console.warn('⚠️ [PushNotificationService] expo-notifications no disponible:', err);
+    console.warn('[PushNotificationService] expo-notifications no disponible:', err);
   }
 }
 
@@ -55,7 +55,6 @@ if (Notifications?.setNotificationHandler) {
     Notifications.setNotificationHandler({
       handleNotification: async () => {
         return {
-          shouldShowAlert: true,
           shouldPlaySound: true,
           shouldSetBadge: true,
           shouldShowBanner: true,
@@ -65,7 +64,7 @@ if (Notifications?.setNotificationHandler) {
       },
     });
   } catch (err) {
-    console.warn('⚠️ [PushNotificationService] Error configurando notificationHandler:', err);
+    console.warn('[PushNotificationService] Error configurando notificationHandler:', err);
   }
 }
 
@@ -146,8 +145,8 @@ export async function processBackgroundNotificationPayload(
     if (Notifications?.scheduleNotificationAsync) {
       await Notifications.scheduleNotificationAsync({
         content: {
-          title: '🚕 ¡Nueva Oferta de Viaje Disponible!',
-          body: `${offer.pickup.address} ➔ ${offer.dropoff.address} ($${offer.fare.totalFare})`,
+          title: 'Nueva Oferta de Viaje Disponible',
+          body: `${offer.pickup.address} → ${offer.dropoff.address} ($${offer.fare.totalFare})`,
           data: rawData,
           categoryIdentifier: 'trip-offer',
           sound: 'default',
@@ -166,7 +165,7 @@ try {
   if (!isExpoGoOnAndroid && !TaskManager.isTaskDefined(BACKGROUND_NOTIFICATION_TASK)) {
     TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error }) => {
       if (error) {
-        console.warn('⚠️ [PushBackground] Error en background notification task:', error);
+        console.warn('[PushBackground] Error en background notification task:', error);
         return;
       }
 
@@ -179,7 +178,7 @@ try {
     });
   }
 } catch (e) {
-  console.warn('⚠️ [PushNotificationService] Error definiendo TaskManager task:', e);
+  console.warn('[PushNotificationService] Error definiendo TaskManager task:', e);
 }
 
 class PushNotificationService {
@@ -249,7 +248,7 @@ class PushNotificationService {
       // En simuladores (especialmente iOS) no se soportan notificaciones remotas en background ni push tokens nativos
       if (!Device.isDevice) {
         console.info(
-          'ℹ️ [PushService] Ejecutando en simulador: omitiendo registro de tarea en segundo plano y token nativo (requiere dispositivo físico).'
+          '[PushService] Ejecutando en simulador: omitiendo registro de tarea en segundo plano y token nativo (requiere dispositivo físico).'
         );
         this.isInitialized = true;
         return null;
@@ -265,7 +264,7 @@ class PushNotificationService {
         }
       } catch (taskErr) {
         console.warn(
-          '⚠️ [PushService] No se pudo registrar la tarea en background (verificar "Actualización en 2° plano" en Ajustes de iOS):',
+          '[PushService] No se pudo registrar la tarea en background (verificar "Actualización en 2° plano" en Ajustes de iOS):',
           taskErr
         );
       }
@@ -286,7 +285,7 @@ class PushNotificationService {
         });
       } catch (tokenErr) {
         console.warn(
-          '⚠️ [PushService] Primer intento de registrar push token falló, reintentando en background:',
+          '[PushService] Primer intento de registrar push token falló, reintentando en background:',
           tokenErr
         );
         setTimeout(() => {
@@ -296,7 +295,7 @@ class PushNotificationService {
             provider: 'fcm',
           }).catch((retryErr) => {
             console.warn(
-              '⚠️ [PushService] Reintento de push token falló definitivamente:',
+              '[PushService] Reintento de push token falló definitivamente:',
               retryErr
             );
           });
@@ -374,7 +373,7 @@ class PushNotificationService {
       this.isInitialized = true;
       return nativeToken;
     } catch (error) {
-      console.warn('⚠️ [PushService] Error inicializando notificaciones push:', error);
+      console.warn('[PushService] Error inicializando notificaciones push:', error);
       return null;
     }
   }
@@ -412,7 +411,7 @@ class PushNotificationService {
       this.isInitialized = false;
       this.currentDeviceToken = null;
     } catch (error) {
-      console.warn('⚠️ [PushService] Error revocando push token:', error);
+      console.warn('[PushService] Error revocando push token:', error);
     }
   }
 }

@@ -159,7 +159,9 @@ export default function ForgotPasswordRequestScreen(): React.JSX.Element {
               ) : null}
               <Button
                 label={isRateLimited ? `Esperá ${secondsLeft}s` : 'Enviar código'}
-                onPress={handleSubmit(onSubmit)}
+                onPress={() => {
+                  void handleSubmit(onSubmit)();
+                }}
                 isLoading={isLoading}
                 disabled={isLoading || isRateLimited}
               />

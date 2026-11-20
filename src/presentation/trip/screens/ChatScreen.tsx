@@ -148,7 +148,7 @@ const ChatView: React.FC<ChatViewProps> = ({ trip, driverUserId }) => {
 
   return (
     <SafeAreaView className="flex-1 bg-[#0A0A0C]" edges={['top', 'bottom']}>
-      <StatusBar barStyle="light-content" backgroundColor="#0A0A0C" />
+      <StatusBar barStyle="light-content" />
 
       <ChatHeader trip={trip} />
 

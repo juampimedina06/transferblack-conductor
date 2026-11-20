@@ -166,7 +166,9 @@ export default function LoginScreen(): React.JSX.Element {
         <View className="mt-2">
           <Button
             label={isRateLimited ? `Esperá ${secondsLeft}s` : 'Entrar a mi cuenta'}
-            onPress={handleSubmit(onSubmit)}
+            onPress={() => {
+              void handleSubmit(onSubmit)();
+            }}
             isLoading={isLoading}
             disabled={isLoading || isRateLimited}
           />

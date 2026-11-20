@@ -17,9 +17,12 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { THEME_COLORS } from '../../../core/constants/theme';
 import { DatePickerInput } from '../../components/ui/DatePickerInput';
+import { TopNotificationBanner } from '../../components/ui/TopNotificationBanner';
+import { showBannerNotification } from '../../notifications/store/useBannerNotificationStore';
 import {
   DOCUMENT_HELP_DATA,
   DocumentScannerModal,
@@ -166,13 +169,21 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
       {
         onSuccess: () => {
           setUploadErrorText(null);
-          void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+          showBannerNotification({
+            type: 'success',
+            title: 'Documento subido',
+            message: `${catalog.label} se cargó correctamente.`,
+          });
         },
         onError: () => {
           setUploadErrorText(
             'No se pudo subir el archivo. Revisá tu conexión e intentá nuevamente.'
           );
-          void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+          showBannerNotification({
+            type: 'error',
+            title: 'Error al subir',
+            message: `No se pudo subir ${catalog.label}. Reintentá.`,
+          });
         },
       }
     );
@@ -227,10 +238,11 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
         handleUpload(asset.uri, asset.mimeType || 'image/jpeg');
       }
     } catch {
-      Alert.alert(
-        'No se pudo abrir la galería',
-        'Ocurrió un problema al seleccionar la imagen. Intentá nuevamente.'
-      );
+      showBannerNotification({
+        type: 'error',
+        title: 'No se pudo abrir la galería',
+        message: 'Ocurrió un problema al seleccionar la imagen. Intentá nuevamente.',
+      });
     }
   };
 
@@ -246,10 +258,11 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
         handleUpload(asset.uri, asset.mimeType || 'application/pdf');
       }
     } catch {
-      Alert.alert(
-        'No se pudo leer el PDF',
-        'Verificá que el archivo no esté dañado e intentá nuevamente.'
-      );
+      showBannerNotification({
+        type: 'error',
+        title: 'No se pudo leer el PDF',
+        message: 'Verificá que el archivo no esté dañado e intentá nuevamente.',
+      });
     }
   };
 
@@ -266,9 +279,18 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
             deleteDocument.mutate(type, {
               onSuccess: () => {
                 setUploadErrorText(null);
+                showBannerNotification({
+                  type: 'info',
+                  title: 'Archivo eliminado',
+                  message: `Ya podés cargar uno nuevo para ${catalog.label}.`,
+                });
               },
               onError: () => {
-                Alert.alert('Error', 'No se pudo eliminar el archivo. Reintentá.');
+                showBannerNotification({
+                  type: 'error',
+                  title: 'No se pudo eliminar',
+                  message: 'Reintentá en unos segundos.',
+                });
               },
             });
           },
@@ -281,6 +303,12 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
     persistMetadata({ documentNumber: docNumber, issuedAt, expiresAt });
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     onClose();
+    showBannerNotification({
+      type: 'success',
+      title: 'Documento listo',
+      message: `${catalog.label} quedó guardado.`,
+      durationMs: 2800,
+    });
   };
 
   const missingReason = getMissingReason();
@@ -292,10 +320,11 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        className="flex-1 bg-obsidian"
-      >
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          className="flex-1 bg-obsidian"
+        >
         {/* Top Bar */}
         <View
           className="px-5 pb-3.5 border-b border-white/10 flex-row items-center justify-between bg-obsidian"
@@ -695,7 +724,9 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
             </Text>
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
+        </KeyboardAvoidingView>
+        {visible && <TopNotificationBanner isModalHost />}
+      </GestureHandlerRootView>
 
       {/* Visor de imagen pantalla completa */}
       <Modal

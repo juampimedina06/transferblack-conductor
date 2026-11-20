@@ -30,7 +30,7 @@ interface ChatInputProps {
 
 export const ChatInput: React.FC<ChatInputProps> = ({ blockedReason, onSend }) => {
   const [text, setText] = React.useState('');
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<React.ComponentRef<typeof TextInput>>(null);
 
   const isBlocked = blockedReason !== null;
   const canSend = !isBlocked && text.trim().length > 0;

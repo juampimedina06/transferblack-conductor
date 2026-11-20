@@ -30,8 +30,6 @@ import { DriverDocumentsModal } from '@/presentation/components/compliance/Drive
 import { DeleteAccountModal } from '@/presentation/components/profile/DeleteAccountModal';
 import { usePushNotifications } from '@/presentation/hooks/usePushNotifications';
 import { useProfileAvatar } from '@/presentation/profile/hooks/useProfileAvatar';
-import { LiquidGlassContainer } from '@/presentation/components/ui/LiquidGlassContainer';
-import { AmbientGlow } from '@/presentation/components/ui/AmbientGlow';
 
 export default function DriverProfileScreen() {
   const user = useAuthStore((state) => state.user);
@@ -198,8 +196,8 @@ export default function DriverProfileScreen() {
     }
 
     Alert.alert(
-      'Cerrar Sesión',
-      '¿Estás seguro de que deseas desconectarte y cerrar tu sesión?',
+      'Cerrar sesión',
+      '¿Estás seguro de que querés desconectarte y cerrar tu sesión?',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -243,8 +241,12 @@ export default function DriverProfileScreen() {
       }`,
       [
         {
-          text: isPushRegistered || isExpoGoOnAndroid ? 'Cerrar' : 'Activar Notificaciones',
-          onPress: () => syncDeviceToken(undefined, true),
+          text: isPushRegistered || isExpoGoOnAndroid ? 'Cerrar' : 'Activar notificaciones',
+          onPress: () => {
+            if (!isPushRegistered && !isExpoGoOnAndroid) {
+              void syncDeviceToken(undefined, true);
+            }
+          },
         },
       ]
     );
@@ -254,42 +256,27 @@ export default function DriverProfileScreen() {
     <View className="flex-1 bg-obsidian">
       <StatusBar style="light" />
 
-      {/* Top Ambient Champagne Gold Glow */}
-      <AmbientGlow color="#D4AF37" position="top" height={360} opacity={0.18} />
-
       <SafeAreaView className="flex-1" edges={['top', 'bottom']}>
-        {/* Executive Navigation Header */}
-        <View className="flex-row items-center justify-between px-5 py-3.5 border-b border-white/10">
-          <View className="flex-row items-center">
-            <TouchableOpacity
-              onPress={() => {
-                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                router.back();
-              }}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              accessibilityRole="button"
-              accessibilityLabel="Volver a la pantalla principal"
-              className="w-11 h-11 rounded-2xl bg-[#13141E] border border-gold/40 items-center justify-center mr-3.5 shadow-lg shadow-black active:scale-95"
-            >
-              <Ionicons name="arrow-back" size={20} color={THEME_COLORS.gold} />
-            </TouchableOpacity>
-            <View>
-              <Text className="text-gold font-montserrat-bold text-[10px] uppercase tracking-widest mb-0.5">
-                CREDENCIAL OPERATIVA
-              </Text>
-              <Text className="text-white font-montserrat-bold text-xl">
-                Mi Perfil VIP
-              </Text>
-            </View>
-          </View>
+        {/* Header limpio y minimalista */}
+        <View className="flex-row items-center justify-between px-5 py-3">
+          <TouchableOpacity
+            onPress={() => {
+              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.back();
+            }}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel="Volver a la pantalla principal"
+            className="w-11 h-11 rounded-full bg-white/[0.06] items-center justify-center"
+          >
+            <Ionicons name="arrow-back" size={20} color={THEME_COLORS.platinum} />
+          </TouchableOpacity>
 
-          {/* Quick VIP Status Pill */}
-          <View className="flex-row items-center bg-gold/15 border border-gold/45 px-3 py-1.5 rounded-full">
-            <View className="w-2 h-2 rounded-full bg-emerald-400 mr-1.5" />
-            <Text className="text-gold font-montserrat-bold text-[11px] uppercase tracking-wider">
-              Chofer VIP
-            </Text>
-          </View>
+          <Text className="text-white font-montserrat-semibold text-base">
+            Perfil
+          </Text>
+
+          <View className="w-11" />
         </View>
 
         {/* Content */}
@@ -297,228 +284,194 @@ export default function DriverProfileScreen() {
           <ProfileSkeleton />
         ) : error ? (
           <View className="flex-1 items-center justify-center px-6">
-            <LiquidGlassContainer
-              variant="danger"
-              className="rounded-3xl p-7 items-center justify-center w-full max-w-[340px]"
-            >
-              <View className="w-16 h-16 rounded-2xl bg-red-500/15 border border-red-500/40 items-center justify-center mb-4">
-                <Ionicons name="alert-circle-outline" size={32} color="#EF4444" />
-              </View>
-              <Text className="text-white font-montserrat-bold text-base mb-1.5 text-center">
+            <View className="rounded-2xl p-6 bg-[#12131A] border border-white/10 items-center w-full max-w-[340px]">
+              <Ionicons name="alert-circle-outline" size={32} color="#F87171" />
+              <Text className="text-white font-montserrat-semibold text-base mt-3 mb-1 text-center">
                 No se pudo cargar el perfil
               </Text>
               <Text className="text-ash font-montserrat text-xs text-center mb-5 leading-5">
-                Ocurrió un inconveniente al consultar los datos del conductor. Verificá tu conexión a internet.
+                Revisá tu conexión a internet e intentá nuevamente.
               </Text>
               <TouchableOpacity
                 activeOpacity={0.85}
-                onPress={() => refetch()}
-                className="bg-gold w-full py-3.5 rounded-2xl items-center justify-center"
+                onPress={() => {
+                  void refetch();
+                }}
+                className="bg-gold w-full py-3.5 rounded-xl items-center justify-center"
               >
-                <Text className="text-obsidian font-montserrat-bold text-xs uppercase tracking-widest">
+                <Text className="text-obsidian font-montserrat-bold text-xs uppercase tracking-wider">
                   Reintentar
                 </Text>
               </TouchableOpacity>
-            </LiquidGlassContainer>
+            </View>
           </View>
         ) : (
           <ScrollView
             className="flex-1"
-            contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 18, paddingBottom: 44 }}
+            contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 40 }}
             showsVerticalScrollIndicator={false}
             refreshControl={
               <RefreshControl
                 refreshing={isRefetching}
-                onRefresh={() => void handleRefresh()}
+                onRefresh={() => {
+                  void handleRefresh();
+                }}
                 tintColor={THEME_COLORS.gold}
                 colors={[THEME_COLORS.gold]}
               />
             }
           >
-            {/* VIP Chauffeur Credential Hero Card */}
-            <LiquidGlassContainer
-              variant="gold"
-              className="rounded-[32px] p-6 mb-6 border border-gold/40"
-            >
-              <View className="items-center">
-                {/* Double-Ring Champagne Gold Avatar Bezel */}
-                <TouchableOpacity
-                  activeOpacity={0.85}
-                  onPress={handleAvatarPress}
-                  disabled={isAvatarBusy}
-                  accessibilityRole="button"
-                  accessibilityLabel="Cambiar foto de perfil"
-                  className="relative mb-3.5"
-                >
-                  <View className="w-28 h-28 rounded-full p-1 bg-gold/20 border-2 border-gold shadow-xl shadow-black items-center justify-center">
-                    <View className="w-full h-full rounded-full bg-[#13141E] overflow-hidden items-center justify-center relative">
-                      <ProfileAvatarImage
-                        avatarUrl={avatarUrl}
-                        expiresAt={user?.avatar_url_expires_at}
-                        initials={fullName.slice(0, 2).toUpperCase()}
-                        initialsClassName="text-gold font-montserrat-bold text-3xl"
-                        onRefreshUrl={refreshAvatarUrl}
-                      />
-                      {isAvatarBusy && (
-                        <View className="absolute inset-0 bg-black/70 items-center justify-center">
-                          <ActivityIndicator size="small" color={THEME_COLORS.gold} />
-                        </View>
-                      )}
-                    </View>
+            {/* Identidad abierta sobre el fondo (sin tarjeta pesada) */}
+            <View className="items-center pt-2 pb-6">
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={handleAvatarPress}
+                disabled={isAvatarBusy}
+                accessibilityRole="button"
+                accessibilityLabel="Cambiar foto de perfil"
+                className="relative mb-4"
+              >
+                <View className="w-24 h-24 rounded-full p-0.5 border border-gold/60 bg-[#12131A] overflow-hidden items-center justify-center">
+                  <View className="w-full h-full rounded-full overflow-hidden items-center justify-center relative">
+                    <ProfileAvatarImage
+                      avatarUrl={avatarUrl}
+                      expiresAt={user?.avatar_url_expires_at}
+                      initials={fullName.slice(0, 2).toUpperCase()}
+                      initialsClassName="text-gold font-montserrat-bold text-2xl"
+                      onRefreshUrl={refreshAvatarUrl}
+                    />
+                    {isAvatarBusy && (
+                      <View className="absolute inset-0 bg-black/70 items-center justify-center">
+                        <ActivityIndicator size="small" color={THEME_COLORS.gold} />
+                      </View>
+                    )}
                   </View>
-
-                  {/* Floating Camera Edit Emblem */}
-                  <View className="absolute -bottom-1 right-0 bg-gold border-2 border-[#0A0A0C] w-8 h-8 rounded-full items-center justify-center shadow-md shadow-black">
-                    <Ionicons name="camera" size={15} color="#0A0A0C" />
-                  </View>
-                </TouchableOpacity>
-
-                {isUploading && (
-                  <TouchableOpacity
-                    activeOpacity={0.75}
-                    onPress={cancelUpload}
-                    accessibilityRole="button"
-                    accessibilityLabel="Cancelar subida de foto"
-                    className="mb-2 px-3 py-1 rounded-full bg-white/10 border border-white/15"
-                  >
-                    <Text className="text-platinum font-montserrat-medium text-[11px]">
-                      Subiendo foto... Cancelar
-                    </Text>
-                  </TouchableOpacity>
-                )}
-
-                {/* Micro Badge */}
-                <View className="bg-white/[0.06] border border-white/15 px-3 py-0.5 rounded-full mb-2">
-                  <Text className="text-gold font-montserrat-bold text-[9px] uppercase tracking-widest">
-                    TRANSFERBLACK EXECUTIVE DRIVER
-                  </Text>
                 </View>
 
-                {/* Full Name */}
-                <Text className="text-white font-montserrat-bold text-2xl text-center mb-0.5">
-                  {fullName}
-                </Text>
+                <View className="absolute bottom-0 right-0 bg-gold border-2 border-obsidian w-7 h-7 rounded-full items-center justify-center">
+                  <Ionicons name="camera" size={13} color="#0A0A0C" />
+                </View>
+              </TouchableOpacity>
 
-                {/* Email */}
-                {driverEmail ? (
-                  <Text className="text-ash font-montserrat text-xs text-center mb-5">
-                    {driverEmail}
+              {isUploading && (
+                <TouchableOpacity
+                  activeOpacity={0.75}
+                  onPress={cancelUpload}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cancelar subida de foto"
+                  className="mb-2 px-3 py-1 rounded-full bg-white/10"
+                >
+                  <Text className="text-platinum font-montserrat-medium text-xs">
+                    Subiendo foto... Cancelar
                   </Text>
-                ) : (
-                  <View className="mb-4" />
-                )}
+                </TouchableOpacity>
+              )}
 
-                {/* 3-Column VIP Telemetry Metrics Strip */}
-                <View className="w-full flex-row items-center justify-between bg-white/[0.04] border border-white/10 rounded-2xl py-3.5 px-2">
-                  {/* Metric 1: Rating */}
-                  <View className="flex-1 items-center">
-                    <View className="flex-row items-center mb-0.5">
-                      <Ionicons name="star" size={16} color={THEME_COLORS.gold} />
-                      <Text
-                        className="text-white font-montserrat-bold text-xl ml-1"
-                        style={{ fontVariant: ['tabular-nums'] }}
-                      >
-                        {ratingAverage}
-                      </Text>
-                    </View>
-                    <Text className="text-ash font-montserrat-semibold text-[10px] uppercase tracking-wider">
-                      Calificación
-                    </Text>
-                  </View>
+              <Text className="text-white font-montserrat-bold text-2xl text-center">
+                {fullName}
+              </Text>
+              {driverEmail ? (
+                <Text className="text-ash font-montserrat text-xs text-center mt-1">
+                  {driverEmail}
+                </Text>
+              ) : null}
 
-                  <View className="w-[1px] h-8 bg-white/10" />
-
-                  {/* Metric 2: Reviews */}
-                  <View className="flex-1 items-center">
+              {/* Métricas limpias sin caja extra */}
+              <View className="flex-row items-center justify-center mt-6 pt-5 border-t border-white/[0.08] w-full">
+                <View className="flex-1 items-center">
+                  <View className="flex-row items-center">
+                    <Ionicons name="star" size={14} color={THEME_COLORS.gold} />
                     <Text
-                      className="text-gold font-montserrat-bold text-xl mb-0.5"
+                      className="text-white font-montserrat-bold text-lg ml-1"
                       style={{ fontVariant: ['tabular-nums'] }}
                     >
-                      {ratingCount}
-                    </Text>
-                    <Text className="text-ash font-montserrat-semibold text-[10px] uppercase tracking-wider">
-                      {ratingCount === 1 ? 'Reseña' : 'Evaluaciones'}
+                      {ratingAverage}
                     </Text>
                   </View>
+                  <Text className="text-ash font-montserrat text-[11px] mt-0.5">
+                    Calificación
+                  </Text>
+                </View>
 
-                  <View className="w-[1px] h-8 bg-white/10" />
+                <View className="w-[1px] h-7 bg-white/10" />
 
-                  {/* Metric 3: Tier */}
-                  <View className="flex-1 items-center">
-                    <View className="flex-row items-center mb-0.5">
-                      <Ionicons name="diamond" size={15} color={THEME_COLORS.gold} />
-                      <Text className="text-white font-montserrat-bold text-sm ml-1 uppercase">
-                        BLACK
-                      </Text>
-                    </View>
-                    <Text className="text-ash font-montserrat-semibold text-[10px] uppercase tracking-wider">
-                      Categoría
-                    </Text>
-                  </View>
+                <View className="flex-1 items-center">
+                  <Text
+                    className="text-white font-montserrat-bold text-lg"
+                    style={{ fontVariant: ['tabular-nums'] }}
+                  >
+                    {ratingCount}
+                  </Text>
+                  <Text className="text-ash font-montserrat text-[11px] mt-0.5">
+                    {ratingCount === 1 ? 'Evaluación' : 'Evaluaciones'}
+                  </Text>
+                </View>
+
+                <View className="w-[1px] h-7 bg-white/10" />
+
+                <View className="flex-1 items-center">
+                  <Text className="text-gold font-montserrat-bold text-sm uppercase tracking-wider">
+                    Black
+                  </Text>
+                  <Text className="text-ash font-montserrat text-[11px] mt-1">
+                    Categoría
+                  </Text>
                 </View>
               </View>
-            </LiquidGlassContainer>
+            </View>
 
-            {/* Tarjeta Resumen de Vehículo Activo */}
+            {/* Sección Vehículo */}
             <View className="mb-6">
-              <View className="flex-row items-center justify-between px-1 mb-2.5">
-                <Text className="text-gold/90 font-montserrat-bold text-[11px] uppercase tracking-widest">
-                  Mi Unidad Asignada
-                </Text>
-                <Text className="text-ash font-montserrat text-[11px]">
-                  Flota Oficial
-                </Text>
-              </View>
+              <Text className="text-ash font-montserrat-semibold text-[11px] uppercase tracking-widest mb-2.5 px-1">
+                Vehículo
+              </Text>
               <VehicleCard vehicle={vehicle} />
             </View>
 
-            {/* Opciones de Gestión y Preferencias */}
-            <View className="mb-6">
-              <Text className="text-gold/90 font-montserrat-bold text-[11px] uppercase tracking-widest mb-3 px-1">
-                Gestión y Preferencias Ejecutivas
+            {/* Sección Cuenta — Lista agrupada limpia estilo iOS / Uber */}
+            <View className="mb-8">
+              <Text className="text-ash font-montserrat-semibold text-[11px] uppercase tracking-widest mb-2.5 px-1">
+                Cuenta y preferencias
               </Text>
-
-              <ProfileOptionItem
-                title="Mis Documentos"
-                subtitle="Licencia profesional, cédula y póliza"
-                iconName="document-text-outline"
-                onPress={handleDocumentsPress}
-                badge="Verificado"
-              />
-
-              <ProfileOptionItem
-                title="Mesa de Ayuda VIP 24/7"
-                subtitle="Asistencia exclusiva para conductores"
-                iconName="headset-outline"
-                onPress={handleSupportPress}
-              />
-
-              <ProfileOptionItem
-                title="Configuración del Sistema"
-                subtitle="Notificaciones push, permisos y versión"
-                iconName="settings-outline"
-                onPress={handleSettingsPress}
-                badge={isPushRegistered ? 'Push OK' : undefined}
-              />
+              <View className="rounded-2xl bg-[#12131A] border border-white/10 overflow-hidden">
+                <ProfileOptionItem
+                  title="Mis documentos"
+                  subtitle="Licencia, seguro y habilitaciones"
+                  iconName="document-text-outline"
+                  onPress={handleDocumentsPress}
+                  badge="Al día"
+                  showDivider
+                />
+                <ProfileOptionItem
+                  title="Soporte 24/7"
+                  subtitle="Atención para conductores"
+                  iconName="headset-outline"
+                  onPress={handleSupportPress}
+                  showDivider
+                />
+                <ProfileOptionItem
+                  title="Notificaciones y app"
+                  subtitle="Estado de alertas y versión"
+                  iconName="notifications-outline"
+                  onPress={handleSettingsPress}
+                  badge={isPushRegistered ? 'Activas' : undefined}
+                />
+              </View>
             </View>
 
-            {/* Acciones de Cuenta */}
-            <View className="pt-1">
+            {/* Acciones de sesión sobrias */}
+            <View>
               <TouchableOpacity
-                activeOpacity={0.82}
+                activeOpacity={0.78}
                 onPress={handleLogoutPress}
                 disabled={isLoggingOut}
                 accessibilityRole="button"
                 accessibilityLabel="Cerrar sesión"
-                className="w-full bg-red-950/35 border border-red-500/40 rounded-2xl py-4 flex-row items-center justify-center shadow-lg shadow-black mb-3 relative overflow-hidden"
+                className="w-full py-3.5 rounded-2xl bg-white/[0.04] border border-red-500/30 flex-row items-center justify-center mb-3"
               >
-                <View
-                  pointerEvents="none"
-                  className="absolute top-0 left-6 right-6 h-[1px] bg-red-400/25"
-                />
-                <Ionicons name="log-out-outline" size={20} color="#F87171" />
-                <Text className="text-red-400 font-montserrat-bold text-xs uppercase tracking-widest ml-2.5">
-                  {isLoggingOut ? 'Cerrando sesión...' : 'Cerrar Sesión'}
+                <Ionicons name="log-out-outline" size={18} color="#F87171" />
+                <Text className="text-red-400 font-montserrat-semibold text-sm ml-2">
+                  {isLoggingOut ? 'Cerrando sesión...' : 'Cerrar sesión'}
                 </Text>
               </TouchableOpacity>
 
@@ -528,10 +481,10 @@ export default function DriverProfileScreen() {
                 disabled={isLoggingOut}
                 accessibilityRole="button"
                 accessibilityLabel="Eliminar cuenta"
-                className="w-full py-3 items-center justify-center"
+                className="w-full py-2.5 items-center justify-center"
               >
-                <Text className="text-zinc-500 font-montserrat-medium text-xs">
-                  Solicitar baja y eliminar cuenta
+                <Text className="text-zinc-500 font-montserrat text-xs">
+                  Eliminar cuenta
                 </Text>
               </TouchableOpacity>
             </View>

@@ -36,10 +36,10 @@ export default function PayoutMethodScreen() {
     savePayoutMethod,
   } = useWalletStore();
 
-  const cbuRef = useRef<TextInput>(null);
-  const aliasRef = useRef<TextInput>(null);
-  const holderNameRef = useRef<TextInput>(null);
-  const holderDocRef = useRef<TextInput>(null);
+  const cbuRef = useRef<React.ComponentRef<typeof TextInput>>(null);
+  const aliasRef = useRef<React.ComponentRef<typeof TextInput>>(null);
+  const holderNameRef = useRef<React.ComponentRef<typeof TextInput>>(null);
+  const holderDocRef = useRef<React.ComponentRef<typeof TextInput>>(null);
 
   const {
     control,
@@ -310,7 +310,9 @@ export default function PayoutMethodScreen() {
                     onBlur={onBlur}
                     error={errors.account_holder_document?.message}
                     returnKeyType="done"
-                    onSubmitEditing={handleSubmit(onSubmit)}
+                    onSubmitEditing={() => {
+                      void handleSubmit(onSubmit)();
+                    }}
                   />
                 )}
               />
@@ -319,7 +321,9 @@ export default function PayoutMethodScreen() {
               <View className="mt-4">
                 <Button
                   label={payoutMethod ? 'Actualizar Cuenta' : 'Guardar Cuenta'}
-                  onPress={handleSubmit(onSubmit)}
+                  onPress={() => {
+                    void handleSubmit(onSubmit)();
+                  }}
                   isLoading={isSavingPayoutMethod}
                   disabled={isSavingPayoutMethod}
                 />

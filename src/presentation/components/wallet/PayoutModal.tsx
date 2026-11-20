@@ -128,8 +128,8 @@ export const PayoutModal = ({
       'Confirmar Retiro Inmediato',
       `Revisá el desglose de tu operación:\n\n• Monto solicitado: $${numAmount.toFixed(2)} ARS\n• Comisión por retiro inmediato: $${IMMEDIATE_PAYOUT_FEE}.00 ARS\n• Neto que recibirás en tu cuenta: $${netAmount.toFixed(2)} ARS\n\n${
         isOutsideHours
-          ? '⚠️ Horario: Fuera de la ventana operativa (08:00 a 20:00 hs ARG). Quedará agendado para su procesamiento a partir de las 08:00 hs del siguiente día.'
-          : '⚡ Horario: Operación dentro del horario de procesamiento inmediato (08:00 a 20:00 hs ARG).'
+          ? 'Horario: Fuera de la ventana operativa (08:00 a 20:00 hs ARG). Quedará agendado para su procesamiento a partir de las 08:00 hs del siguiente día.'
+          : 'Horario: Operación dentro del horario de procesamiento inmediato (08:00 a 20:00 hs ARG).'
       }`,
       [
         { text: 'Modificar', style: 'cancel' },

@@ -101,12 +101,12 @@ export const SecurityModal: React.FC<SecurityModalProps> = ({
     let message = '';
     if (activeTrip && activeTrip.status !== 'completed') {
       const dropoff = activeTrip.dropoff?.address || 'Destino fijado';
-      message = `🛡️ TransferBlack - Seguimiento de Viaje en Vivo\n\nConductor: ${driverName}\nDestino: ${dropoff}\n${
-        mapsUrl ? `📍 Seguí mi recorrido en tiempo real: ${mapsUrl}` : ''
+      message = `TransferBlack - Seguimiento de Viaje en Vivo\n\nConductor: ${driverName}\nDestino: ${dropoff}\n${
+        mapsUrl ? `Seguí mi recorrido en tiempo real: ${mapsUrl}` : ''
       }`;
     } else {
-      message = `🛡️ TransferBlack - Ubicación en Tiempo Real\n\nConductor: ${driverName}\n${
-        mapsUrl ? `📍 Ubicación actual: ${mapsUrl}` : 'En servicio activo'
+      message = `TransferBlack - Ubicación en Tiempo Real\n\nConductor: ${driverName}\n${
+        mapsUrl ? `Ubicación actual: ${mapsUrl}` : 'En servicio activo'
       }`;
     }
 

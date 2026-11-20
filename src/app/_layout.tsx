@@ -13,6 +13,7 @@ import { QueryProvider } from "../presentation/providers/QueryProvider";
 import { usePushNotifications } from "../presentation/hooks/usePushNotifications";
 import { ensureDefaultNotificationChannels } from "../core/notifications/notification-channel";
 import { RouteErrorFallback } from "../presentation/components/RouteErrorFallback";
+import { TopNotificationBanner } from "../presentation/components/ui/TopNotificationBanner";
 import { registerLogoutCleanup } from "../presentation/auth/store/useAuthStore";
 import { useWalletStore } from "../presentation/wallet/store/useWalletStore";
 import { useDriverStatusStore } from "../presentation/driver/store/useDriverStatusStore";
@@ -82,6 +83,7 @@ const Layout = () => {
                         headerShown: false,
                     }}
                 />
+                <TopNotificationBanner />
             </QueryProvider>
         </GestureHandlerRootView>
     );

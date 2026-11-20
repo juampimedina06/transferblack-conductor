@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ScrollView, KeyboardAvoidingView, Platform, TouchableOpacity, Alert, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, KeyboardAvoidingView, Platform, TouchableOpacity, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -12,6 +12,7 @@ import { DocumentItem } from '../../presentation/onboarding/components/DocumentI
 import { Input } from '../../presentation/components/ui/Input';
 import { Button } from '../../presentation/components/ui/Button';
 import { Select, SelectOption } from '../../presentation/components/ui/Select';
+import { showBannerNotification } from '../../presentation/notifications/store/useBannerNotificationStore';
 
 const YEAR_OPTIONS: SelectOption[] = Array.from(
   { length: new Date().getFullYear() + 1 - 2011 + 1 },
@@ -115,10 +116,12 @@ export default function VehicleScreen() {
   const onSubmit = (data: VehicleFormData) => {
     const missingDocs = getMissingVehicleDocuments();
     if (missingDocs.length > 0) {
-      Alert.alert(
-        'Documentación del vehículo incompleta',
-        `Por favor completá los documentos obligatorios de la unidad antes de continuar:\n\n• ${missingDocs.join('\n• ')}`
-      );
+      showBannerNotification({
+        type: 'warning',
+        title: 'Faltan documentos del vehículo',
+        message: `Completá: ${missingDocs.join(', ')}.`,
+        durationMs: 5000,
+      });
       return;
     }
 
@@ -143,7 +146,9 @@ export default function VehicleScreen() {
         refreshControl={
           <RefreshControl
             refreshing={isFetchingDrafts}
-            onRefresh={refetchDrafts}
+            onRefresh={() => {
+              void refetchDrafts();
+            }}
             tintColor="#C5A059"
             colors={['#C5A059']}
           />
@@ -362,7 +367,9 @@ export default function VehicleScreen() {
               placeholder="Número grabado en el motor"
               autoCapitalize="characters"
               returnKeyType="done"
-              onSubmitEditing={handleSubmit(onSubmit)}
+              onSubmitEditing={() => {
+                void handleSubmit(onSubmit)();
+              }}
               onBlur={onBlur}
               onChangeText={onChange}
               value={value}
@@ -398,7 +405,9 @@ export default function VehicleScreen() {
           <Button
             label="Continuar a Documentación Personal"
             variant="primary"
-            onPress={handleSubmit(onSubmit)}
+            onPress={() => {
+              void handleSubmit(onSubmit)();
+            }}
           />
         </View>
       </ScrollView>

@@ -39,7 +39,7 @@ interface PhoneInputProps extends Omit<TextInputProps, 'onChange' | 'value'> {
   defaultCountryCode?: string;
 }
 
-export const PhoneInput = forwardRef<TextInput, PhoneInputProps>(
+export const PhoneInput = forwardRef<React.ComponentRef<typeof TextInput>, PhoneInputProps>(
   (
     {
       label = 'Número de Teléfono',
@@ -53,8 +53,8 @@ export const PhoneInput = forwardRef<TextInput, PhoneInputProps>(
     },
     ref
   ) => {
-    const inputRef = useRef<TextInput>(null);
-    useImperativeHandle(ref, () => inputRef.current as TextInput);
+    const inputRef = useRef<React.ComponentRef<typeof TextInput>>(null);
+    useImperativeHandle(ref, () => inputRef.current as React.ComponentRef<typeof TextInput>);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isFocused, setIsFocused] = useState(false);

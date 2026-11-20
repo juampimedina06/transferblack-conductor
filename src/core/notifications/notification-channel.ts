@@ -35,6 +35,6 @@ export async function ensureDefaultNotificationChannels(): Promise<void> {
       lightColor: '#D4AF37',
     });
   } catch (error) {
-    console.warn('⚠️ [NotificationChannel] No se pudo crear el canal de notificación:', error);
+    console.warn('[NotificationChannel] No se pudo crear el canal de notificación:', error);
   }
 }

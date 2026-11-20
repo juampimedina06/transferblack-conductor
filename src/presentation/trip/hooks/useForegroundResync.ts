@@ -278,11 +278,11 @@ export const reconcileForegroundDriverState = async (
  * para resincronizar inmediatamente el estado de disponibilidad, viajes y ofertas.
  */
 export const useForegroundResync = (): void => {
-  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+  const appStateRef = useRef<AppStateStatus>((AppState.currentState as AppStateStatus) || 'active');
 
   useEffect(() => {
     let isMounted = true;
-    appStateRef.current = AppState.currentState;
+    appStateRef.current = (AppState.currentState as AppStateStatus) || 'active';
 
     const appStateSubscription = AppState.addEventListener(
       'change',

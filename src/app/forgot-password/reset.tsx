@@ -248,7 +248,9 @@ export default function ForgotPasswordResetScreen(): React.JSX.Element {
             <View className="mt-2">
               <Button
                 label="Restablecer contraseña"
-                onPress={handleSubmit(onSubmit)}
+                onPress={() => {
+                  void handleSubmit(onSubmit)();
+                }}
                 isLoading={isLoading}
                 disabled={!isFormValid || isLoading}
               />

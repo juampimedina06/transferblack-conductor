@@ -62,7 +62,7 @@ class SosQueueService {
       this.setStatus('success');
       return true;
     } catch (error) {
-      console.warn('⚠️ [SOS] Error enviando alerta inicial a backend. Encolando para reintento:', error);
+      console.warn('[SOS] Error enviando alerta inicial a backend. Encolando para reintento:', error);
       this.setStatus('retrying');
 
       const queue = await this.getQueue();
