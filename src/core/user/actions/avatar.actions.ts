@@ -113,10 +113,20 @@ export async function uploadFileToPresignedUrl(
   contentType: AllowedAvatarMimeType,
   signal?: AbortSignal,
 ): Promise<void> {
-  let blob: Blob;
+  let payloadBody: ArrayBuffer | Blob;
+  let byteSize: number;
   try {
     const localResponse = await fetch(fileUri);
-    blob = await localResponse.blob();
+    // Preferir arrayBuffer() para evitar el overhead/warning de React Native Response.blob()
+    if (typeof localResponse.arrayBuffer === 'function') {
+      const buffer = await localResponse.arrayBuffer();
+      payloadBody = buffer;
+      byteSize = buffer.byteLength;
+    } else {
+      const blob = await localResponse.blob();
+      payloadBody = blob;
+      byteSize = blob.size;
+    }
   } catch (error: unknown) {
     if (error instanceof Error && error.name === 'AbortError') {
       throw new AvatarError('Subida cancelada por el usuario.', undefined, 'UPLOAD_CANCELLED');
@@ -128,7 +138,7 @@ export async function uploadFileToPresignedUrl(
     );
   }
 
-  if (blob.size <= 0) {
+  if (byteSize <= 0) {
     throw new AvatarError(
       'La imagen seleccionada está vacía o dañada.',
       400,
@@ -136,7 +146,7 @@ export async function uploadFileToPresignedUrl(
     );
   }
 
-  if (blob.size > MAX_AVATAR_SIZE_BYTES) {
+  if (byteSize > MAX_AVATAR_SIZE_BYTES) {
     throw new AvatarError(
       'La imagen supera el tamaño máximo permitido de 5 MB.',
       413,
@@ -151,7 +161,7 @@ export async function uploadFileToPresignedUrl(
       headers: {
         'Content-Type': contentType,
       },
-      body: blob,
+      body: payloadBody,
       signal,
     });
   } catch (error: unknown) {
@@ -166,6 +176,7 @@ export async function uploadFileToPresignedUrl(
   }
 
   if (!s3Response.ok) {
+    console.warn(`[AvatarUpload] S3 PUT rechazado con HTTP ${s3Response.status}`);
     throw new AvatarError(
       'El almacenamiento rechazó la subida de la imagen. Intentá nuevamente.',
       s3Response.status,

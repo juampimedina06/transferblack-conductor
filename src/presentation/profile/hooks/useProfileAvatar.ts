@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Linking } from 'react-native';
-import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 
 import {
@@ -10,6 +9,7 @@ import {
 } from '@/core/user/actions/avatar.actions';
 import { AvatarError } from '@/core/user/interface/avatar.interface';
 import { useAuthStore } from '@/presentation/auth/store/useAuthStore';
+import { showBannerNotification } from '@/presentation/notifications/store/useBannerNotificationStore';
 
 export type AvatarImageSource = 'camera' | 'library';
 
@@ -168,18 +168,25 @@ export function useProfileAvatar(): UseProfileAvatarResult {
       );
 
       useAuthStore.getState().updateUser(updatedUser);
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      showBannerNotification({
+        type: 'success',
+        title: 'Foto de perfil actualizada',
+        message: 'Tu nueva imagen ya está visible en tu perfil.',
+      });
     } catch (error: unknown) {
       if (error instanceof AvatarError && error.code === 'UPLOAD_CANCELLED') {
         return;
       }
 
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       const message =
         error instanceof Error
           ? error.message
           : 'No se pudo actualizar tu foto de perfil. Intentá nuevamente.';
-      Alert.alert('No se pudo actualizar la foto', message);
+      showBannerNotification({
+        type: 'error',
+        title: 'No se pudo actualizar la foto',
+        message,
+      });
     } finally {
       if (abortControllerRef.current === controller) {
         abortControllerRef.current = null;
@@ -200,14 +207,21 @@ export function useProfileAvatar(): UseProfileAvatarResult {
     try {
       const updatedUser = await deleteProfileAvatar();
       useAuthStore.getState().updateUser(updatedUser);
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      showBannerNotification({
+        type: 'info',
+        title: 'Foto de perfil eliminada',
+        message: 'Podés subir una nueva foto cuando quieras.',
+      });
     } catch (error: unknown) {
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       const message =
         error instanceof Error
           ? error.message
           : 'No se pudo eliminar tu foto de perfil. Intentá nuevamente.';
-      Alert.alert('No se pudo eliminar la foto', message);
+      showBannerNotification({
+        type: 'error',
+        title: 'No se pudo eliminar la foto',
+        message,
+      });
     } finally {
       isBusyRef.current = false;
       setIsDeleting(false);
