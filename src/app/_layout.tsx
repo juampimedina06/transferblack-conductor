@@ -20,6 +20,7 @@ import { useWalletStore } from "../presentation/wallet/store/useWalletStore";
 import { useDriverStatusStore } from "../presentation/driver/store/useDriverStatusStore";
 import { useLocationStore } from "../presentation/maps/store/useLocationStore";
 import { useSafetyStore } from "../presentation/safety/store/useSafetyStore";
+import { usePeerAlertStore } from "../presentation/safety/store/usePeerAlertStore";
 import { useDriverTripStore } from "../presentation/trip/store/useDriverTripStore";
 import { socket } from "../core/socket/socket";
 import { pushNotificationService } from "../core/push/services/pushNotificationService";
@@ -46,6 +47,7 @@ registerLogoutCleanup(async () => {
     useDriverStatusStore.getState().resetDriverStatus();
     useLocationStore.getState().clearLocationHistory();
     useSafetyStore.getState().clearBlockedPassengers();
+    usePeerAlertStore.getState().resetPeerAlerts();
     const trip = useDriverTripStore.getState().activeTrip;
     const isTripLive = !!trip && trip.status !== 'completed' && trip.status !== 'cancelled';
     if (!isTripLive) {

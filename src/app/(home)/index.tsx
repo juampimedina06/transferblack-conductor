@@ -37,6 +37,13 @@ import { requestBackgroundLocationPermission } from '../../core/location/actions
 import { PermissionStatus } from '../../core/location/interface/permission.interface';
 import { startBackgroundLocationTracking } from '../../core/location/tasks/backgroundLocationTask';
 import { driverOverlay } from '../../core/overlay/driverOverlay';
+import {
+  cancelPeerAlert,
+  triggerPeerAlert,
+} from '../../core/safety/actions/peerAlert.actions';
+import { usePeerAlertStore } from '../../presentation/safety/store/usePeerAlertStore';
+import { usePeerSafetySocket } from '../../presentation/safety/hooks/usePeerSafetySocket';
+import { PeerAlertModals } from '../../presentation/components/safety/PeerAlertModals';
 
 export default function DriverDashboardScreen() {
   const user = useAuthStore(state => state.user);
@@ -103,6 +110,49 @@ export default function DriverDashboardScreen() {
   useActiveTripSync();
   useForegroundResync();
   useDriverFloatingBubble();
+  usePeerSafetySocket();
+
+  const myActivePeerAlert = usePeerAlertStore((state) => state.myActiveAlert);
+  const setMyActivePeerAlert = usePeerAlertStore((state) => state.setMyActiveAlert);
+  const [isSilentAlertBusy, setIsSilentAlertBusy] = useState(false);
+
+  const handleTriggerSilentAlert = async (): Promise<void> => {
+    if (!location || isSilentAlertBusy) return;
+    try {
+      setIsSilentAlertBusy(true);
+      const created = await triggerPeerAlert({
+        lat: location.latitude,
+        lng: location.longitude,
+        tripId: activeTrip?.status !== 'completed' ? activeTrip?.id ?? null : null,
+        radiusKm: 5,
+      });
+      setMyActivePeerAlert({
+        id: created.id,
+        notifiedCount: created.notifiedCount,
+        followersCount: created.followersCount,
+        createdAt: created.createdAt,
+      });
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } finally {
+      setIsSilentAlertBusy(false);
+    }
+  };
+
+  const handleCancelSilentAlert = async (): Promise<void> => {
+    if (!myActivePeerAlert || isSilentAlertBusy) return;
+    try {
+      setIsSilentAlertBusy(true);
+      await cancelPeerAlert(myActivePeerAlert.id);
+      setMyActivePeerAlert(null);
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } finally {
+      setIsSilentAlertBusy(false);
+    }
+  };
 
   const toggleAvailability = (value: boolean) => {
     setIsAvailable(value);
@@ -380,11 +430,23 @@ export default function DriverDashboardScreen() {
         />
       )}
 
-      {/* Escudo de funciones de seguridad: flota siempre por encima de la tarjeta, lado izquierdo */}
+      {/* Escudo de funciones de seguridad + botón discreto de cara feliz arriba */}
       <EmergencyFAB
         onPress={() => setIsSecurityModalVisible(true)}
         bottomOffset={bottomHeight}
+        isSilentAlertActive={!!myActivePeerAlert}
+        silentAlertFollowersCount={myActivePeerAlert?.followersCount ?? 0}
+        isSilentAlertBusy={isSilentAlertBusy}
+        onTriggerSilentAlert={() => {
+          void handleTriggerSilentAlert();
+        }}
+        onCancelSilentAlert={() => {
+          void handleCancelSilentAlert();
+        }}
       />
+
+      {/* Alertas de retaguardia entre conductores */}
+      <PeerAlertModals />
 
       {/* Security Functions Modal */}
       <SecurityModal
