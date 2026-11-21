@@ -1,5 +1,6 @@
 package com.transferblack.driver.overlay
 
+import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
@@ -19,6 +20,8 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
 import android.view.WindowManager
+import android.view.animation.DecelerateInterpolator
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.facebook.react.bridge.Promise
@@ -38,6 +41,10 @@ class DriverOverlayModule(reactContext: ReactApplicationContext) :
   private var windowManager: WindowManager? = null
   private var overlayView: View? = null
   private var autoDismissRunnable: Runnable? = null
+
+  private var bubbleWindowManager: WindowManager? = null
+  private var bubbleView: View? = null
+  private var bubbleSnapAnimator: ValueAnimator? = null
 
   override fun getName(): String = "DriverOverlay"
 
@@ -89,6 +96,7 @@ class DriverOverlayModule(reactContext: ReactApplicationContext) :
 
       UiThreadUtil.runOnUiThread {
         try {
+          removeBubbleInternal()
           removeOverlayInternal()
 
           val context = reactApplicationContext
@@ -165,10 +173,282 @@ class DriverOverlayModule(reactContext: ReactApplicationContext) :
     }
   }
 
+  @ReactMethod
+  fun showFloatingBubble(status: String?, promise: Promise) {
+    try {
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+        !Settings.canDrawOverlays(reactApplicationContext)
+      ) {
+        promise.resolve(false)
+        return
+      }
+
+      val isTripActive = status == "trip"
+
+      UiThreadUtil.runOnUiThread {
+        try {
+          // Si ya hay una tarjeta de oferta visible, no la tapamos con la esfera
+          if (overlayView != null) {
+            promise.resolve(false)
+            return@runOnUiThread
+          }
+
+          removeBubbleInternal()
+
+          val context = reactApplicationContext
+          val wm = context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager
+          if (wm == null) {
+            promise.resolve(false)
+            return@runOnUiThread
+          }
+
+          val windowType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+          } else {
+            @Suppress("DEPRECATION")
+            WindowManager.LayoutParams.TYPE_PHONE
+          }
+
+          val windowFlags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
+
+          val bubbleSize = dp(60)
+          val metrics = context.resources.displayMetrics
+          val screenWidth = metrics.widthPixels
+          val screenHeight = metrics.heightPixels
+          val edgeMargin = dp(8)
+
+          val bubbleParams = WindowManager.LayoutParams(
+            bubbleSize,
+            bubbleSize,
+            windowType,
+            windowFlags,
+            PixelFormat.TRANSLUCENT
+          ).apply {
+            gravity = Gravity.TOP or Gravity.START
+            x = (screenWidth - bubbleSize - edgeMargin).coerceAtLeast(edgeMargin)
+            y = (screenHeight * 0.35f).toInt().coerceIn(dp(64), (screenHeight - bubbleSize - dp(64)).coerceAtLeast(dp(64)))
+          }
+
+          val sphereView = buildFloatingBubble(
+            context = context,
+            wm = wm,
+            bubbleParams = bubbleParams,
+            bubbleSize = bubbleSize,
+            screenWidth = screenWidth,
+            screenHeight = screenHeight,
+            isTripActive = isTripActive
+          )
+
+          wm.addView(sphereView, bubbleParams)
+          bubbleWindowManager = wm
+          bubbleView = sphereView
+
+          promise.resolve(true)
+        } catch (_: Exception) {
+          removeBubbleInternal()
+          promise.resolve(false)
+        }
+      }
+    } catch (_: Exception) {
+      promise.resolve(false)
+    }
+  }
+
+  @ReactMethod
+  fun hideFloatingBubble(promise: Promise) {
+    UiThreadUtil.runOnUiThread {
+      removeBubbleInternal()
+      promise.resolve(true)
+    }
+  }
+
   override fun invalidate() {
     super.invalidate()
     UiThreadUtil.runOnUiThread {
       removeOverlayInternal()
+      removeBubbleInternal()
+    }
+  }
+
+  @SuppressLint("ClickableViewAccessibility")
+  private fun buildFloatingBubble(
+    context: Context,
+    wm: WindowManager,
+    bubbleParams: WindowManager.LayoutParams,
+    bubbleSize: Int,
+    screenWidth: Int,
+    screenHeight: Int,
+    isTripActive: Boolean
+  ): FrameLayout {
+    val root = FrameLayout(context).apply {
+      clipChildren = false
+      clipToPadding = false
+      contentDescription = "Volver a Transfer Black Conductor"
+    }
+
+    val circleBackground = GradientDrawable().apply {
+      shape = GradientDrawable.OVAL
+      setColor(Color.parseColor(COLOR_OBSIDIAN_SURFACE))
+      setStroke(dp(2f), Color.parseColor(COLOR_GOLD))
+    }
+
+    val sphereBody = FrameLayout(context).apply {
+      background = circleBackground
+      elevation = dp(10).toFloat()
+      layoutParams = FrameLayout.LayoutParams(bubbleSize, bubbleSize)
+    }
+
+    val monogramView = TextView(context).apply {
+      text = "TB"
+      setTextColor(Color.parseColor(COLOR_GOLD))
+      setTextSize(TypedValue.COMPLEX_UNIT_SP, 17f)
+      setTypeface(Typeface.DEFAULT_BOLD)
+      letterSpacing = 0.04f
+      gravity = Gravity.CENTER
+      layoutParams = FrameLayout.LayoutParams(
+        FrameLayout.LayoutParams.MATCH_PARENT,
+        FrameLayout.LayoutParams.MATCH_PARENT
+      )
+    }
+
+    val statusDotSize = dp(14)
+    val statusDotBackground = GradientDrawable().apply {
+      shape = GradientDrawable.OVAL
+      setColor(Color.parseColor(if (isTripActive) COLOR_GOLD else COLOR_EMERALD))
+      setStroke(dp(2f), Color.parseColor(COLOR_OBSIDIAN_SURFACE))
+    }
+
+    val statusDot = View(context).apply {
+      background = statusDotBackground
+      layoutParams = FrameLayout.LayoutParams(statusDotSize, statusDotSize).apply {
+        gravity = Gravity.BOTTOM or Gravity.END
+        rightMargin = dp(2)
+        bottomMargin = dp(2)
+      }
+    }
+
+    sphereBody.addView(monogramView)
+    root.addView(sphereBody)
+    root.addView(statusDot)
+
+    val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
+    val edgeMargin = dp(8)
+    val minY = dp(36)
+    val maxY = (screenHeight - bubbleSize - dp(36)).coerceAtLeast(minY)
+    val maxX = (screenWidth - bubbleSize - edgeMargin).coerceAtLeast(edgeMargin)
+
+    var initialX = 0
+    var initialY = 0
+    var initialTouchX = 0f
+    var initialTouchY = 0f
+    var isDragging = false
+
+    root.setOnTouchListener { _, event ->
+      when (event.action) {
+        MotionEvent.ACTION_DOWN -> {
+          bubbleSnapAnimator?.cancel()
+          initialX = bubbleParams.x
+          initialY = bubbleParams.y
+          initialTouchX = event.rawX
+          initialTouchY = event.rawY
+          isDragging = false
+          true
+        }
+        MotionEvent.ACTION_MOVE -> {
+          val dx = (event.rawX - initialTouchX).toInt()
+          val dy = (event.rawY - initialTouchY).toInt()
+          if (abs(dx) > touchSlop || abs(dy) > touchSlop) {
+            isDragging = true
+          }
+          if (isDragging) {
+            bubbleParams.x = (initialX + dx).coerceIn(0, (screenWidth - bubbleSize).coerceAtLeast(0))
+            bubbleParams.y = (initialY + dy).coerceIn(minY, maxY)
+            try {
+              if (root.isAttachedToWindow) {
+                wm.updateViewLayout(root, bubbleParams)
+              }
+            } catch (_: Exception) {
+              // Ignorar si la vista ya fue removida
+            }
+          }
+          true
+        }
+        MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+          if (!isDragging && event.action == MotionEvent.ACTION_UP) {
+            openAppFromBubble()
+          } else {
+            val centerX = bubbleParams.x + bubbleSize / 2
+            val targetX = if (centerX < screenWidth / 2) edgeMargin else maxX
+            bubbleSnapAnimator?.cancel()
+            bubbleSnapAnimator = ValueAnimator.ofInt(bubbleParams.x, targetX).apply {
+              duration = 220L
+              interpolator = DecelerateInterpolator()
+              addUpdateListener { animator ->
+                bubbleParams.x = animator.animatedValue as Int
+                try {
+                  if (root.isAttachedToWindow) {
+                    wm.updateViewLayout(root, bubbleParams)
+                  }
+                } catch (_: Exception) {
+                  // Ignorar si la vista ya fue removida
+                }
+              }
+              start()
+            }
+          }
+          true
+        }
+        else -> false
+      }
+    }
+
+    return root
+  }
+
+  private fun openAppFromBubble() {
+    val context = reactApplicationContext
+    val launchIntent = context.packageManager
+      .getLaunchIntentForPackage(context.packageName)
+      ?.apply {
+        addFlags(
+          Intent.FLAG_ACTIVITY_NEW_TASK or
+            Intent.FLAG_ACTIVITY_SINGLE_TOP or
+            Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+        )
+      }
+
+    if (launchIntent != null) {
+      try {
+        context.startActivity(launchIntent)
+      } catch (_: Exception) {
+        // Sin actividad disponible para abrir
+      }
+    }
+
+    removeBubbleInternal()
+  }
+
+  private fun removeBubbleInternal() {
+    bubbleSnapAnimator?.cancel()
+    bubbleSnapAnimator = null
+
+    val view = bubbleView
+    val wm = bubbleWindowManager
+    bubbleView = null
+
+    if (view != null && wm != null) {
+      try {
+        if (view.isAttachedToWindow) {
+          wm.removeViewImmediate(view)
+        }
+      } catch (_: Exception) {
+        try {
+          wm.removeView(view)
+        } catch (_: Exception) {
+          // La vista ya no estaba adjunta
+        }
+      }
     }
   }
 
@@ -477,7 +757,9 @@ class DriverOverlayModule(reactContext: ReactApplicationContext) :
   companion object {
     private const val DEFAULT_TTL_SECONDS = 20L
     private const val COLOR_OBSIDIAN = "#0A0A0C"
+    private const val COLOR_OBSIDIAN_SURFACE = "#0E1015"
     private const val COLOR_GOLD = "#D4AF37"
+    private const val COLOR_EMERALD = "#10B981"
     private const val COLOR_PLATINUM = "#E4E4E5"
     private const val COLOR_ASH = "#A1A1AA"
   }

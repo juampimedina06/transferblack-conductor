@@ -24,6 +24,7 @@ import { useDriverTripStore } from "../presentation/trip/store/useDriverTripStor
 import { socket } from "../core/socket/socket";
 import { pushNotificationService } from "../core/push/services/pushNotificationService";
 import { stopBackgroundLocationTracking } from "../core/location/tasks/backgroundLocationTask";
+import { driverOverlay } from "../core/overlay/driverOverlay";
 import "../global.css";
 
 // Mantiene el splash nativo hasta que las fuentes e inicialización estén listas
@@ -35,6 +36,8 @@ void ensureDefaultNotificationChannels();
 registerLogoutCleanup(async () => {
     useDriverTripStore.getState().setIsAvailable(false);
     await stopBackgroundLocationTracking();
+    await driverOverlay.hideOfferOverlay();
+    await driverOverlay.hideFloatingBubble();
     if (socket.connected) {
         socket.disconnect();
     }

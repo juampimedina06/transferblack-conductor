@@ -11,11 +11,15 @@ export interface DriverOverlayPayload {
   ttlSeconds: number;
 }
 
+export type FloatingBubbleStatus = 'online' | 'trip';
+
 interface DriverOverlayNativeModule {
   canDrawOverlays?: () => Promise<boolean>;
   requestOverlayPermission?: () => Promise<boolean>;
   showOfferOverlay?: (payload: DriverOverlayPayload) => Promise<boolean>;
   hideOfferOverlay?: () => Promise<boolean>;
+  showFloatingBubble?: (status: FloatingBubbleStatus) => Promise<boolean>;
+  hideFloatingBubble?: () => Promise<boolean>;
 }
 
 const DEFAULT_OVERLAY_TTL_SECONDS = 20;
@@ -189,11 +193,47 @@ export async function hideOfferOverlay(): Promise<void> {
   }
 }
 
+/**
+ * Muestra la esfera flotante arrastrable en Android mientras el conductor está en segundo plano.
+ */
+export async function showFloatingBubble(
+  status: FloatingBubbleStatus = 'online'
+): Promise<boolean> {
+  const nativeModule = getNativeDriverOverlay();
+  if (!nativeModule || typeof nativeModule.showFloatingBubble !== 'function') {
+    return false;
+  }
+
+  try {
+    return Boolean(await nativeModule.showFloatingBubble(status));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Oculta la esfera flotante arrastrable si estuviera visible.
+ */
+export async function hideFloatingBubble(): Promise<void> {
+  const nativeModule = getNativeDriverOverlay();
+  if (!nativeModule || typeof nativeModule.hideFloatingBubble !== 'function') {
+    return;
+  }
+
+  try {
+    await nativeModule.hideFloatingBubble();
+  } catch {
+    // Evitar errores no manejados al ocultar la burbuja
+  }
+}
+
 export const driverOverlay = {
   canDrawOverlays,
   requestOverlayPermission,
   ensureOverlayPermissionWithPrompt,
   showOfferOverlay,
   hideOfferOverlay,
+  showFloatingBubble,
+  hideFloatingBubble,
   resetOverlayPromptStateForTests,
 };

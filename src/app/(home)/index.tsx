@@ -23,6 +23,7 @@ import { useTripSocket } from '../../presentation/trip/hooks/useTripSocket';
 import { useTripTelemetry } from '../../presentation/trip/hooks/useTripTelemetry';
 import { useActiveTripSync } from '../../presentation/trip/hooks/useActiveTripSync';
 import { useForegroundResync } from '../../presentation/trip/hooks/useForegroundResync';
+import { useDriverFloatingBubble } from '../../presentation/trip/hooks/useDriverFloatingBubble';
 import { useDriverTripStore } from '../../presentation/trip/store/useDriverTripStore';
 import { ActiveTripOverlay } from '../../presentation/components/trip/ActiveTripOverlay';
 import { TripReceiptModal } from '../../presentation/components/trip/TripReceiptModal';
@@ -101,6 +102,7 @@ export default function DriverDashboardScreen() {
   // Sincroniza el estado del viaje activo con GET /driver/me/active-trip al abrir o montar la app
   useActiveTripSync();
   useForegroundResync();
+  useDriverFloatingBubble();
 
   const toggleAvailability = (value: boolean) => {
     setIsAvailable(value);
@@ -118,6 +120,7 @@ export default function DriverDashboardScreen() {
         });
     } else {
       void driverOverlay.hideOfferOverlay();
+      void driverOverlay.hideFloatingBubble();
     }
   };
 
