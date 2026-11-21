@@ -25,7 +25,6 @@ import { useActiveTripSync } from '../../presentation/trip/hooks/useActiveTripSy
 import { useForegroundResync } from '../../presentation/trip/hooks/useForegroundResync';
 import { useDriverTripStore } from '../../presentation/trip/store/useDriverTripStore';
 import { ActiveTripOverlay } from '../../presentation/components/trip/ActiveTripOverlay';
-import { ActiveTripTopHeader } from '../../presentation/components/trip/ActiveTripTopHeader';
 import { TripReceiptModal } from '../../presentation/components/trip/TripReceiptModal';
 import { SosConfirmationModal } from '../../presentation/components/safety/SosConfirmationModal';
 import { useWalletStore } from '../../presentation/wallet/store/useWalletStore';
@@ -210,10 +209,8 @@ export default function DriverDashboardScreen() {
           </TouchableOpacity>
         )}
 
-        {/* Si hay viaje activo: Muestra el cartel de indicaciones estilo Uber y oculta los botones */}
-        {activeTrip && activeTrip.status !== 'completed' ? (
-          <ActiveTripTopHeader trip={activeTrip} />
-        ) : (
+        {/* Si hay viaje activo: deja libre el área superior para las indicaciones giro a giro de Google Navigation SDK */}
+        {activeTrip && activeTrip.status !== 'completed' ? null : (
           <View className="px-4 py-3 flex-row items-center justify-between" pointerEvents="box-none">
             {/* Left: Floating Glass Logout Capsule */}
             <TouchableOpacity
