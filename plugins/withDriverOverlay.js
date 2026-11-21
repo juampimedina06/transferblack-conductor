@@ -92,6 +92,19 @@ const withDriverOverlayKotlinFiles = (config) => {
         }
       }
 
+      const logoSrc = path.join(
+        projectRoot,
+        'assets',
+        'images',
+        'transferblack',
+        'logo_transferblack_sinfodo.png'
+      );
+      const drawableDir = path.join(platformRoot, 'app', 'src', 'main', 'res', 'drawable');
+      fs.mkdirSync(drawableDir, { recursive: true });
+      if (fs.existsSync(logoSrc)) {
+        fs.copyFileSync(logoSrc, path.join(drawableDir, 'tb_floating_bubble_logo.png'));
+      }
+
       return modConfig;
     },
   ]);

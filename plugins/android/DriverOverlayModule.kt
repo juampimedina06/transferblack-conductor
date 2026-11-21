@@ -22,6 +22,7 @@ import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.facebook.react.bridge.Promise
@@ -299,17 +300,38 @@ class DriverOverlayModule(reactContext: ReactApplicationContext) :
       layoutParams = FrameLayout.LayoutParams(bubbleSize, bubbleSize)
     }
 
-    val monogramView = TextView(context).apply {
-      text = "TB"
-      setTextColor(Color.parseColor(COLOR_GOLD))
-      setTextSize(TypedValue.COMPLEX_UNIT_SP, 17f)
-      setTypeface(Typeface.DEFAULT_BOLD)
-      letterSpacing = 0.04f
-      gravity = Gravity.CENTER
-      layoutParams = FrameLayout.LayoutParams(
-        FrameLayout.LayoutParams.MATCH_PARENT,
-        FrameLayout.LayoutParams.MATCH_PARENT
-      )
+    val logoResId = context.resources.getIdentifier(
+      "tb_floating_bubble_logo",
+      "drawable",
+      context.packageName
+    )
+
+    if (logoResId != 0) {
+      val logoView = ImageView(context).apply {
+        setImageResource(logoResId)
+        scaleType = ImageView.ScaleType.FIT_CENTER
+        setPadding(dp(8), dp(8), dp(8), dp(8))
+        contentDescription = "Logo Transfer Black"
+        layoutParams = FrameLayout.LayoutParams(
+          FrameLayout.LayoutParams.MATCH_PARENT,
+          FrameLayout.LayoutParams.MATCH_PARENT
+        )
+      }
+      sphereBody.addView(logoView)
+    } else {
+      val monogramView = TextView(context).apply {
+        text = "TB"
+        setTextColor(Color.parseColor(COLOR_GOLD))
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, 17f)
+        setTypeface(Typeface.DEFAULT_BOLD)
+        letterSpacing = 0.04f
+        gravity = Gravity.CENTER
+        layoutParams = FrameLayout.LayoutParams(
+          FrameLayout.LayoutParams.MATCH_PARENT,
+          FrameLayout.LayoutParams.MATCH_PARENT
+        )
+      }
+      sphereBody.addView(monogramView)
     }
 
     val statusDotSize = dp(14)
@@ -328,7 +350,6 @@ class DriverOverlayModule(reactContext: ReactApplicationContext) :
       }
     }
 
-    sphereBody.addView(monogramView)
     root.addView(sphereBody)
     root.addView(statusDot)
 
