@@ -11,6 +11,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { DRIVER_LEGAL_CONTRACT } from '../../../core/legal/constants/legalTerms.constants';
+import {
+  DRIVER_PRIVACY_URL,
+  DRIVER_TERMS_URL,
+  openLegalUrl,
+} from '../../../core/legal/constants/legalUrls.constants';
 import { useLegalStore } from '../../legal/store/useLegalStore';
 
 interface LegalTermsConsultModalProps {
@@ -127,6 +132,34 @@ export const LegalTermsConsultModal: React.FC<LegalTermsConsultModalProps> = ({
               <Text className="text-zinc-500 font-montserrat-medium text-[11px] text-center">
                 Jurisdicción: {DRIVER_LEGAL_CONTRACT.jurisdiction}
               </Text>
+              <View className="flex-row items-center justify-center gap-4 mt-3">
+                <TouchableOpacity
+                  onPress={() => {
+                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    void openLegalUrl(DRIVER_TERMS_URL);
+                  }}
+                  accessibilityRole="link"
+                  accessibilityLabel="Ver Términos y Condiciones en la web"
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text className="text-gold font-montserrat-semibold text-xs underline">
+                    Ver Términos en la web
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => {
+                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    void openLegalUrl(DRIVER_PRIVACY_URL);
+                  }}
+                  accessibilityRole="link"
+                  accessibilityLabel="Ver Política de Privacidad en la web"
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text className="text-gold font-montserrat-semibold text-xs underline">
+                    Política de Privacidad
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </ScrollView>
 

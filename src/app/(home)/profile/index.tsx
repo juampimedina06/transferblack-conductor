@@ -30,6 +30,11 @@ import { DriverDocumentsModal } from '@/presentation/components/compliance/Drive
 import { DeleteAccountModal } from '@/presentation/components/profile/DeleteAccountModal';
 import { usePushNotifications } from '@/presentation/hooks/usePushNotifications';
 import { useProfileAvatar } from '@/presentation/profile/hooks/useProfileAvatar';
+import {
+  DRIVER_PRIVACY_URL,
+  DRIVER_TERMS_URL,
+  openLegalUrl,
+} from '@/core/legal/constants/legalUrls.constants';
 
 export default function DriverProfileScreen() {
   const user = useAuthStore((state) => state.user);
@@ -455,6 +460,24 @@ export default function DriverProfileScreen() {
                   iconName="notifications-outline"
                   onPress={handleSettingsPress}
                   badge={isPushRegistered ? 'Activas' : undefined}
+                  showDivider
+                />
+                <ProfileOptionItem
+                  title="Política de privacidad"
+                  subtitle="Uso de datos, ubicación y permisos"
+                  iconName="shield-checkmark-outline"
+                  onPress={() => {
+                    void openLegalUrl(DRIVER_PRIVACY_URL);
+                  }}
+                  showDivider
+                />
+                <ProfileOptionItem
+                  title="Términos y condiciones"
+                  subtitle="Condiciones para conductores"
+                  iconName="document-outline"
+                  onPress={() => {
+                    void openLegalUrl(DRIVER_TERMS_URL);
+                  }}
                 />
               </View>
             </View>
