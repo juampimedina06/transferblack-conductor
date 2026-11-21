@@ -81,13 +81,16 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
   const [mapViewController, setMapViewController] = useState<MapViewController | null>(null);
   const [navigationViewController, setNavigationViewController] =
     useState<NavigationViewController | null>(null);
+  const [isMapReady, setIsMapReady] = useState(false);
   const [isFollowingUser, setIsFollowingUser] = useState(true);
   const [isPolyline, setIsPolyline] = useState(false);
 
   const mapControllerRef = useRef<MapViewController | null>(null);
+  const isMapReadyRef = useRef(false);
   useEffect(() => {
     mapControllerRef.current = mapViewController;
-  }, [mapViewController]);
+    isMapReadyRef.current = isMapReady;
+  }, [mapViewController, isMapReady]);
 
   const currentOffer = useDriverTripStore((state) => state.currentOffer);
   const activeTrip = useDriverTripStore((state) => state.activeTrip);
@@ -119,7 +122,7 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
   } = useActiveTripNavigation({
     sdk,
     activeTrip,
-    navigationViewController,
+    navigationViewController: isMapReady ? navigationViewController : null,
   });
 
   // Coordenadas de oferta entrante (cuando todavía no se inició navegación giro a giro)
@@ -151,97 +154,116 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
   // Dibuja / limpia la ruta y marcadores de la oferta entrante en modo mapa libre
   useEffect(() => {
     const controller = mapControllerRef.current;
-    if (!controller) return;
+    if (!controller || !isMapReady) return;
+
+    const safeCall = (fn: () => unknown) => {
+      try {
+        void Promise.resolve(fn()).catch(() => {});
+      } catch {
+        // Ignorar si el mapa todavía se está inicializando
+      }
+    };
 
     if (isNavigating || !currentOffer) {
-      controller.removePolyline(OFFER_POLYLINE_ID);
-      controller.removeMarker(PICKUP_MARKER_ID);
-      controller.removeMarker(DROPOFF_MARKER_ID);
+      safeCall(() => controller.removePolyline(OFFER_POLYLINE_ID));
+      safeCall(() => controller.removeMarker(PICKUP_MARKER_ID));
+      safeCall(() => controller.removeMarker(DROPOFF_MARKER_ID));
       return;
     }
 
     if (offerRouteCoordinates.length > 1) {
-      void controller
-        .addPolyline({
+      safeCall(() =>
+        controller.addPolyline({
           id: OFFER_POLYLINE_ID,
           points: offerRouteCoordinates,
           color: THEME_COLORS.gold,
           width: 6,
           visible: true,
         })
-        .catch(() => {});
+      );
     }
 
-    if (currentOffer.pickup?.latitude != null && currentOffer.pickup?.longitude != null) {
-      void controller
-        .addMarker({
+    const pickupLat = currentOffer.pickup?.latitude;
+    const pickupLng = currentOffer.pickup?.longitude;
+    if (pickupLat != null && pickupLng != null) {
+      safeCall(() =>
+        controller.addMarker({
           id: PICKUP_MARKER_ID,
-          position: {
-            lat: currentOffer.pickup.latitude,
-            lng: currentOffer.pickup.longitude,
-          },
+          position: { lat: pickupLat, lng: pickupLng },
           title: 'Punto de encuentro',
           snippet: currentOffer.pickup.address,
         })
-        .catch(() => {});
+      );
 
-      controller.moveCamera({
-        target: {
-          lat: currentOffer.pickup.latitude,
-          lng: currentOffer.pickup.longitude,
-        },
-        zoom: 14,
-      });
+      safeCall(() =>
+        controller.moveCamera({
+          target: { lat: pickupLat, lng: pickupLng },
+          zoom: 14,
+        })
+      );
     }
 
-    if (currentOffer.dropoff?.latitude != null && currentOffer.dropoff?.longitude != null) {
-      void controller
-        .addMarker({
+    const dropoffLat = currentOffer.dropoff?.latitude;
+    const dropoffLng = currentOffer.dropoff?.longitude;
+    if (dropoffLat != null && dropoffLng != null) {
+      safeCall(() =>
+        controller.addMarker({
           id: DROPOFF_MARKER_ID,
-          position: {
-            lat: currentOffer.dropoff.latitude,
-            lng: currentOffer.dropoff.longitude,
-          },
+          position: { lat: dropoffLat, lng: dropoffLng },
           title: 'Destino',
           snippet: currentOffer.dropoff.address,
         })
-        .catch(() => {});
+      );
     }
-  }, [currentOffer, isNavigating, mapViewController, offerRouteCoordinates]);
+  }, [currentOffer, isMapReady, isNavigating, mapViewController, offerRouteCoordinates]);
 
   // Rastro GPS opcional (desactivado por defecto)
   useEffect(() => {
     const controller = mapControllerRef.current;
-    if (!controller) return;
+    if (!controller || !isMapReady) return;
 
     if (!isPolyline || isNavigating || userLocationList.length < 2) {
-      controller.removePolyline(DRIVER_TRAIL_POLYLINE_ID);
+      try {
+        void Promise.resolve(controller.removePolyline(DRIVER_TRAIL_POLYLINE_ID)).catch(() => {});
+      } catch {
+        // No-op
+      }
       return;
     }
 
-    void controller
-      .addPolyline({
-        id: DRIVER_TRAIL_POLYLINE_ID,
-        points: userLocationList.map(toNavLatLng),
-        color: THEME_COLORS.gold,
-        width: 4,
-        visible: true,
-      })
-      .catch(() => {});
-  }, [isNavigating, isPolyline, mapViewController, userLocationList]);
+    try {
+      void Promise.resolve(
+        controller.addPolyline({
+          id: DRIVER_TRAIL_POLYLINE_ID,
+          points: userLocationList.map(toNavLatLng),
+          color: THEME_COLORS.gold,
+          width: 4,
+          visible: true,
+        })
+      ).catch(() => {});
+    } catch {
+      // No-op
+    }
+  }, [isMapReady, isNavigating, isPolyline, mapViewController, userLocationList]);
 
   // Seguimiento suave de cámara en modo libre (cuando no hay navegación activa ni oferta)
   useEffect(() => {
     const controller = mapControllerRef.current;
-    if (!controller || !lastKnownLocation || !isFollowingUser || isNavigating || currentOffer) {
+    if (!controller || !isMapReady || !lastKnownLocation || !isFollowingUser || isNavigating || currentOffer) {
       return;
     }
 
-    controller.moveCamera({
-      target: toNavLatLng(lastKnownLocation),
-      zoom: 16,
-    });
-  }, [currentOffer, isFollowingUser, isNavigating, lastKnownLocation, mapViewController]);
+    try {
+      void Promise.resolve(
+        controller.moveCamera({
+          target: toNavLatLng(lastKnownLocation),
+          zoom: 16,
+        })
+      ).catch(() => {});
+    } catch {
+      // No-op
+    }
+  }, [currentOffer, isFollowingUser, isMapReady, isNavigating, lastKnownLocation, mapViewController]);
 
   const moveToCurrentLocation = useCallback(async () => {
     if (isNavigating) {
@@ -251,17 +273,31 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
 
     setIsFollowingUser(true);
     const target = lastKnownLocation || initialLocation;
-    mapControllerRef.current?.moveCamera({
-      target: toNavLatLng(target),
-      zoom: 16,
-    });
+    if (isMapReadyRef.current && mapControllerRef.current) {
+      try {
+        void Promise.resolve(
+          mapControllerRef.current.moveCamera({
+            target: toNavLatLng(target),
+            zoom: 16,
+          })
+        ).catch(() => {});
+      } catch {
+        // No-op
+      }
+    }
 
     const freshLocation = await getLocation();
-    if (freshLocation) {
-      mapControllerRef.current?.moveCamera({
-        target: toNavLatLng(freshLocation),
-        zoom: 16,
-      });
+    if (freshLocation && isMapReadyRef.current && mapControllerRef.current) {
+      try {
+        void Promise.resolve(
+          mapControllerRef.current.moveCamera({
+            target: toNavLatLng(freshLocation),
+            zoom: 16,
+          })
+        ).catch(() => {});
+      } catch {
+        // No-op
+      }
     }
   }, [getLocation, initialLocation, isNavigating, lastKnownLocation, recenterNavigation]);
 
@@ -305,6 +341,7 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
         speedLimitIconEnabled={true}
         recenterButtonEnabled={true}
         reportIncidentButtonEnabled={false}
+        onMapReady={() => setIsMapReady(true)}
         onMapViewControllerCreated={setMapViewController}
         onNavigationViewControllerCreated={setNavigationViewController}
         onMapClick={() => {
