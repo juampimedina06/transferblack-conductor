@@ -1,7 +1,8 @@
 import { ExpoConfig, ConfigContext } from 'expo/config';
 
 export default ({ config }: ConfigContext): ExpoConfig => {
-  const googleMapsApiKey = process.env.VITE_GOOGLE_MAPS_API_KEY;
+  const googleMapsApiKey =
+    process.env.NAVIGATION_SDK_KEY ?? process.env.VITE_GOOGLE_MAPS_API_KEY;
 
   return {
     ...config,
@@ -10,6 +11,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ios: {
       ...config.ios,
       bundleIdentifier: config.ios?.bundleIdentifier ?? 'com.transferblack.driver',
+      config: {
+        ...config.ios?.config,
+        ...(googleMapsApiKey ? { googleMapsApiKey } : {}),
+      },
     },
     android: {
       ...config.android,

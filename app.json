@@ -15,13 +15,12 @@
         "NSLocationWhenInUseUsageDescription": "TransferBlack Conductor necesita tu ubicación en tiempo real mientras usás la app para mostrarte en el mapa, calcular distancias y navegar hacia los puntos de partida y destino de los pasajeros.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "TransferBlack Conductor requiere tu ubicación en segundo plano para rastrear el vehículo durante viajes activos, calcular la tarifa con precisión, garantizar la seguridad en ruta y ofrecerte viajes cercanos mientras estás en servicio.",
         "NSLocationAlwaysUsageDescription": "TransferBlack Conductor requiere tu ubicación continua para rastrear viajes en curso, garantizar la seguridad del trayecto y asignarte viajes cercanos aun cuando la aplicación esté en segundo plano.",
+        "NSMotionUsageDescription": "TransferBlack Conductor utiliza los sensores de movimiento para mejorar la precisión de la navegación giro a giro.",
         "UIBackgroundModes": [
           "location",
           "fetch",
           "remote-notification",
-          "location",
-          "fetch",
-          "remote-notification"
+          "audio"
         ],
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -57,6 +56,7 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      "@googlemaps/react-native-navigation-sdk",
       "expo-router",
       [
         "expo-splash-screen",

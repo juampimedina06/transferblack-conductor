@@ -1,13 +1,28 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Platform, StyleSheet, View, ViewProps } from "react-native";
-import MapView, { PROVIDER_GOOGLE, Polyline, Marker } from "react-native-maps";
-import { Ionicons } from "@expo/vector-icons";
-import { THEME_COLORS } from "../../core/constants/theme";
-import { LatLng } from "../../core/location/interface/latLng.interface";
-import { getNavigationBearing } from "../../core/location/utils/navigationBearing";
-import { MapControlsDock } from "../components/maps/MapControlsDock";
-import { useLocationStore } from "./store/useLocationStore";
-import { useDriverTripStore } from "../trip/store/useDriverTripStore";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  ViewProps,
+} from 'react-native';
+import type {
+  LatLng as NavLatLng,
+  MapViewController,
+  NavigationViewController,
+} from '@googlemaps/react-native-navigation-sdk';
+import { Ionicons } from '@expo/vector-icons';
+import { THEME_COLORS } from '../../core/constants/theme';
+import { LatLng } from '../../core/location/interface/latLng.interface';
+import {
+  getGoogleNavigationSdk,
+  type GoogleNavigationSdkModule,
+} from '../../core/navigation/googleNavigationSdk';
+import { MapControlsDock } from '../components/maps/MapControlsDock';
+import { useLocationStore } from './store/useLocationStore';
+import { useDriverTripStore } from '../trip/store/useDriverTripStore';
+import { useActiveTripNavigation } from './hooks/useActiveTripNavigation';
 
 interface Props extends ViewProps {
   showUserLocation?: boolean;
@@ -15,333 +30,386 @@ interface Props extends ViewProps {
   bottomOffset?: number;
 }
 
-// Dark theme map style aligned with TransferBlack palette
+const OFFER_POLYLINE_ID = 'transferblack-offer-route';
+const DRIVER_TRAIL_POLYLINE_ID = 'transferblack-driver-trail';
+const PICKUP_MARKER_ID = 'transferblack-pickup-marker';
+const DROPOFF_MARKER_ID = 'transferblack-dropoff-marker';
+
+// Estilo oscuro alineado con la paleta TransferBlack Obsidian
 const darkMapStyle = [
-  { elementType: "geometry", stylers: [{ color: "#0A0A0C" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#8E8E93" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: "#0A0A0C" }] },
-  { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
-  { featureType: "poi", stylers: [{ visibility: "off" }] },
-  { featureType: "transit", stylers: [{ visibility: "off" }] },
-  { featureType: "administrative", elementType: "geometry", stylers: [{ color: "#2C2C2E" }] },
-  { featureType: "landscape", elementType: "geometry", stylers: [{ color: "#101012" }] },
-  { featureType: "road", elementType: "geometry", stylers: [{ color: "#1A1A1C" }] },
-  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#0A0A0C" }] },
-  { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#2C2C2E" }] },
-  { featureType: "road.arterial", elementType: "labels", stylers: [{ visibility: "off" }] },
-  { featureType: "road.local", elementType: "labels", stylers: [{ visibility: "off" }] },
-  { featureType: "water", elementType: "geometry", stylers: [{ color: "#050507" }] },
-  { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#2C2C2E" }] },
+  { elementType: 'geometry', stylers: [{ color: '#0A0A0C' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#8E8E93' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#0A0A0C' }] },
+  { elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
+  { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+  { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+  { featureType: 'administrative', elementType: 'geometry', stylers: [{ color: '#2C2C2E' }] },
+  { featureType: 'landscape', elementType: 'geometry', stylers: [{ color: '#101012' }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#1A1A1C' }] },
+  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#0A0A0C' }] },
+  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#2C2C2E' }] },
+  { featureType: 'road.arterial', elementType: 'labels', stylers: [{ visibility: 'off' }] },
+  { featureType: 'road.local', elementType: 'labels', stylers: [{ visibility: 'off' }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#050507' }] },
+  { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#2C2C2E' }] },
 ];
 
-export const CustomMap = ({
+const DARK_MAP_STYLE_JSON = JSON.stringify(darkMapStyle);
+
+function toNavLatLng(coord: LatLng): NavLatLng {
+  return { lat: coord.latitude, lng: coord.longitude };
+}
+
+interface GoogleNavigationMapProps extends Props {
+  sdk: GoogleNavigationSdkModule;
+}
+
+const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
+  sdk,
   initialLocation,
   showUserLocation = true,
-  bottomOffset,
+  bottomOffset = 100,
   ...rest
-}: Props) => {
-  const mapRef = useRef<MapView>(null);
+}) => {
+  const {
+    NavigationView,
+    MapColorScheme,
+    NavigationNightMode,
+    NavigationUIEnabledPreference,
+  } = sdk;
+
+  const [mapViewController, setMapViewController] = useState<MapViewController | null>(null);
+  const [navigationViewController, setNavigationViewController] =
+    useState<NavigationViewController | null>(null);
   const [isFollowingUser, setIsFollowingUser] = useState(true);
   const [isPolyline, setIsPolyline] = useState(false);
-  const prevActiveTripIdRef = useRef<string | null>(null);
+
+  const mapControllerRef = useRef<MapViewController | null>(null);
+  useEffect(() => {
+    mapControllerRef.current = mapViewController;
+  }, [mapViewController]);
 
   const currentOffer = useDriverTripStore((state) => state.currentOffer);
   const activeTrip = useDriverTripStore((state) => state.activeTrip);
 
-  const isTripActive = Boolean(activeTrip && activeTrip.status !== "completed");
-
-  const activePickup = activeTrip?.pickup || currentOffer?.pickup;
-  const activeDropoff = activeTrip?.dropoff || currentOffer?.dropoff;
-  const activeRouteGeometry = activeTrip?.routeGeometry || currentOffer?.routeGeometry;
-  const rawTargetDestination = activeTrip?.status === "in_progress" ? activeDropoff : activePickup;
-  const targetDestination = useMemo<LatLng | null>(() => {
-    if (
-      rawTargetDestination?.latitude != null &&
-      rawTargetDestination?.longitude != null
-    ) {
-      return {
-        latitude: rawTargetDestination.latitude,
-        longitude: rawTargetDestination.longitude,
-      };
-    }
-    return null;
-  }, [rawTargetDestination]);
-
   const {
     lastKnownLocation,
-    lastKnownReading,
     userLocationList,
     watchLocation,
     clearWatchLocation,
     getLocation,
   } = useLocationStore();
 
-  // Parse route geometry from backend or fallback to straight line
-  const offerRouteCoordinates = React.useMemo((): LatLng[] => {
-    if (!activeRouteGeometry && !activePickup && !activeDropoff) return [];
-    const geom = activeRouteGeometry;
-    if (geom?.type === "MultiLineString" && Array.isArray(geom.coordinates)) {
-      return geom.coordinates
-        .flat()
-        .map(([lng, lat]: [number, number]) => ({ latitude: lat, longitude: lng }));
-    }
-    if (geom?.type === "LineString" && Array.isArray(geom.coordinates)) {
-      return geom.coordinates.map(([lng, lat]: [number, number]) => ({
-        latitude: lat,
-        longitude: lng,
-      }));
-    }
-    // Fallback: connect pickup to dropoff if both have coords
-    if (
-      activePickup?.latitude &&
-      activePickup?.longitude &&
-      activeDropoff?.latitude &&
-      activeDropoff?.longitude
-    ) {
-      return [
-        {
-          latitude: activePickup.latitude,
-          longitude: activePickup.longitude,
-        },
-        {
-          latitude: activeDropoff.latitude,
-          longitude: activeDropoff.longitude,
-        },
-      ];
-    }
-    return [];
-  }, [activeRouteGeometry, activePickup, activeDropoff]);
-
-  // Ajustar la cámara a las coordenadas de la oferta para evaluarla antes de aceptar
-  const fitCoords = useMemo<LatLng[]>(() => {
-    const coords: LatLng[] = [];
-
-    if (activePickup?.latitude && activePickup?.longitude) {
-      coords.push({
-        latitude: activePickup.latitude,
-        longitude: activePickup.longitude,
-      });
-    }
-
-    if (activeDropoff?.latitude && activeDropoff?.longitude) {
-      coords.push({
-        latitude: activeDropoff.latitude,
-        longitude: activeDropoff.longitude,
-      });
-    }
-
-    if (lastKnownLocation) {
-      coords.push(lastKnownLocation);
-    }
-
-    return coords;
-  }, [activePickup, activeDropoff, lastKnownLocation]);
-
-  // Solo encuadra a toda la ruta cuando hay una oferta entrante antes de aceptarla
-  const shouldFitCamera = !!(currentOffer && !isTripActive && fitCoords.length > 0);
-  const [wasFittingForOffer, setWasFittingForOffer] = useState(shouldFitCamera);
-
-  if (shouldFitCamera !== wasFittingForOffer) {
-    setWasFittingForOffer(shouldFitCamera);
-    if (shouldFitCamera) {
-      setIsFollowingUser(false);
-    }
-  }
-
-  useEffect(() => {
-    if (!shouldFitCamera || !mapRef.current) return;
-    mapRef.current.fitToCoordinates(fitCoords, {
-      edgePadding: { top: 90, right: 50, bottom: 260, left: 50 },
-      animated: true,
-    });
-  }, [shouldFitCamera, fitCoords]);
-
-  const moveCameraToLocation = useCallback((latLng: LatLng) => {
-    if (!mapRef.current) return;
-    mapRef.current.animateCamera({
-      center: latLng,
-    });
-  }, []);
-
-  const moveCameraToDriverNavigation = useCallback(
-    (latLng: LatLng, headingOverride?: number | null) => {
-      if (!mapRef.current) return;
-      const optimalHeading =
-        typeof headingOverride === "number" && headingOverride >= 0
-          ? headingOverride
-          : getNavigationBearing(
-              latLng,
-              offerRouteCoordinates,
-              targetDestination,
-              lastKnownReading?.heading,
-              lastKnownReading?.speed
-            );
-
-      mapRef.current.animateCamera(
-        {
-          center: latLng,
-          zoom: 17.5,
-          pitch: 45,
-          heading: optimalHeading,
-          altitude: 350,
-        },
-        { duration: 1000 }
-      );
-    },
-    [offerRouteCoordinates, targetDestination, lastKnownReading?.heading, lastKnownReading?.speed]
-  );
-
-  // Al aceptar el viaje: cambiar la vista, activar seguimiento y acercar la cámara al chofer orientando hacia la ruta
-  useEffect(() => {
-    const tripId = isTripActive ? activeTrip?.id ?? null : null;
-    if (isTripActive && tripId && tripId !== prevActiveTripIdRef.current) {
-      setIsFollowingUser(true);
-      if (lastKnownLocation) {
-        moveCameraToDriverNavigation(lastKnownLocation);
-      }
-    }
-    prevActiveTripIdRef.current = tripId;
-  }, [isTripActive, activeTrip?.id, lastKnownLocation, moveCameraToDriverNavigation]);
-
-  const moveToCurrentLocation = async () => {
-    const target = lastKnownLocation || initialLocation;
-    if (isTripActive) {
-      moveCameraToDriverNavigation(target);
-    } else {
-      moveCameraToLocation(target);
-    }
-
-    setIsFollowingUser(true);
-
-    const freshLocation = await getLocation();
-    if (!freshLocation) return;
-
-    if (isTripActive) {
-      moveCameraToDriverNavigation(freshLocation);
-    } else {
-      moveCameraToLocation(freshLocation);
-    }
-  };
-
+  // Mantiene nuestro sistema actual de GPS / Zustand / Socket.IO activo
   useEffect(() => {
     watchLocation();
-
     return () => {
       clearWatchLocation();
     };
   }, [watchLocation, clearWatchLocation]);
 
-  useEffect(() => {
-    if (lastKnownLocation && isFollowingUser && !currentOffer) {
-      if (isTripActive) {
-        moveCameraToDriverNavigation(lastKnownLocation);
-      } else {
-        moveCameraToLocation(lastKnownLocation);
-      }
+  // Navegación giro a giro oficial de Google Navigation SDK durante el viaje activo
+  const {
+    isNavigating,
+    isInitializing,
+    isMuted,
+    toggleMute,
+    recenterNavigation,
+    showOverview,
+  } = useActiveTripNavigation({
+    sdk,
+    activeTrip,
+    navigationViewController,
+  });
+
+  // Coordenadas de oferta entrante (cuando todavía no se inició navegación giro a giro)
+  const offerRouteCoordinates = useMemo((): NavLatLng[] => {
+    if (isNavigating || !currentOffer) return [];
+    const geom = currentOffer.routeGeometry;
+    if (geom?.type === 'MultiLineString' && Array.isArray(geom.coordinates)) {
+      return geom.coordinates
+        .flat()
+        .map(([lng, lat]: [number, number]) => ({ lat, lng }));
     }
-  }, [
-    lastKnownLocation,
-    isFollowingUser,
-    currentOffer,
-    isTripActive,
-    moveCameraToLocation,
-    moveCameraToDriverNavigation,
-  ]);
+    if (geom?.type === 'LineString' && Array.isArray(geom.coordinates)) {
+      return geom.coordinates.map(([lng, lat]: [number, number]) => ({ lat, lng }));
+    }
+    if (
+      currentOffer.pickup?.latitude != null &&
+      currentOffer.pickup?.longitude != null &&
+      currentOffer.dropoff?.latitude != null &&
+      currentOffer.dropoff?.longitude != null
+    ) {
+      return [
+        { lat: currentOffer.pickup.latitude, lng: currentOffer.pickup.longitude },
+        { lat: currentOffer.dropoff.latitude, lng: currentOffer.dropoff.longitude },
+      ];
+    }
+    return [];
+  }, [currentOffer, isNavigating]);
+
+  // Dibuja / limpia la ruta y marcadores de la oferta entrante en modo mapa libre
+  useEffect(() => {
+    const controller = mapControllerRef.current;
+    if (!controller) return;
+
+    if (isNavigating || !currentOffer) {
+      controller.removePolyline(OFFER_POLYLINE_ID);
+      controller.removeMarker(PICKUP_MARKER_ID);
+      controller.removeMarker(DROPOFF_MARKER_ID);
+      return;
+    }
+
+    if (offerRouteCoordinates.length > 1) {
+      void controller
+        .addPolyline({
+          id: OFFER_POLYLINE_ID,
+          points: offerRouteCoordinates,
+          color: THEME_COLORS.gold,
+          width: 6,
+          visible: true,
+        })
+        .catch(() => {});
+    }
+
+    if (currentOffer.pickup?.latitude != null && currentOffer.pickup?.longitude != null) {
+      void controller
+        .addMarker({
+          id: PICKUP_MARKER_ID,
+          position: {
+            lat: currentOffer.pickup.latitude,
+            lng: currentOffer.pickup.longitude,
+          },
+          title: 'Punto de encuentro',
+          snippet: currentOffer.pickup.address,
+        })
+        .catch(() => {});
+
+      controller.moveCamera({
+        target: {
+          lat: currentOffer.pickup.latitude,
+          lng: currentOffer.pickup.longitude,
+        },
+        zoom: 14,
+      });
+    }
+
+    if (currentOffer.dropoff?.latitude != null && currentOffer.dropoff?.longitude != null) {
+      void controller
+        .addMarker({
+          id: DROPOFF_MARKER_ID,
+          position: {
+            lat: currentOffer.dropoff.latitude,
+            lng: currentOffer.dropoff.longitude,
+          },
+          title: 'Destino',
+          snippet: currentOffer.dropoff.address,
+        })
+        .catch(() => {});
+    }
+  }, [currentOffer, isNavigating, mapViewController, offerRouteCoordinates]);
+
+  // Rastro GPS opcional (desactivado por defecto)
+  useEffect(() => {
+    const controller = mapControllerRef.current;
+    if (!controller) return;
+
+    if (!isPolyline || isNavigating || userLocationList.length < 2) {
+      controller.removePolyline(DRIVER_TRAIL_POLYLINE_ID);
+      return;
+    }
+
+    void controller
+      .addPolyline({
+        id: DRIVER_TRAIL_POLYLINE_ID,
+        points: userLocationList.map(toNavLatLng),
+        color: THEME_COLORS.gold,
+        width: 4,
+        visible: true,
+      })
+      .catch(() => {});
+  }, [isNavigating, isPolyline, mapViewController, userLocationList]);
+
+  // Seguimiento suave de cámara en modo libre (cuando no hay navegación activa ni oferta)
+  useEffect(() => {
+    const controller = mapControllerRef.current;
+    if (!controller || !lastKnownLocation || !isFollowingUser || isNavigating || currentOffer) {
+      return;
+    }
+
+    controller.moveCamera({
+      target: toNavLatLng(lastKnownLocation),
+      zoom: 16,
+    });
+  }, [currentOffer, isFollowingUser, isNavigating, lastKnownLocation, mapViewController]);
+
+  const moveToCurrentLocation = useCallback(async () => {
+    if (isNavigating) {
+      await recenterNavigation();
+      return;
+    }
+
+    setIsFollowingUser(true);
+    const target = lastKnownLocation || initialLocation;
+    mapControllerRef.current?.moveCamera({
+      target: toNavLatLng(target),
+      zoom: 16,
+    });
+
+    const freshLocation = await getLocation();
+    if (freshLocation) {
+      mapControllerRef.current?.moveCamera({
+        target: toNavLatLng(freshLocation),
+        zoom: 16,
+      });
+    }
+  }, [getLocation, initialLocation, isNavigating, lastKnownLocation, recenterNavigation]);
+
+  const initialCameraPosition = useMemo(
+    () => ({
+      target: toNavLatLng(initialLocation),
+      zoom: 15,
+    }),
+    [initialLocation]
+  );
+
+  const mapPadding = useMemo(
+    () => ({
+      top: isNavigating ? 16 : 90,
+      bottom: Math.max(bottomOffset, 100) + 16,
+      left: 12,
+      right: 12,
+    }),
+    [bottomOffset, isNavigating]
+  );
 
   return (
     <View style={[styles.container, rest.style]} {...rest}>
-      <MapView
-        ref={mapRef}
+      <NavigationView
         style={styles.map}
-        provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
-        customMapStyle={darkMapStyle}
-        userInterfaceStyle="dark"
-        showsPointsOfInterests={false}
-        showsBuildings={true}
-        showsCompass={false}
-        toolbarEnabled={false}
-        onTouchStart={() => setIsFollowingUser(false)}
-        showsUserLocation={showUserLocation}
-        initialRegion={{
-          latitude: initialLocation.latitude,
-          longitude: initialLocation.longitude,
-          latitudeDelta: 0.05,
-          longitudeDelta: 0.05,
+        initialCameraPosition={initialCameraPosition}
+        mapColorScheme={MapColorScheme.DARK}
+        navigationNightMode={NavigationNightMode.FORCE_NIGHT}
+        navigationUIEnabledPreference={NavigationUIEnabledPreference.DISABLED}
+        mapStyle={DARK_MAP_STYLE_JSON}
+        mapPadding={mapPadding}
+        myLocationEnabled={showUserLocation}
+        myLocationButtonEnabled={false}
+        compassEnabled={false}
+        mapToolbarEnabled={false}
+        buildingsEnabled={true}
+        trafficEnabled={true}
+        headerEnabled={true}
+        footerEnabled={false}
+        tripProgressBarEnabled={true}
+        speedLimitIconEnabled={true}
+        recenterButtonEnabled={true}
+        reportIncidentButtonEnabled={false}
+        onMapViewControllerCreated={setMapViewController}
+        onNavigationViewControllerCreated={setNavigationViewController}
+        onMapClick={() => {
+          if (!isNavigating) {
+            setIsFollowingUser(false);
+          }
         }}
-      >
-        {/* Past Driver Trail */}
-        {isPolyline && userLocationList.length > 1 && (
-          <Polyline
-            coordinates={userLocationList}
-            strokeColor={THEME_COLORS.gold}
-            strokeWidth={4}
-          />
-        )}
-
-        {/* Offer Route Polyline */}
-        {offerRouteCoordinates.length > 1 && (
-          <Polyline
-            coordinates={offerRouteCoordinates}
-            strokeColor="#1E293B"
-            strokeWidth={7}
-          />
-        )}
-        {offerRouteCoordinates.length > 1 && (
-          <Polyline
-            coordinates={offerRouteCoordinates}
-            strokeColor={THEME_COLORS.gold}
-            strokeWidth={4}
-          />
-        )}
-
-        {/* Pickup Marker */}
-        {activePickup?.latitude && activePickup?.longitude && (
-          <Marker
-            coordinate={{
-              latitude: activePickup.latitude,
-              longitude: activePickup.longitude,
-            }}
-            title="Punto de encuentro"
-            description={activePickup.address}
-            anchor={{ x: 0.5, y: 0.5 }}
-          >
-            <View className="w-9 h-9 rounded-full bg-blue-600 items-center justify-center border-2 border-white shadow-lg shadow-black">
-              <Ionicons name="person" size={18} color="white" />
-            </View>
-          </Marker>
-        )}
-
-        {/* Dropoff Marker */}
-        {activeDropoff?.latitude && activeDropoff?.longitude && (
-          <Marker
-            coordinate={{
-              latitude: activeDropoff.latitude,
-              longitude: activeDropoff.longitude,
-            }}
-            title="Destino"
-            description={activeDropoff.address}
-            anchor={{ x: 0.5, y: 0.5 }}
-          >
-            <View className="w-10 h-10 rounded-full border border-black/80 bg-black/10 items-center justify-center">
-              <View className="w-6 h-6 rounded-full bg-black items-center justify-center border border-white">
-                <View className="w-2.5 h-2.5 bg-white rounded-sm" />
-              </View>
-            </View>
-          </Marker>
-        )}
-      </MapView>
-
-      {/* Map Control Toggles Dock (draggable, dark glass transparency) */}
-      <MapControlsDock
-        isPolyline={isPolyline}
-        onTogglePolyline={() => setIsPolyline(!isPolyline)}
-        isFollowingUser={isFollowingUser}
-        onToggleFollowUser={() => setIsFollowingUser(!isFollowingUser)}
-        onRecenter={moveToCurrentLocation}
-        bottomOffset={bottomOffset}
       />
+
+      {/* Indicador discreto mientras inicializa la ruta giro a giro */}
+      {isInitializing && (
+        <View
+          pointerEvents="none"
+          className="absolute top-28 self-center flex-row items-center px-4 py-2 rounded-full bg-[#12131A]/95 border border-gold/40"
+        >
+          <ActivityIndicator size="small" color={THEME_COLORS.gold} />
+          <Text className="text-platinum font-montserrat-semibold text-xs ml-2">
+            Calculando ruta giro a giro...
+          </Text>
+        </View>
+      )}
+
+      {/* Controles flotantes de navegación activa (voz + vista general) o dock en modo libre */}
+      {isNavigating ? (
+        <View
+          className="absolute right-4 gap-2.5"
+          style={{ bottom: Math.max(bottomOffset, 100) + 20 }}
+        >
+          <TouchableOpacity
+            onPress={() => {
+              void toggleMute();
+            }}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel={isMuted ? 'Activar voz de navegación' : 'Silenciar voz de navegación'}
+            className="w-12 h-12 rounded-full bg-[#12131A]/95 border border-white/15 items-center justify-center shadow-lg shadow-black"
+          >
+            <Ionicons
+              name={isMuted ? 'volume-mute' : 'volume-high'}
+              size={20}
+              color={isMuted ? THEME_COLORS.ash : THEME_COLORS.gold}
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={showOverview}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Ver resumen completo de la ruta"
+            className="w-12 h-12 rounded-full bg-[#12131A]/95 border border-white/15 items-center justify-center shadow-lg shadow-black"
+          >
+            <Ionicons name="map-outline" size={20} color={THEME_COLORS.platinum} />
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <MapControlsDock
+          isPolyline={isPolyline}
+          onTogglePolyline={() => setIsPolyline((prev) => !prev)}
+          isFollowingUser={isFollowingUser}
+          onToggleFollowUser={() => setIsFollowingUser((prev) => !prev)}
+          onRecenter={() => {
+            void moveToCurrentLocation();
+          }}
+          bottomOffset={bottomOffset}
+        />
+      )}
     </View>
   );
+};
+
+export const CustomMap = (props: Props) => {
+  const sdk = getGoogleNavigationSdk();
+  const { watchLocation, clearWatchLocation } = useLocationStore();
+
+  // En Expo Go mantenemos el GPS activo igual aunque no exista el módulo nativo de Navigation SDK
+  useEffect(() => {
+    if (sdk) return;
+    watchLocation();
+    return () => {
+      clearWatchLocation();
+    };
+  }, [clearWatchLocation, sdk, watchLocation]);
+
+  if (!sdk) {
+    return (
+      <View
+        style={[styles.container, props.style]}
+        className="bg-obsidian items-center justify-center px-8"
+      >
+        <View className="w-full max-w-[320px] rounded-2xl p-5 bg-[#12131A] border border-white/10 items-center">
+          <View className="w-12 h-12 rounded-2xl bg-gold/15 border border-gold/30 items-center justify-center mb-3">
+            <Ionicons name="navigate-outline" size={24} color={THEME_COLORS.gold} />
+          </View>
+          <Text className="text-white font-montserrat-semibold text-base text-center mb-1">
+            Google Navigation SDK
+          </Text>
+          <Text className="text-ash font-montserrat text-xs text-center leading-5">
+            La navegación giro a giro requiere una Development Build compilada (no está disponible en Expo Go). El GPS y Socket.IO siguen activos.
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  return <GoogleNavigationMap {...props} sdk={sdk} />;
 };
 
 export default CustomMap;

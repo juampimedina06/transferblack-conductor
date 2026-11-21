@@ -4,6 +4,7 @@ import { Stack, router, usePathname, Redirect } from 'expo-router';
 import { transferApi } from '@/core/api/transferApi';
 import { useAuthStore } from '@/presentation/auth/store/useAuthStore';
 import { useOnboardingStore } from '@/presentation/onboarding/store/useOnboardingStore';
+import { NavigationSdkProvider } from '@/presentation/providers/NavigationSdkProvider';
 
 interface CachedDriverRoutingState {
   userId: string;
@@ -180,16 +181,18 @@ export default function HomeLayout() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="index" />
-      <Stack.Screen name="confirmed-appointment/index" />
-      <Stack.Screen name="pending-approval/index" />
-      <Stack.Screen name="wallet/index" />
-      <Stack.Screen name="wallet/payout-method" />
-      <Stack.Screen name="wallet/payout-history" />
-      <Stack.Screen name="scheduled-trips/index" />
-      <Stack.Screen name="chat/index" options={{ headerShown: false }} />
-      <Stack.Screen name="profile/index" />
-    </Stack>
+    <NavigationSdkProvider>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="confirmed-appointment/index" />
+        <Stack.Screen name="pending-approval/index" />
+        <Stack.Screen name="wallet/index" />
+        <Stack.Screen name="wallet/payout-method" />
+        <Stack.Screen name="wallet/payout-history" />
+        <Stack.Screen name="scheduled-trips/index" />
+        <Stack.Screen name="chat/index" options={{ headerShown: false }} />
+        <Stack.Screen name="profile/index" />
+      </Stack>
+    </NavigationSdkProvider>
   );
 }
