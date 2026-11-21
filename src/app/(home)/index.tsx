@@ -23,9 +23,9 @@ import { useTripSocket } from '../../presentation/trip/hooks/useTripSocket';
 import { useTripTelemetry } from '../../presentation/trip/hooks/useTripTelemetry';
 import { useActiveTripSync } from '../../presentation/trip/hooks/useActiveTripSync';
 import { useForegroundResync } from '../../presentation/trip/hooks/useForegroundResync';
+import { useDriverFloatingBubble } from '../../presentation/trip/hooks/useDriverFloatingBubble';
 import { useDriverTripStore } from '../../presentation/trip/store/useDriverTripStore';
 import { ActiveTripOverlay } from '../../presentation/components/trip/ActiveTripOverlay';
-import { ActiveTripTopHeader } from '../../presentation/components/trip/ActiveTripTopHeader';
 import { TripReceiptModal } from '../../presentation/components/trip/TripReceiptModal';
 import { SosConfirmationModal } from '../../presentation/components/safety/SosConfirmationModal';
 import { useWalletStore } from '../../presentation/wallet/store/useWalletStore';
@@ -37,6 +37,13 @@ import { requestBackgroundLocationPermission } from '../../core/location/actions
 import { PermissionStatus } from '../../core/location/interface/permission.interface';
 import { startBackgroundLocationTracking } from '../../core/location/tasks/backgroundLocationTask';
 import { driverOverlay } from '../../core/overlay/driverOverlay';
+import {
+  cancelPeerAlert,
+  triggerPeerAlert,
+} from '../../core/safety/actions/peerAlert.actions';
+import { usePeerAlertStore } from '../../presentation/safety/store/usePeerAlertStore';
+import { usePeerSafetySocket } from '../../presentation/safety/hooks/usePeerSafetySocket';
+import { PeerAlertModals } from '../../presentation/components/safety/PeerAlertModals';
 
 export default function DriverDashboardScreen() {
   const user = useAuthStore(state => state.user);
@@ -102,6 +109,50 @@ export default function DriverDashboardScreen() {
   // Sincroniza el estado del viaje activo con GET /driver/me/active-trip al abrir o montar la app
   useActiveTripSync();
   useForegroundResync();
+  useDriverFloatingBubble();
+  usePeerSafetySocket();
+
+  const myActivePeerAlert = usePeerAlertStore((state) => state.myActiveAlert);
+  const setMyActivePeerAlert = usePeerAlertStore((state) => state.setMyActiveAlert);
+  const [isSilentAlertBusy, setIsSilentAlertBusy] = useState(false);
+
+  const handleTriggerSilentAlert = async (): Promise<void> => {
+    if (!location || isSilentAlertBusy) return;
+    try {
+      setIsSilentAlertBusy(true);
+      const created = await triggerPeerAlert({
+        lat: location.latitude,
+        lng: location.longitude,
+        tripId: activeTrip?.status !== 'completed' ? activeTrip?.id ?? null : null,
+        radiusKm: 5,
+      });
+      setMyActivePeerAlert({
+        id: created.id,
+        notifiedCount: created.notifiedCount,
+        followersCount: created.followersCount,
+        createdAt: created.createdAt,
+      });
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } finally {
+      setIsSilentAlertBusy(false);
+    }
+  };
+
+  const handleCancelSilentAlert = async (): Promise<void> => {
+    if (!myActivePeerAlert || isSilentAlertBusy) return;
+    try {
+      setIsSilentAlertBusy(true);
+      await cancelPeerAlert(myActivePeerAlert.id);
+      setMyActivePeerAlert(null);
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } finally {
+      setIsSilentAlertBusy(false);
+    }
+  };
 
   const toggleAvailability = (value: boolean) => {
     setIsAvailable(value);
@@ -119,6 +170,7 @@ export default function DriverDashboardScreen() {
         });
     } else {
       void driverOverlay.hideOfferOverlay();
+      void driverOverlay.hideFloatingBubble();
     }
   };
 
@@ -210,10 +262,8 @@ export default function DriverDashboardScreen() {
           </TouchableOpacity>
         )}
 
-        {/* Si hay viaje activo: Muestra el cartel de indicaciones estilo Uber y oculta los botones */}
-        {activeTrip && activeTrip.status !== 'completed' ? (
-          <ActiveTripTopHeader trip={activeTrip} />
-        ) : (
+        {/* Si hay viaje activo: deja libre el área superior para las indicaciones giro a giro de Google Navigation SDK */}
+        {activeTrip && activeTrip.status !== 'completed' ? null : (
           <View className="px-4 py-3 flex-row items-center justify-between" pointerEvents="box-none">
             {/* Left: Floating Glass Logout Capsule */}
             <TouchableOpacity
@@ -380,11 +430,23 @@ export default function DriverDashboardScreen() {
         />
       )}
 
-      {/* Escudo de funciones de seguridad: flota siempre por encima de la tarjeta, lado izquierdo */}
+      {/* Escudo de funciones de seguridad + botón discreto de cara feliz arriba */}
       <EmergencyFAB
         onPress={() => setIsSecurityModalVisible(true)}
         bottomOffset={bottomHeight}
+        isSilentAlertActive={!!myActivePeerAlert}
+        silentAlertFollowersCount={myActivePeerAlert?.followersCount ?? 0}
+        isSilentAlertBusy={isSilentAlertBusy}
+        onTriggerSilentAlert={() => {
+          void handleTriggerSilentAlert();
+        }}
+        onCancelSilentAlert={() => {
+          void handleCancelSilentAlert();
+        }}
       />
+
+      {/* Alertas de retaguardia entre conductores */}
+      <PeerAlertModals />
 
       {/* Security Functions Modal */}
       <SecurityModal

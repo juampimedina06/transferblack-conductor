@@ -12,6 +12,11 @@ import { Input } from '../../../presentation/components/ui/Input';
 import { PhoneInput } from '../../../presentation/components/ui/PhoneInput';
 import { useAuthStore } from '../../../presentation/auth/store/useAuthStore';
 import { authStorage } from '../../../presentation/auth/store/authStorage';
+import {
+  DRIVER_PRIVACY_URL,
+  DRIVER_TERMS_URL,
+  openLegalUrl,
+} from '../../../core/legal/constants/legalUrls.constants';
 
 const registerSchema = z.object({
   first_name: z.string().min(2, 'El nombre es muy corto'),
@@ -184,6 +189,29 @@ export default function RegisterScreen(): React.JSX.Element {
             }}
             isLoading={isLoading}
           />
+          <Text className="text-ash font-montserrat text-xs text-center leading-5 mt-4 px-2">
+            Al crear tu cuenta aceptás nuestros{' '}
+            <Text
+              accessibilityRole="link"
+              onPress={() => {
+                void openLegalUrl(DRIVER_TERMS_URL);
+              }}
+              className="text-gold font-montserrat-semibold underline"
+            >
+              Términos y Condiciones
+            </Text>{' '}
+            y nuestra{' '}
+            <Text
+              accessibilityRole="link"
+              onPress={() => {
+                void openLegalUrl(DRIVER_PRIVACY_URL);
+              }}
+              className="text-gold font-montserrat-semibold underline"
+            >
+              Política de Privacidad
+            </Text>
+            .
+          </Text>
         </View>
 
         <View className="mt-8 flex-row justify-center items-center">

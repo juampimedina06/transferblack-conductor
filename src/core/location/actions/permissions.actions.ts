@@ -1,6 +1,7 @@
 import * as Location from 'expo-location';
 import { Alert, Linking } from 'react-native';
 import { PermissionStatus } from '../interface/permission.interface';
+import { requestBackgroundLocationDisclosure } from '../../../presentation/location/store/useBackgroundLocationDisclosureStore';
 
 const mapPermissionStatus = (status: string): PermissionStatus => {
   switch (status) {
@@ -52,23 +53,7 @@ const showBackgroundPermissionDeniedAlert = (): void => {
 };
 
 const promptBackgroundPermissionRationale = (): Promise<boolean> => {
-  return new Promise<boolean>((resolve) => {
-    Alert.alert(
-      'Ubicación en segundo plano',
-      'TransferBlack necesita acceso a tu ubicación "Todo el tiempo" para mantenerte en línea, reportar el recorrido y enviarte ofertas de viaje cercanas aunque uses otras aplicaciones o apagues la pantalla.',
-      [
-        {
-          text: 'Cancelar',
-          style: 'cancel',
-          onPress: () => resolve(false),
-        },
-        {
-          text: 'Continuar',
-          onPress: () => resolve(true),
-        },
-      ]
-    );
-  });
+  return requestBackgroundLocationDisclosure();
 };
 
 export const requestLocationPermission = async (): Promise<PermissionStatus> => {

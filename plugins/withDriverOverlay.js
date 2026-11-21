@@ -10,7 +10,7 @@ const {
 
 /**
  * Config Plugin completo para la burbuja flotante / overlay estilo DiDi en Android:
- * 1. Declara permisos SYSTEM_ALERT_WINDOW y USE_FULL_SCREEN_INTENT en AndroidManifest.xml.
+ * 1. Declara permiso SYSTEM_ALERT_WINDOW en AndroidManifest.xml.
  * 2. Configura android:showWhenLocked="true" y android:turnScreenOn="true" en MainActivity.
  * 3. Inyecta setShowWhenLocked(true) y setTurnScreenOn(true) en MainActivity.kt.
  * 4. Registra DriverOverlayPackage() en MainApplication.kt.
@@ -22,7 +22,6 @@ const withDriverOverlayManifest = (config) => {
 
     AndroidConfig.Permissions.ensurePermissions(androidManifest, [
       'android.permission.SYSTEM_ALERT_WINDOW',
-      'android.permission.USE_FULL_SCREEN_INTENT',
     ]);
 
     const mainActivity = AndroidConfig.Manifest.getMainActivity(androidManifest);
@@ -91,6 +90,19 @@ const withDriverOverlayKotlinFiles = (config) => {
         if (fs.existsSync(srcFile)) {
           fs.copyFileSync(srcFile, destFile);
         }
+      }
+
+      const logoSrc = path.join(
+        projectRoot,
+        'assets',
+        'images',
+        'transferblack',
+        'logo_transferblack_sinfodo.png'
+      );
+      const drawableDir = path.join(platformRoot, 'app', 'src', 'main', 'res', 'drawable');
+      fs.mkdirSync(drawableDir, { recursive: true });
+      if (fs.existsSync(logoSrc)) {
+        fs.copyFileSync(logoSrc, path.join(drawableDir, 'tb_floating_bubble_logo.png'));
       }
 
       return modConfig;
