@@ -25,6 +25,7 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import com.facebook.react.bridge.LifecycleEventListener
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
@@ -36,18 +37,41 @@ import java.util.Locale
 import kotlin.math.abs
 
 class DriverOverlayModule(reactContext: ReactApplicationContext) :
-  ReactContextBaseJavaModule(reactContext) {
+  ReactContextBaseJavaModule(reactContext),
+  LifecycleEventListener {
 
   private val mainHandler = Handler(Looper.getMainLooper())
   private var windowManager: WindowManager? = null
   private var overlayView: View? = null
   private var autoDismissRunnable: Runnable? = null
 
-  private var bubbleWindowManager: WindowManager? = null
-  private var bubbleView: View? = null
-  private var bubbleSnapAnimator: ValueAnimator? = null
+  @Volatile
+  private var isHostInForeground: Boolean = true
+
+  init {
+    reactContext.addLifecycleEventListener(this)
+  }
 
   override fun getName(): String = "DriverOverlay"
+
+  override fun onHostResume() {
+    isHostInForeground = true
+    UiThreadUtil.runOnUiThread {
+      removeBubbleInternal()
+    }
+  }
+
+  override fun onHostPause() {
+    isHostInForeground = false
+  }
+
+  override fun onHostDestroy() {
+    isHostInForeground = false
+    UiThreadUtil.runOnUiThread {
+      removeBubbleInternal()
+      removeOverlayInternal()
+    }
+  }
 
   @ReactMethod
   fun canDrawOverlays(promise: Promise) {
@@ -188,8 +212,9 @@ class DriverOverlayModule(reactContext: ReactApplicationContext) :
 
       UiThreadUtil.runOnUiThread {
         try {
-          // Si ya hay una tarjeta de oferta visible, no la tapamos con la esfera
-          if (overlayView != null) {
+          // Si la app ya volvió al frente o hay una tarjeta de oferta visible, no mostrar la esfera
+          if (isHostInForeground || overlayView != null) {
+            removeBubbleInternal()
             promise.resolve(false)
             return@runOnUiThread
           }
@@ -242,8 +267,8 @@ class DriverOverlayModule(reactContext: ReactApplicationContext) :
           )
 
           wm.addView(sphereView, bubbleParams)
-          bubbleWindowManager = wm
-          bubbleView = sphereView
+          activeBubbleWindowManager = wm
+          activeBubbleView = sphereView
 
           promise.resolve(true)
         } catch (_: Exception) {
@@ -265,6 +290,7 @@ class DriverOverlayModule(reactContext: ReactApplicationContext) :
   }
 
   override fun invalidate() {
+    reactApplicationContext.removeLifecycleEventListener(this)
     super.invalidate()
     UiThreadUtil.runOnUiThread {
       removeOverlayInternal()
@@ -368,7 +394,7 @@ class DriverOverlayModule(reactContext: ReactApplicationContext) :
     root.setOnTouchListener { _, event ->
       when (event.action) {
         MotionEvent.ACTION_DOWN -> {
-          bubbleSnapAnimator?.cancel()
+          activeBubbleSnapAnimator?.cancel()
           initialX = bubbleParams.x
           initialY = bubbleParams.y
           initialTouchX = event.rawX
@@ -401,8 +427,8 @@ class DriverOverlayModule(reactContext: ReactApplicationContext) :
           } else {
             val centerX = bubbleParams.x + bubbleSize / 2
             val targetX = if (centerX < screenWidth / 2) edgeMargin else maxX
-            bubbleSnapAnimator?.cancel()
-            bubbleSnapAnimator = ValueAnimator.ofInt(bubbleParams.x, targetX).apply {
+            activeBubbleSnapAnimator?.cancel()
+            activeBubbleSnapAnimator = ValueAnimator.ofInt(bubbleParams.x, targetX).apply {
               duration = 220L
               interpolator = DecelerateInterpolator()
               addUpdateListener { animator ->
@@ -451,23 +477,22 @@ class DriverOverlayModule(reactContext: ReactApplicationContext) :
   }
 
   private fun removeBubbleInternal() {
-    bubbleSnapAnimator?.cancel()
-    bubbleSnapAnimator = null
+    activeBubbleSnapAnimator?.cancel()
+    activeBubbleSnapAnimator = null
 
-    val view = bubbleView
-    val wm = bubbleWindowManager
-    bubbleView = null
+    val view = activeBubbleView
+    val wm = activeBubbleWindowManager
+    activeBubbleView = null
+    activeBubbleWindowManager = null
 
     if (view != null && wm != null) {
       try {
-        if (view.isAttachedToWindow) {
-          wm.removeViewImmediate(view)
-        }
+        wm.removeViewImmediate(view)
       } catch (_: Exception) {
         try {
           wm.removeView(view)
         } catch (_: Exception) {
-          // La vista ya no estaba adjunta
+          // La vista ya fue removida o no estaba adjunta
         }
       }
     }
@@ -776,6 +801,12 @@ class DriverOverlayModule(reactContext: ReactApplicationContext) :
   }
 
   companion object {
+    @Volatile
+    private var activeBubbleWindowManager: WindowManager? = null
+    @Volatile
+    private var activeBubbleView: View? = null
+    private var activeBubbleSnapAnimator: ValueAnimator? = null
+
     private const val DEFAULT_TTL_SECONDS = 20L
     private const val COLOR_OBSIDIAN = "#0A0A0C"
     private const val COLOR_OBSIDIAN_SURFACE = "#0E1015"

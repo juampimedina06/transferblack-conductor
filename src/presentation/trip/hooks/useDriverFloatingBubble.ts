@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { AppState, type AppStateStatus, Platform } from 'react-native';
 import { driverOverlay } from '../../../core/overlay/driverOverlay';
 import { useDriverTripStore } from '../store/useDriverTripStore';
@@ -10,6 +10,7 @@ import { useDriverTripStore } from '../store/useDriverTripStore';
 export function useDriverFloatingBubble(): void {
   const isAvailable = useDriverTripStore((state) => state.isAvailable);
   const activeTrip = useDriverTripStore((state) => state.activeTrip);
+  const isBubbleVisibleRef = useRef<boolean>(false);
 
   const isTripLive =
     !!activeTrip &&
@@ -21,26 +22,45 @@ export function useDriverFloatingBubble(): void {
       return;
     }
 
+    const hideBubble = (): void => {
+      isBubbleVisibleRef.current = false;
+      void driverOverlay.hideFloatingBubble();
+    };
+
+    const showBubble = (status: 'online' | 'trip'): void => {
+      if (isBubbleVisibleRef.current) {
+        return;
+      }
+      isBubbleVisibleRef.current = true;
+      void driverOverlay.showFloatingBubble(status).then((shown) => {
+        if (!shown) {
+          isBubbleVisibleRef.current = false;
+        }
+      });
+    };
+
+    // Al montar en primer plano (o tras recargar Metro), asegurar que no quede ninguna esfera previa
+    if (AppState.currentState === 'active' || (!isAvailable && !isTripLive)) {
+      hideBubble();
+    }
+
     const syncBubbleForAppState = (nextState: AppStateStatus): void => {
       if (nextState === 'active') {
-        void driverOverlay.hideFloatingBubble();
+        hideBubble();
         return;
       }
 
-      if (nextState === 'background' || nextState === 'inactive') {
+      // Solo disparar en 'background' (evita doble disparo consecutivo inactive -> background en Android)
+      if (nextState === 'background') {
         if (isTripLive) {
-          void driverOverlay.showFloatingBubble('trip');
+          showBubble('trip');
         } else if (isAvailable) {
-          void driverOverlay.showFloatingBubble('online');
+          showBubble('online');
         } else {
-          void driverOverlay.hideFloatingBubble();
+          hideBubble();
         }
       }
     };
-
-    if (!isAvailable && !isTripLive) {
-      void driverOverlay.hideFloatingBubble();
-    }
 
     const subscription = AppState.addEventListener('change', syncBubbleForAppState);
 
