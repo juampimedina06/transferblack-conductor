@@ -1,5 +1,5 @@
 import React, { useEffect, useId } from 'react';
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, {
   Easing,
   FadeIn,
@@ -26,7 +26,7 @@ export interface AppleIntelligenceOfferAuraProps {
  *   por los bordes exteriores de la pantalla cuando entra una nueva solicitud de viaje.
  * - 100% pointerEvents="none" y ejecutado en el UI thread con Reanimated.
  */
-export const AppleIntelligenceOfferAura: React.FC<AppleIntelligenceOfferAuraProps> = React.memo(
+const AppleIntelligenceOfferAuraContent: React.FC<AppleIntelligenceOfferAuraProps> = React.memo(
   ({ isUrgent = false }) => {
     const { width: screenWidth, height: screenHeight } = useWindowDimensions();
     const reduceMotion = useReducedMotion();
@@ -338,6 +338,18 @@ export const AppleIntelligenceOfferAura: React.FC<AppleIntelligenceOfferAuraProp
         </View>
       </Animated.View>
     );
+  }
+);
+
+AppleIntelligenceOfferAuraContent.displayName = 'AppleIntelligenceOfferAuraContent';
+
+export const AppleIntelligenceOfferAura: React.FC<AppleIntelligenceOfferAuraProps> = React.memo(
+  ({ isUrgent = false }) => {
+    // En Android, 8 SVGs animados a 60fps sobre Google NavigationView degradan los FPS.
+    if (Platform.OS === 'android') {
+      return null;
+    }
+    return <AppleIntelligenceOfferAuraContent isUrgent={isUrgent} />;
   }
 );
 

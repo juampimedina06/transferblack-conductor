@@ -16,7 +16,7 @@ import { showBannerNotification } from '@/presentation/notifications/store/useBa
 interface ActiveTripDestination {
   key: string;
   phase: 'pickup' | 'dropoff';
-  waypoint: Waypoint;
+  waypoints: Waypoint[];
 }
 
 export interface UseActiveTripNavigationParams {
@@ -53,17 +53,35 @@ function resolveTripDestination(activeTrip: Trip | null): ActiveTripDestination 
   if (status === 'in_progress') {
     const dropoff = activeTrip.dropoff;
     if (dropoff?.latitude != null && dropoff?.longitude != null) {
-      return {
-        key: `${activeTrip.id}:dropoff:${dropoff.latitude.toFixed(5)},${dropoff.longitude.toFixed(5)}`,
-        phase: 'dropoff',
-        waypoint: {
-          title: dropoff.address || 'Destino del pasajero',
+      const intermediateWaypoints: Waypoint[] = (activeTrip.stops ?? [])
+        .filter((s) => s.latitude != null && s.longitude != null)
+        .map((s, idx) => ({
+          title: s.address || `Parada ${idx + 1}`,
           position: {
-            lat: dropoff.latitude,
-            lng: dropoff.longitude,
+            lat: s.latitude,
+            lng: s.longitude,
           },
           preferSameSideOfRoad: true,
+        }));
+
+      const finalWaypoint: Waypoint = {
+        title: dropoff.address || 'Destino del pasajero',
+        position: {
+          lat: dropoff.latitude,
+          lng: dropoff.longitude,
         },
+        preferSameSideOfRoad: true,
+      };
+
+      const waypoints = [...intermediateWaypoints, finalWaypoint];
+      const stopsKey = intermediateWaypoints
+        .map((w) => `${w.position?.lat.toFixed(5)},${w.position?.lng.toFixed(5)}`)
+        .join('|');
+
+      return {
+        key: `${activeTrip.id}:dropoff:${stopsKey}:${dropoff.latitude.toFixed(5)},${dropoff.longitude.toFixed(5)}`,
+        phase: 'dropoff',
+        waypoints,
       };
     }
     return null;
@@ -75,14 +93,16 @@ function resolveTripDestination(activeTrip: Trip | null): ActiveTripDestination 
     return {
       key: `${activeTrip.id}:pickup:${pickup.latitude.toFixed(5)},${pickup.longitude.toFixed(5)}`,
       phase: 'pickup',
-      waypoint: {
-        title: pickup.address || 'Punto de encuentro',
-        position: {
-          lat: pickup.latitude,
-          lng: pickup.longitude,
+      waypoints: [
+        {
+          title: pickup.address || 'Punto de encuentro',
+          position: {
+            lat: pickup.latitude,
+            lng: pickup.longitude,
+          },
+          preferSameSideOfRoad: true,
         },
-        preferSameSideOfRoad: true,
-      },
+      ],
     };
   }
 
@@ -284,18 +304,19 @@ export function useActiveTripNavigation({
 
         if (isCancelled) return;
 
-        // 3. Calcular ruta hacia pickup o dropoff del backend
-        const routeStatus = await navigationController.setDestination(
-          destination.waypoint,
-          {
-            routingOptions: {
-              travelMode: TravelMode.DRIVING,
-            },
-            displayOptions: {
-              showDestinationMarkers: true,
-            },
-          }
-        );
+        // 3. Calcular ruta hacia pickup o stops + dropoff del backend
+        const navOptions = {
+          routingOptions: {
+            travelMode: TravelMode.DRIVING,
+          },
+          displayOptions: {
+            showDestinationMarkers: true,
+          },
+        };
+        const routeStatus =
+          destination.waypoints.length > 1
+            ? await navigationController.setDestinations(destination.waypoints, navOptions)
+            : await navigationController.setDestination(destination.waypoints[0], navOptions);
 
         if (isCancelled) return;
 

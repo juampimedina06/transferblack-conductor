@@ -236,6 +236,7 @@ export const ActiveTripOverlay: React.FC<ActiveTripOverlayProps> = ({
           passengerPreferences={trip.passenger?.preferences}
           pickupAddress={trip.pickup?.address}
           dropoffAddress={trip.dropoff?.address}
+          stops={trip.stops}
           fareAmount={totalFare}
           earningsAmount={netEarnings}
           paymentMethod={trip.payment_method}

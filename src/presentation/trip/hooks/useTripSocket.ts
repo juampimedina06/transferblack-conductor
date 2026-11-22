@@ -4,7 +4,11 @@ import { router } from 'expo-router';
 import Constants, { AppOwnership } from 'expo-constants';
 import { socket } from '../../../core/socket/socket';
 import { useDriverTripStore } from '../store/useDriverTripStore';
-import { TripOfferPayload } from '../../../core/trip/interface/trip.interface';
+import {
+  TripOfferPayload,
+  getPaymentMethodInfo,
+} from '../../../core/trip/interface/trip.interface';
+import { getTripById } from '../../../core/trip/actions/trip.actions';
 import { syncActiveTripState } from './useActiveTripSync';
 import { offerAlarmService } from '../services/offerAlarmService';
 import { showBannerNotification } from '../../notifications/store/useBannerNotificationStore';
@@ -156,14 +160,47 @@ export const useTripSocket = () => {
 
     const handleStatusChanged = (payload: { status: string; chat?: any }) => {
       if (payload.status === 'cancelled') {
+        const currentTrip = useDriverTripStore.getState().activeTrip;
+        const wasInProgress = currentTrip?.status === 'in_progress';
+        const wasCash = getPaymentMethodInfo(currentTrip?.payment_method).isCash;
+
+        socket.emit('ride:leave', { rideId });
+        setActiveTrip(null);
+
+        if (wasInProgress) {
+          void (async () => {
+            let finalFareAmount = 0;
+            try {
+              const settledTrip = await getTripById(rideId);
+              finalFareAmount = Number(settledTrip.final_fare || 0);
+            } catch {
+              // Si falla la consulta, mostramos igualmente el aviso claro al conductor
+            }
+
+            const amountSuffix =
+              finalFareAmount > 0
+                ? ` ($${finalFareAmount.toLocaleString('es-AR', { minimumFractionDigits: 0 })})`
+                : '';
+            const cashClarification = wasCash
+              ? ' No cobres en efectivo: se compensará directo en tu billetera.'
+              : ' Se acreditará el tramo recorrido en tu billetera.';
+
+            showBannerNotification({
+              type: 'warning',
+              title: 'Viaje finalizado anticipadamente',
+              message: `El pasajero finalizó el viaje antes de destino${amountSuffix}.${cashClarification}`,
+              durationMs: 7500,
+            });
+          })();
+          return;
+        }
+
         showBannerNotification({
           type: 'warning',
           title: 'Viaje cancelado',
           message: 'El viaje fue cancelado por el pasajero o por el sistema.',
           durationMs: 5200,
         });
-        socket.emit('ride:leave', { rideId });
-        setActiveTrip(null);
       } else if (payload.status === 'completed') {
         socket.emit('ride:leave', { rideId });
         updateTripStatus('completed');
