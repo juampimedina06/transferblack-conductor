@@ -45,6 +45,7 @@ import { usePeerAlertStore } from '../../presentation/safety/store/usePeerAlertS
 import { usePeerSafetySocket } from '../../presentation/safety/hooks/usePeerSafetySocket';
 import { PeerAlertModals } from '../../presentation/components/safety/PeerAlertModals';
 import { useDriverSettingsStore } from '../../presentation/settings/store/useDriverSettingsStore';
+import { useDrivingTimeSync } from '../../presentation/driver/hooks/useDrivingTimeSync';
 
 export default function DriverDashboardScreen() {
   const user = useAuthStore(state => state.user);
@@ -112,6 +113,7 @@ export default function DriverDashboardScreen() {
   useForegroundResync();
   useDriverFloatingBubble();
   usePeerSafetySocket();
+  useDrivingTimeSync();
 
   const myActivePeerAlert = usePeerAlertStore((state) => state.myActiveAlert);
   const setMyActivePeerAlert = usePeerAlertStore((state) => state.setMyActiveAlert);

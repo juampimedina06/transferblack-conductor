@@ -22,6 +22,8 @@ import { AmbientGlow } from '../ui/AmbientGlow';
 import { offerAlarmService } from '../../trip/services/offerAlarmService';
 import { driverOverlay } from '../../../core/overlay/driverOverlay';
 import { useDriverStatusStore } from '../../driver/store/useDriverStatusStore';
+import { useDrivingTimeStore } from '../../driver/store/useDrivingTimeStore';
+import { formatDrivingDuration } from '../../../core/driver/interface/drivingTime.interface';
 import { DocumentExpirationBlockModal } from '../compliance/DocumentExpirationBlockModal';
 import { TermsAcceptanceModal } from '../legal/TermsAcceptanceModal';
 import { useLegalStore } from '../../legal/store/useLegalStore';
@@ -44,11 +46,43 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
   const lastKnownLocation = useLocationStore((state) => state.lastKnownLocation);
   const dispatchSuspendedUntil = useDriverStatusStore((state) => state.dispatchSuspendedUntil);
   const compliance = useDriverStatusStore((state) => state.compliance);
+  const drivingTime = useDrivingTimeStore((state) => state.status);
   const hasAcceptedCurrentTerms = useLegalStore((state) => state.hasAcceptedCurrentTerms);
 
   const [isDocBlockModalVisible, setIsDocBlockModalVisible] = useState(false);
   const [isTermsModalVisible, setIsTermsModalVisible] = useState(false);
   const [isSuspended, setIsSuspended] = useState(false);
+  const [nowMs, setNowMs] = useState<number>(() => Date.now());
+
+  useEffect(() => {
+    if (!drivingTime?.isLockedForRest || !drivingTime.restUntil) {
+      return;
+    }
+    const interval = setInterval(() => {
+      setNowMs(Date.now());
+    }, 30_000);
+    return () => clearInterval(interval);
+  }, [drivingTime?.isLockedForRest, drivingTime?.restUntil]);
+
+  const restUntilMs = drivingTime?.restUntil ? new Date(drivingTime.restUntil).getTime() : 0;
+  const restRemainingSeconds =
+    drivingTime?.isLockedForRest && restUntilMs > nowMs
+      ? Math.max(0, Math.floor((restUntilMs - nowMs) / 1000))
+      : 0;
+  const isRestLocked = Boolean(drivingTime?.isLockedForRest && restRemainingSeconds > 0);
+  const restUntilFormatted =
+    isRestLocked && drivingTime?.restUntil
+      ? new Date(drivingTime.restUntil).toLocaleTimeString('es-AR', {
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+      : '';
+  const drivingProgressPercent =
+    drivingTime && drivingTime.maxSeconds > 0
+      ? Math.min(100, Math.round((drivingTime.accumulatedSeconds / drivingTime.maxSeconds) * 100))
+      : 0;
+  const isDrivingLowRemaining =
+    Boolean(drivingTime && !isRestLocked && drivingTime.remainingSeconds <= 7200);
 
   useEffect(() => {
     if (!dispatchSuspendedUntil) {
@@ -397,6 +431,16 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             onPress={() => {
               void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              if (!isAvailable && isRestLocked) {
+                void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                Alert.alert(
+                  'Descanso obligatorio activo',
+                  restUntilFormatted
+                    ? `Alcanzaste el límite de 12 h de conducción (Ordenanza N° 13.549). Podrás volver a conectarte a partir de las ${restUntilFormatted} (faltan ${formatDrivingDuration(restRemainingSeconds)}).`
+                    : 'Alcanzaste el límite diario de 12 h de conducción. Cumplí el descanso obligatorio de 6 horas para volver a conectarte.'
+                );
+                return;
+              }
               if (!isAvailable && compliance.status === 'suspended_documents') {
                 void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
                 setIsDocBlockModalVisible(true);
@@ -418,25 +462,77 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
             className={`h-12 px-5 rounded-2xl border flex-row items-center justify-center relative overflow-hidden shadow-lg ${
               isAvailable
                 ? 'bg-red-500/15 border-red-500/45 shadow-black'
+                : isRestLocked
+                ? 'bg-amber-500/15 border-amber-400/45 shadow-black'
                 : 'bg-gold border-gold shadow-gold/25'
             }`}
           >
             <View className="absolute top-0 left-2 right-2 h-[1px] bg-white/35 pointer-events-none" />
             <Ionicons
-              name="power"
+              name={isRestLocked && !isAvailable ? 'moon-outline' : 'power'}
               size={17}
-              color={isAvailable ? '#F87171' : '#0A0A0C'}
+              color={
+                isAvailable ? '#F87171' : isRestLocked ? '#FBBF24' : '#0A0A0C'
+              }
               style={{ marginRight: 7 }}
             />
             <Text
               className={`font-montserrat-bold text-xs tracking-wider uppercase ${
-                isAvailable ? 'text-red-400' : 'text-obsidian'
+                isAvailable
+                  ? 'text-red-400'
+                  : isRestLocked
+                  ? 'text-amber-300'
+                  : 'text-obsidian'
               }`}
             >
-              {isAvailable ? 'Desconectar' : 'Conectar'}
+              {isAvailable ? 'Desconectar' : isRestLocked ? 'Descanso' : 'Conectar'}
             </Text>
           </TouchableOpacity>
         </View>
+
+        {/* Indicador minimalista de jornada de conducción (Ordenanza N° 13.549: 12h máx / 6h descanso) */}
+        {drivingTime && (
+          <View className="mt-3 pt-2.5 border-t border-white/[0.07]">
+            <View className="flex-row items-center justify-between mb-1.5">
+              <Text
+                className={`font-montserrat-medium text-[11px] ${
+                  isRestLocked
+                    ? 'text-amber-300'
+                    : isDrivingLowRemaining
+                    ? 'text-amber-400'
+                    : 'text-white/55'
+                }`}
+                style={{ fontVariant: ['tabular-nums'] }}
+              >
+                {isRestLocked
+                  ? `Descanso obligatorio · hasta las ${restUntilFormatted}`
+                  : `Jornada ${formatDrivingDuration(drivingTime.accumulatedSeconds)} / ${formatDrivingDuration(drivingTime.maxSeconds)}`}
+              </Text>
+              <Text
+                className={`font-montserrat-semibold text-[11px] ${
+                  isRestLocked
+                    ? 'text-amber-300'
+                    : isDrivingLowRemaining
+                    ? 'text-amber-400'
+                    : 'text-white/75'
+                }`}
+                style={{ fontVariant: ['tabular-nums'] }}
+              >
+                {isRestLocked
+                  ? `Faltan ${formatDrivingDuration(restRemainingSeconds)}`
+                  : `Restan ${formatDrivingDuration(drivingTime.remainingSeconds)}`}
+              </Text>
+            </View>
+            <View className="w-full h-1 rounded-full bg-white/[0.08] overflow-hidden">
+              <View
+                className={`h-full rounded-full ${
+                  isRestLocked || isDrivingLowRemaining ? 'bg-amber-400' : 'bg-gold'
+                }`}
+                style={{ width: `${isRestLocked ? 100 : drivingProgressPercent}%` }}
+              />
+            </View>
+          </View>
+        )}
       </View>
 
       {/* Modal bloqueante por documentación vencida */}

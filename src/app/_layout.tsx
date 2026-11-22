@@ -18,6 +18,7 @@ import { BackgroundLocationDisclosureModal } from "../presentation/components/lo
 import { registerLogoutCleanup } from "../presentation/auth/store/useAuthStore";
 import { useWalletStore } from "../presentation/wallet/store/useWalletStore";
 import { useDriverStatusStore } from "../presentation/driver/store/useDriverStatusStore";
+import { useDrivingTimeStore } from "../presentation/driver/store/useDrivingTimeStore";
 import { useLocationStore } from "../presentation/maps/store/useLocationStore";
 import { useSafetyStore } from "../presentation/safety/store/useSafetyStore";
 import { usePeerAlertStore } from "../presentation/safety/store/usePeerAlertStore";
@@ -45,6 +46,7 @@ registerLogoutCleanup(async () => {
     await pushNotificationService.revoke();
     useWalletStore.getState().clearWallet();
     useDriverStatusStore.getState().resetDriverStatus();
+    useDrivingTimeStore.getState().resetDrivingTime();
     useLocationStore.getState().clearLocationHistory();
     useSafetyStore.getState().clearBlockedPassengers();
     usePeerAlertStore.getState().resetPeerAlerts();

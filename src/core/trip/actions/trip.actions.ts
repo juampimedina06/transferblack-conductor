@@ -41,6 +41,7 @@ const ACCEPT_CONFLICT_MESSAGES: Record<string, string> = {
   VEHICLE_NOT_OWNED: 'El vehículo seleccionado no te pertenece.',
   VEHICLE_NOT_APPROVED: 'Tu vehículo todavía no está aprobado.',
   DRIVER_HAS_ACTIVE_TRIP: 'Ya tenés un viaje en curso. Terminalo antes de aceptar otro.',
+  DRIVER_MANDATORY_REST_ACTIVE: 'Estás en descanso obligatorio de 6 horas tras completar tu jornada máxima de conducción.',
 };
 
 const ACCEPT_CONFLICT_FALLBACK = 'No se pudo aceptar el viaje porque cambió de estado. Probá con otra oferta.';
@@ -51,7 +52,7 @@ export const acceptTripOffer = async (tripId: string, data: AcceptOfferInput): P
     return response.data;
   } catch (error: any) {
     const apiError = error.response?.data as ApiErrorResponse | undefined;
-    if (error.response?.status === 409) {
+    if (error.response?.status === 409 || error.response?.status === 403) {
       const code = apiError?.error?.code;
       throw new Error(
         (code ? ACCEPT_CONFLICT_MESSAGES[code] : undefined) ?? apiError?.error?.message ?? ACCEPT_CONFLICT_FALLBACK
