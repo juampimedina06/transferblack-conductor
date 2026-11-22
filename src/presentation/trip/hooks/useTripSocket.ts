@@ -104,11 +104,6 @@ export const useTripSocket = () => {
     };
 
     const handleTripAssigned = async (_payload: { tripId: string; chat?: any }) => {
-      showBannerNotification({
-        type: 'trip',
-        title: 'Viaje asignado',
-        message: 'Dirigite al punto de encuentro del pasajero.',
-      });
       await syncActiveTripState();
     };
 
