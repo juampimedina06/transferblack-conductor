@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { router } from 'expo-router';
 import Constants, { AppOwnership } from 'expo-constants';
 import { socket } from '../../../core/socket/socket';
@@ -8,6 +8,8 @@ import { TripOfferPayload } from '../../../core/trip/interface/trip.interface';
 import { syncActiveTripState } from './useActiveTripSync';
 import { offerAlarmService } from '../services/offerAlarmService';
 import { showBannerNotification } from '../../notifications/store/useBannerNotificationStore';
+import { driverOverlay } from '../../../core/overlay/driverOverlay';
+import { TRIP_OFFERS_CHANNEL_ID } from '../../../core/push/services/pushNotificationService';
 
 const isExpoGoOnAndroid =
   Platform.OS === 'android' && Constants.appOwnership === AppOwnership.Expo;
@@ -17,6 +19,35 @@ const dismissAllNotificationsSafely = async () => {
   try {
     const Notifications = await import('expo-notifications');
     await Notifications.dismissAllNotificationsAsync();
+  } catch {
+    // No-op en Expo Go o entornos sin módulo nativo
+  }
+};
+
+const showBackgroundOfferNotificationSafely = async (offer: TripOfferPayload): Promise<void> => {
+  if (isExpoGoOnAndroid) return;
+  try {
+    const Notifications = await import('expo-notifications');
+    const fare = Number(offer.fare?.totalFare || offer.fare?.netEarnings || 0);
+    const origin = offer.pickup?.address || 'Origen indicado en app';
+    const destination = offer.dropoff?.address || 'Destino indicado en app';
+
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: 'Nueva oferta de viaje disponible',
+        body: `${origin} → ${destination}${fare > 0 ? ` ($${fare.toLocaleString('es-AR')})` : ''}`,
+        data: {
+          type: 'trip_offer',
+          offerId: offer.offerId,
+          tripId: offer.tripId,
+        },
+        categoryIdentifier: 'trip-offer',
+        sound: true,
+        priority: Notifications.AndroidNotificationPriority.MAX,
+        vibrate: [0, 500, 200, 500],
+      },
+      trigger: Platform.OS === 'android' ? { channelId: TRIP_OFFERS_CHANNEL_ID } : null,
+    });
   } catch {
     // No-op en Expo Go o entornos sin módulo nativo
   }
@@ -39,6 +70,14 @@ export const useTripSocket = () => {
     };
     const handleNewOffer = (payload: TripOfferPayload) => {
       enqueueOffer(payload);
+
+      // Cuando la app está minimizada pero el socket sigue vivo (foreground service activo),
+      // disparamos explícitamente la tarjeta flotante nativa, alarma y notificación de alta prioridad.
+      if (AppState.currentState !== 'active') {
+        void offerAlarmService.start();
+        void driverOverlay.showOfferOverlay(payload);
+        void showBackgroundOfferNotificationSafely(payload);
+      }
     };
 
     const handleScheduledReminder = (payload: {
@@ -76,7 +115,13 @@ export const useTripSocket = () => {
     const handleOfferCancel = (payload: { offerId: string; tripId: string; reason: string }) => {
       cancelOffer(payload.offerId || payload.tripId);
       void offerAlarmService.stop();
+      void driverOverlay.hideOfferOverlay();
       void dismissAllNotificationsSafely();
+
+      if (AppState.currentState !== 'active' && useDriverTripStore.getState().isAvailable) {
+        void driverOverlay.showFloatingBubble('online');
+      }
+
       showBannerNotification({
         type: 'info',
         title: 'Oferta ya no disponible',

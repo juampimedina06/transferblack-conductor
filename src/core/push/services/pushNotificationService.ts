@@ -149,7 +149,7 @@ export async function processBackgroundNotificationPayload(
           body: `${offer.pickup.address} → ${offer.dropoff.address} ($${offer.fare.totalFare})`,
           data: rawData,
           categoryIdentifier: 'trip-offer',
-          sound: 'default',
+          sound: true,
           priority: Notifications?.AndroidNotificationPriority?.MAX ?? 'max',
           vibrate: [0, 500, 200, 500],
         },
