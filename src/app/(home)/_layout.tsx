@@ -192,6 +192,7 @@ export default function HomeLayout() {
         <Stack.Screen name="scheduled-trips/index" />
         <Stack.Screen name="chat/index" options={{ headerShown: false }} />
         <Stack.Screen name="profile/index" />
+        <Stack.Screen name="profile/settings" />
       </Stack>
     </NavigationSdkProvider>
   );

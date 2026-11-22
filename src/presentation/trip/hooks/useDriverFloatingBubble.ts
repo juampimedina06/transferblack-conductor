@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { AppState, type AppStateStatus, Platform } from 'react-native';
 import { driverOverlay } from '../../../core/overlay/driverOverlay';
+import { useDriverSettingsStore } from '../../settings/store/useDriverSettingsStore';
 import { useDriverTripStore } from '../store/useDriverTripStore';
 
 /**
@@ -10,6 +11,9 @@ import { useDriverTripStore } from '../store/useDriverTripStore';
 export function useDriverFloatingBubble(): void {
   const isAvailable = useDriverTripStore((state) => state.isAvailable);
   const activeTrip = useDriverTripStore((state) => state.activeTrip);
+  const floatingBubbleEnabled = useDriverSettingsStore(
+    (state) => state.floatingBubbleEnabled
+  );
   const isBubbleVisibleRef = useRef<boolean>(false);
 
   const isTripLive =
@@ -26,6 +30,11 @@ export function useDriverFloatingBubble(): void {
       isBubbleVisibleRef.current = false;
       void driverOverlay.hideFloatingBubble();
     };
+
+    if (!floatingBubbleEnabled) {
+      hideBubble();
+      return;
+    }
 
     const showBubble = (status: 'online' | 'trip'): void => {
       if (isBubbleVisibleRef.current) {
@@ -67,5 +76,5 @@ export function useDriverFloatingBubble(): void {
     return () => {
       subscription.remove();
     };
-  }, [isAvailable, isTripLive]);
+  }, [isAvailable, isTripLive, floatingBubbleEnabled]);
 }

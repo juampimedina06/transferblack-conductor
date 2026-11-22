@@ -14,6 +14,7 @@ import { offerAlarmService } from '../services/offerAlarmService';
 import { showBannerNotification } from '../../notifications/store/useBannerNotificationStore';
 import { driverOverlay } from '../../../core/overlay/driverOverlay';
 import { TRIP_OFFERS_CHANNEL_ID } from '../../../core/push/services/pushNotificationService';
+import { useDriverSettingsStore } from '../../settings/store/useDriverSettingsStore';
 
 const isExpoGoOnAndroid =
   Platform.OS === 'android' && Constants.appOwnership === AppOwnership.Expo;
@@ -36,6 +37,8 @@ const showBackgroundOfferNotificationSafely = async (offer: TripOfferPayload): P
     const origin = offer.pickup?.address || 'Origen indicado en app';
     const destination = offer.dropoff?.address || 'Destino indicado en app';
 
+    const settings = useDriverSettingsStore.getState();
+
     await Notifications.scheduleNotificationAsync({
       content: {
         title: 'Nueva oferta de viaje disponible',
@@ -46,9 +49,9 @@ const showBackgroundOfferNotificationSafely = async (offer: TripOfferPayload): P
           tripId: offer.tripId,
         },
         categoryIdentifier: 'trip-offer',
-        sound: true,
+        sound: settings.offerSoundEnabled,
         priority: Notifications.AndroidNotificationPriority.MAX,
-        vibrate: [0, 500, 200, 500],
+        vibrate: settings.offerVibrationEnabled ? [0, 500, 200, 500] : [],
       },
       trigger: Platform.OS === 'android' ? { channelId: TRIP_OFFERS_CHANNEL_ID } : null,
     });
@@ -78,8 +81,11 @@ export const useTripSocket = () => {
       // Cuando la app está minimizada pero el socket sigue vivo (foreground service activo),
       // disparamos explícitamente la tarjeta flotante nativa, alarma y notificación de alta prioridad.
       if (AppState.currentState !== 'active') {
+        const settings = useDriverSettingsStore.getState();
         void offerAlarmService.start();
-        void driverOverlay.showOfferOverlay(payload);
+        if (settings.offerOverlayEnabled) {
+          void driverOverlay.showOfferOverlay(payload);
+        }
         void showBackgroundOfferNotificationSafely(payload);
       }
     };

@@ -12,6 +12,7 @@ import { PermissionStatus } from '@/core/location/interface/permission.interface
 import type { GoogleNavigationSdkModule } from '@/core/navigation/googleNavigationSdk';
 import { Trip } from '@/core/trip/interface/trip.interface';
 import { showBannerNotification } from '@/presentation/notifications/store/useBannerNotificationStore';
+import { useDriverSettingsStore } from '@/presentation/settings/store/useDriverSettingsStore';
 
 interface ActiveTripDestination {
   key: string;
@@ -295,10 +296,14 @@ export function useActiveTripNavigation({
           }
 
           isSessionInitializedRef.current = true;
+          const navSettings = useDriverSettingsStore.getState();
+          setIsMuted(!navSettings.navigationVoiceEnabled);
           await navigationController.setAudioGuidanceSettings({
-            guidanceMode: AudioGuidanceMode.VOICE_ALERTS_AND_GUIDANCE,
-            vibrationEnabled: true,
-            bluetoothAudioEnabled: true,
+            guidanceMode: navSettings.navigationVoiceEnabled
+              ? AudioGuidanceMode.VOICE_ALERTS_AND_GUIDANCE
+              : AudioGuidanceMode.SILENT,
+            vibrationEnabled: navSettings.hapticFeedbackEnabled,
+            bluetoothAudioEnabled: navSettings.navigationBluetoothAudio,
           });
         }
 
@@ -364,6 +369,7 @@ export function useActiveTripNavigation({
       isCancelled = true;
     };
   }, [
+    AudioGuidanceMode.SILENT,
     AudioGuidanceMode.VOICE_ALERTS_AND_GUIDANCE,
     CameraPerspective.TILTED,
     NavigationSessionStatus.LOCATION_PERMISSION_MISSING,

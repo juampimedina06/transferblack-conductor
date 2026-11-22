@@ -13,6 +13,7 @@ import { driverOverlay } from '../../overlay/driverOverlay';
 import { offerAlarmService } from '../../../presentation/trip/services/offerAlarmService';
 import { useDriverTripStore } from '../../../presentation/trip/store/useDriverTripStore';
 import { useDriverStatusStore } from '../../../presentation/driver/store/useDriverStatusStore';
+import { useDriverSettingsStore } from '../../../presentation/settings/store/useDriverSettingsStore';
 
 export const BACKGROUND_NOTIFICATION_TASK = 'BACKGROUND_TRIP_OFFER_TASK';
 export const TRIP_OFFERS_CHANNEL_ID = 'trip-offers';
@@ -132,14 +133,18 @@ export async function processBackgroundNotificationPayload(
 
   const offer = parsePushTripOffer(rawData);
   if (offer) {
-    // Disparar alarma continua
+    const settings = useDriverSettingsStore.getState();
+
+    // Disparar alarma continua respetando preferencias del conductor
     await offerAlarmService.start();
 
     // Encolar oferta en el store
     useDriverTripStore.getState().enqueueOffer(offer);
 
-    // Mostrar burbuja flotante nativa sobre otras apps en Android
-    await driverOverlay.showOfferOverlay(offer);
+    // Mostrar tarjeta flotante nativa sobre otras apps en Android si está habilitada
+    if (settings.offerOverlayEnabled) {
+      await driverOverlay.showOfferOverlay(offer);
+    }
 
     // Presentar notificación local visible de máxima prioridad para despertar la pantalla
     if (Notifications?.scheduleNotificationAsync) {
@@ -149,11 +154,11 @@ export async function processBackgroundNotificationPayload(
           body: `${offer.pickup.address} → ${offer.dropoff.address} ($${offer.fare.totalFare})`,
           data: rawData,
           categoryIdentifier: 'trip-offer',
-          sound: true,
+          sound: settings.offerSoundEnabled,
           priority: Notifications?.AndroidNotificationPriority?.MAX ?? 'max',
-          vibrate: [0, 500, 200, 500],
+          vibrate: settings.offerVibrationEnabled ? [0, 500, 200, 500] : [],
         },
-        // En Expo SDK 57, channelId se envía en trigger (ChannelAwareTriggerInput) para usar el canal trip-offers en Android
+        // En Expo SDK 57+, channelId se envía en trigger (ChannelAwareTriggerInput) para usar el canal trip-offers en Android
         trigger: Platform.OS === 'android' ? { channelId: TRIP_OFFERS_CHANNEL_ID } : null,
       });
     }

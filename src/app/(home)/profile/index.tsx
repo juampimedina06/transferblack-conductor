@@ -56,8 +56,7 @@ export default function DriverProfileScreen() {
     cancelUpload,
   } = useProfileAvatar();
 
-  const { isRegistered: isPushRegistered, syncDeviceToken, expoPushToken, isExpoGoOnAndroid } =
-    usePushNotifications({ enableListeners: false });
+  const { isRegistered: isPushRegistered } = usePushNotifications({ enableListeners: false });
 
   const {
     data: driverData,
@@ -227,34 +226,8 @@ export default function DriverProfileScreen() {
   };
 
   const handleSettingsPress = (): void => {
-    const pushStatusText = isPushRegistered
-      ? 'Activas y vinculadas al servidor'
-      : isExpoGoOnAndroid
-      ? 'Requiere Development Build en Android (no disponible en Expo Go SDK 53+)'
-      : 'Pendientes de activación';
-
-    const tokenPreview = expoPushToken
-      ? `${expoPushToken.slice(0, 28)}...`
-      : isExpoGoOnAndroid
-      ? 'No disponible en Expo Go'
-      : 'No detectado';
-
-    Alert.alert(
-      'Configuración',
-      `Versión de la app: 1.0.0\nToken Push: ${tokenPreview}\nNotificaciones: ${pushStatusText}\nEntorno: ${
-        isExpoGoOnAndroid ? 'Expo Go (Android)' : 'Desarrollo / Producción'
-      }`,
-      [
-        {
-          text: isPushRegistered || isExpoGoOnAndroid ? 'Cerrar' : 'Activar notificaciones',
-          onPress: () => {
-            if (!isPushRegistered && !isExpoGoOnAndroid) {
-              void syncDeviceToken(undefined, true);
-            }
-          },
-        },
-      ]
-    );
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push('/(home)/profile/settings' as any);
   };
 
   return (
@@ -455,11 +428,11 @@ export default function DriverProfileScreen() {
                   showDivider
                 />
                 <ProfileOptionItem
-                  title="Notificaciones y app"
-                  subtitle="Estado de alertas y versión"
-                  iconName="notifications-outline"
+                  title="Configuración"
+                  subtitle="Alertas, sonido, vibración, navegación y permisos"
+                  iconName="settings-outline"
                   onPress={handleSettingsPress}
-                  badge={isPushRegistered ? 'Activas' : undefined}
+                  badge={isPushRegistered ? 'Activa' : undefined}
                   showDivider
                 />
                 <ProfileOptionItem
