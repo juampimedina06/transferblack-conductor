@@ -1,13 +1,20 @@
 import { useEffect } from 'react';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { router } from 'expo-router';
 import Constants, { AppOwnership } from 'expo-constants';
 import { socket } from '../../../core/socket/socket';
 import { useDriverTripStore } from '../store/useDriverTripStore';
-import { TripOfferPayload } from '../../../core/trip/interface/trip.interface';
+import {
+  TripOfferPayload,
+  getPaymentMethodInfo,
+} from '../../../core/trip/interface/trip.interface';
+import { getTripById } from '../../../core/trip/actions/trip.actions';
 import { syncActiveTripState } from './useActiveTripSync';
 import { offerAlarmService } from '../services/offerAlarmService';
 import { showBannerNotification } from '../../notifications/store/useBannerNotificationStore';
+import { driverOverlay } from '../../../core/overlay/driverOverlay';
+import { TRIP_OFFERS_CHANNEL_ID } from '../../../core/push/services/pushNotificationService';
+import { useDriverSettingsStore } from '../../settings/store/useDriverSettingsStore';
 
 const isExpoGoOnAndroid =
   Platform.OS === 'android' && Constants.appOwnership === AppOwnership.Expo;
@@ -17,6 +24,37 @@ const dismissAllNotificationsSafely = async () => {
   try {
     const Notifications = await import('expo-notifications');
     await Notifications.dismissAllNotificationsAsync();
+  } catch {
+    // No-op en Expo Go o entornos sin módulo nativo
+  }
+};
+
+const showBackgroundOfferNotificationSafely = async (offer: TripOfferPayload): Promise<void> => {
+  if (isExpoGoOnAndroid) return;
+  try {
+    const Notifications = await import('expo-notifications');
+    const fare = Number(offer.fare?.totalFare || offer.fare?.netEarnings || 0);
+    const origin = offer.pickup?.address || 'Origen indicado en app';
+    const destination = offer.dropoff?.address || 'Destino indicado en app';
+
+    const settings = useDriverSettingsStore.getState();
+
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: 'Nueva oferta de viaje disponible',
+        body: `${origin} → ${destination}${fare > 0 ? ` ($${fare.toLocaleString('es-AR')})` : ''}`,
+        data: {
+          type: 'trip_offer',
+          offerId: offer.offerId,
+          tripId: offer.tripId,
+        },
+        categoryIdentifier: 'trip-offer',
+        sound: settings.offerSoundEnabled,
+        priority: Notifications.AndroidNotificationPriority.MAX,
+        vibrate: settings.offerVibrationEnabled ? [0, 500, 200, 500] : [],
+      },
+      trigger: Platform.OS === 'android' ? { channelId: TRIP_OFFERS_CHANNEL_ID } : null,
+    });
   } catch {
     // No-op en Expo Go o entornos sin módulo nativo
   }
@@ -39,6 +77,17 @@ export const useTripSocket = () => {
     };
     const handleNewOffer = (payload: TripOfferPayload) => {
       enqueueOffer(payload);
+
+      // Cuando la app está minimizada pero el socket sigue vivo (foreground service activo),
+      // disparamos explícitamente la tarjeta flotante nativa, alarma y notificación de alta prioridad.
+      if (AppState.currentState !== 'active') {
+        const settings = useDriverSettingsStore.getState();
+        void offerAlarmService.start();
+        if (settings.offerOverlayEnabled) {
+          void driverOverlay.showOfferOverlay(payload);
+        }
+        void showBackgroundOfferNotificationSafely(payload);
+      }
     };
 
     const handleScheduledReminder = (payload: {
@@ -65,18 +114,19 @@ export const useTripSocket = () => {
     };
 
     const handleTripAssigned = async (_payload: { tripId: string; chat?: any }) => {
-      showBannerNotification({
-        type: 'trip',
-        title: 'Viaje asignado',
-        message: 'Dirigite al punto de encuentro del pasajero.',
-      });
       await syncActiveTripState();
     };
 
     const handleOfferCancel = (payload: { offerId: string; tripId: string; reason: string }) => {
       cancelOffer(payload.offerId || payload.tripId);
       void offerAlarmService.stop();
+      void driverOverlay.hideOfferOverlay();
       void dismissAllNotificationsSafely();
+
+      if (AppState.currentState !== 'active' && useDriverTripStore.getState().isAvailable) {
+        void driverOverlay.showFloatingBubble('online');
+      }
+
       showBannerNotification({
         type: 'info',
         title: 'Oferta ya no disponible',
@@ -116,14 +166,47 @@ export const useTripSocket = () => {
 
     const handleStatusChanged = (payload: { status: string; chat?: any }) => {
       if (payload.status === 'cancelled') {
+        const currentTrip = useDriverTripStore.getState().activeTrip;
+        const wasInProgress = currentTrip?.status === 'in_progress';
+        const wasCash = getPaymentMethodInfo(currentTrip?.payment_method).isCash;
+
+        socket.emit('ride:leave', { rideId });
+        setActiveTrip(null);
+
+        if (wasInProgress) {
+          void (async () => {
+            let finalFareAmount = 0;
+            try {
+              const settledTrip = await getTripById(rideId);
+              finalFareAmount = Number(settledTrip.final_fare || 0);
+            } catch {
+              // Si falla la consulta, mostramos igualmente el aviso claro al conductor
+            }
+
+            const amountSuffix =
+              finalFareAmount > 0
+                ? ` ($${finalFareAmount.toLocaleString('es-AR', { minimumFractionDigits: 0 })})`
+                : '';
+            const cashClarification = wasCash
+              ? ' No cobres en efectivo: se compensará directo en tu billetera.'
+              : ' Se acreditará el tramo recorrido en tu billetera.';
+
+            showBannerNotification({
+              type: 'warning',
+              title: 'Viaje finalizado anticipadamente',
+              message: `El pasajero finalizó el viaje antes de destino${amountSuffix}.${cashClarification}`,
+              durationMs: 7500,
+            });
+          })();
+          return;
+        }
+
         showBannerNotification({
           type: 'warning',
           title: 'Viaje cancelado',
           message: 'El viaje fue cancelado por el pasajero o por el sistema.',
           durationMs: 5200,
         });
-        socket.emit('ride:leave', { rideId });
-        setActiveTrip(null);
       } else if (payload.status === 'completed') {
         socket.emit('ride:leave', { rideId });
         updateTripStatus('completed');

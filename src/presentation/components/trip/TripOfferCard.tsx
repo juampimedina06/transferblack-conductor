@@ -173,16 +173,18 @@ export const TripOfferCard: React.FC<TripOfferCardProps> = ({
         className="absolute bottom-0 left-0 right-0 w-full z-50 overflow-hidden rounded-t-[34px] border-t border-gold/55 shadow-2xl px-5 pt-3"
         style={{ paddingBottom: Math.max(bottomInset, 22) }}
       >
-        {/* Capa Liquid Glass de desenfoque */}
-        <BlurView
-          intensity={Platform.OS === 'ios' ? 75 : 90}
-          tint="dark"
-          style={StyleSheet.absoluteFill}
-        />
+        {/* Capa Liquid Glass solo en iOS (en Android evita caídas de FPS sobre el mapa) */}
+        {Platform.OS === 'ios' && (
+          <BlurView
+            intensity={75}
+            tint="dark"
+            style={StyleSheet.absoluteFill}
+          />
+        )}
         <View
           pointerEvents="none"
           style={StyleSheet.absoluteFill}
-          className="bg-[#090A0F]/92"
+          className={Platform.OS === 'ios' ? 'bg-[#090A0F]/92' : 'bg-[#0E1015]'}
         />
 
         {/* Ambient Champagne Gold Glow */}
@@ -213,6 +215,14 @@ export const TripOfferCard: React.FC<TripOfferCardProps> = ({
                 {offer?.passenger?.category || 'TRANSFERBLACK VIP'}
               </Text>
             </View>
+            {(offer?.stops?.length ?? 0) > 0 && (
+              <View className="bg-amber-500/15 border border-amber-400/40 px-2.5 py-1 rounded-full ml-2">
+                <Text className="font-montserrat-bold text-[10px] text-amber-300">
+                  {offer.stops!.length}{' '}
+                  {offer.stops!.length === 1 ? 'parada' : 'paradas'}
+                </Text>
+              </View>
+            )}
             {queueCount > 0 && (
               <View className="bg-white/10 border border-white/15 px-2.5 py-1 rounded-full ml-2">
                 <Text className="font-montserrat-bold text-[10px] text-platinum">
@@ -337,6 +347,31 @@ export const TripOfferCard: React.FC<TripOfferCardProps> = ({
               </Text>
             </View>
           </View>
+
+          {/* Paradas intermedias (viajes múltiples) */}
+          {(offer?.stops ?? []).map((stop, idx) => (
+            <View key={`${stop.latitude}-${stop.longitude}-${idx}`} className="flex-row items-start">
+              <View className="items-center mr-3 pt-0.5">
+                <View className="w-6 h-6 rounded-full bg-amber-500/15 border border-amber-400/50 items-center justify-center">
+                  <Text className="font-montserrat-bold text-[10px] text-amber-300">
+                    {idx + 1}
+                  </Text>
+                </View>
+                <View className="w-[1.5px] h-5 bg-white/15 my-0.5" />
+              </View>
+              <View className="flex-1 pb-1.5">
+                <Text className="font-montserrat-bold text-[9px] uppercase tracking-widest text-amber-300/90">
+                  PARADA {idx + 1}
+                </Text>
+                <Text
+                  numberOfLines={1}
+                  className="font-montserrat-semibold text-sm text-white mt-0.5"
+                >
+                  {stop.address || `Parada intermedia ${idx + 1}`}
+                </Text>
+              </View>
+            </View>
+          ))}
 
           {/* Destino */}
           <View className="flex-row items-start">

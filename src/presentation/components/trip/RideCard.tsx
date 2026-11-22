@@ -15,7 +15,11 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Trip, getPaymentMethodInfo } from '../../../core/trip/interface/trip.interface';
+import {
+  Trip,
+  TripStopPoint,
+  getPaymentMethodInfo,
+} from '../../../core/trip/interface/trip.interface';
 import { THEME_COLORS } from '../../../core/constants/theme';
 import { SlideToComplete } from './ui/SlideToComplete';
 import { getTripOfferTheme } from './theme/tripOfferTheme';
@@ -38,6 +42,7 @@ export interface RideCardProps {
   passengerPreferences?: string[];
   pickupAddress?: string;
   dropoffAddress?: string;
+  stops?: TripStopPoint[];
   fareAmount?: number;
   earningsAmount?: number;
   paymentMethod?: 'cash' | 'transfer' | 'card' | string;
@@ -335,6 +340,7 @@ export const RideCard: React.FC<RideCardProps> = ({
   passengerPreferences = [],
   pickupAddress,
   dropoffAddress,
+  stops,
   fareAmount = 0,
   earningsAmount,
   paymentMethod = 'cash',
@@ -364,6 +370,7 @@ export const RideCard: React.FC<RideCardProps> = ({
   const displayPhone = passengerPhone || trip?.passenger?.phone || '';
   const displayPickup = pickupAddress || trip?.pickup?.address || 'Punto de encuentro';
   const displayDropoff = dropoffAddress || trip?.dropoff?.address || 'Destino fijado';
+  const displayStops = stops ?? trip?.stops ?? [];
   const displayEta = etaText || (trip?.pickup?.etaMinutes ? `~${trip.pickup.etaMinutes} min` : null);
   const displayDistance = distanceText || null;
   const displayFare = fareAmount || Number(trip?.final_fare || trip?.estimated_fare || 0);
@@ -480,6 +487,23 @@ export const RideCard: React.FC<RideCardProps> = ({
           <View className="h-px bg-white/[0.07] my-3.5" />
 
           <RouteAddressRow type="pickup" address={displayPickup} />
+
+          {displayStops.length > 0 && (
+            <View className="mt-2.5 pl-7 gap-1.5">
+              {displayStops.map((stop, idx) => (
+                <View key={`${stop.latitude}-${stop.longitude}-${idx}`} className="flex-row items-center">
+                  <View className="w-4 h-4 rounded-full bg-amber-500/20 items-center justify-center mr-2">
+                    <Text className="font-montserrat-bold text-[9px] text-amber-300">
+                      {idx + 1}
+                    </Text>
+                  </View>
+                  <Text numberOfLines={1} className="font-montserrat text-xs text-white/65 flex-1">
+                    {stop.address || `Parada ${idx + 1}`}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
 
           <View className="w-full mt-4">
             <TouchableOpacity
@@ -704,7 +728,9 @@ export const RideCard: React.FC<RideCardProps> = ({
                 numberOfLines={1}
                 className="font-montserrat-medium text-xs text-white/60 flex-1 mr-3"
               >
-                {displayDropoff}
+                {displayStops.length > 0
+                  ? `${displayStops.length} ${displayStops.length === 1 ? 'parada' : 'paradas'} · ${displayDropoff}`
+                  : displayDropoff}
               </Text>
               <View className="flex-row items-center">
                 <Text className="font-montserrat-semibold text-xs text-gold mr-1">
@@ -717,6 +743,26 @@ export const RideCard: React.FC<RideCardProps> = ({
                 />
               </View>
             </View>
+
+            {displayStops.length > 0 && (
+              <View className="mt-3 pt-3 border-t border-white/[0.07] gap-1.5">
+                {displayStops.map((stop, idx) => (
+                  <View
+                    key={`${stop.latitude}-${stop.longitude}-${idx}`}
+                    className="flex-row items-center"
+                  >
+                    <View className="w-4 h-4 rounded-full bg-amber-500/20 items-center justify-center mr-2">
+                      <Text className="font-montserrat-bold text-[9px] text-amber-300">
+                        {idx + 1}
+                      </Text>
+                    </View>
+                    <Text numberOfLines={1} className="font-montserrat text-xs text-white/75 flex-1">
+                      {stop.address || `Parada ${idx + 1}`}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
           </TouchableOpacity>
 
           {isFinishActionExpanded && (

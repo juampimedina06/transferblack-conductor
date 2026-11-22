@@ -1,7 +1,7 @@
 import { Linking } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 
-const DEFAULT_WEB_BASE_URL = 'https://transfer-black-admin.vercel.app';
+const DEFAULT_WEB_BASE_URL = 'https://transferblack-admin.vercel.app';
 
 export const DRIVER_TERMS_URL =
   process.env.EXPO_PUBLIC_DRIVER_TERMS_URL ??

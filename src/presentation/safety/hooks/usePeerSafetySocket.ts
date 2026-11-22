@@ -11,6 +11,7 @@ import type {
 } from '@/core/safety/interface/peerAlert.interface';
 import { usePeerAlertStore } from '../store/usePeerAlertStore';
 import { useBannerNotificationStore } from '@/presentation/notifications/store/useBannerNotificationStore';
+import { useDriverSettingsStore } from '@/presentation/settings/store/useDriverSettingsStore';
 
 const isExpoGoAndroid =
   Platform.OS === 'android' && Constants.appOwnership === 'expo';
@@ -54,6 +55,7 @@ export function usePeerSafetySocket(): void {
   useEffect(() => {
     const onIncomingAlert = (payload: IncomingPeerAlertPayload) => {
       if (!payload?.alertId) return;
+      if (!useDriverSettingsStore.getState().peerSafetyAlertsEnabled) return;
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       usePeerAlertStore.getState().setIncomingAlert(payload);
     };

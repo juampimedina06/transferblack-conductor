@@ -1,5 +1,5 @@
 import React, { useId } from 'react';
-import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
+import { Platform, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 export interface AmbientGlowProps {
@@ -10,7 +10,7 @@ export interface AmbientGlowProps {
   style?: StyleProp<ViewStyle>;
 }
 
-export const AmbientGlow: React.FC<AmbientGlowProps> = ({
+export const AmbientGlow: React.FC<AmbientGlowProps> = React.memo(({
   color = '#D4AF37',
   height = 360,
   opacity = 0.22,
@@ -18,6 +18,12 @@ export const AmbientGlow: React.FC<AmbientGlowProps> = ({
   style,
 }) => {
   const rawId = useId();
+
+  // En Android evitamos SVG radiales a pantalla completa para reducir overdraw y mejorar fluidez
+  if (Platform.OS === 'android') {
+    return null;
+  }
+
   const gradientId = `ambient-glow-${rawId.replace(/[^a-zA-Z0-9_-]/g, '')}`;
 
   let cx = '50%';
@@ -72,7 +78,9 @@ export const AmbientGlow: React.FC<AmbientGlowProps> = ({
       </Svg>
     </View>
   );
-};
+});
+
+AmbientGlow.displayName = 'AmbientGlow';
 
 const styles = StyleSheet.create({
   container: {

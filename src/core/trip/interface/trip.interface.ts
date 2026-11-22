@@ -22,6 +22,13 @@ export interface TripDropoffDetails {
   durationMinutes: number;
 }
 
+export interface TripStopPoint {
+  address: string;
+  subtitle?: string | null;
+  latitude: number;
+  longitude: number;
+}
+
 export interface TripPassengerDetails {
   fullName?: string;
   firstName?: string;
@@ -42,6 +49,7 @@ export interface TripOfferPayload {
   fare: TripFareDetails;
   pickup: TripPickupDetails;
   dropoff: TripDropoffDetails;
+  stops?: TripStopPoint[];
   passenger: TripPassengerDetails;
   routeGeometry?: any;
   require_pin?: boolean;
@@ -155,6 +163,7 @@ export interface Trip {
   boarding_pin?: string | null;
   pickup?: TripPickupDetails;
   dropoff?: TripDropoffDetails;
+  stops?: TripStopPoint[];
   routeGeometry?: any;
   passenger?: TripPassengerDetails;
   thirdPartyName?: string | null;
@@ -220,6 +229,7 @@ export interface ActiveTripSummary {
   code: string;
   status: 'assigned' | 'driver_arriving' | 'driver_arrived' | 'in_progress';
   origin: ActiveTripLocationSummary;
+  stops?: TripStopPoint[];
   destination: ActiveTripLocationSummary;
   passenger: ActiveTripPassengerSummary;
   fare: number;

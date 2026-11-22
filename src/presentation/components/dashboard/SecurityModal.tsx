@@ -262,16 +262,18 @@ export const SecurityModal: React.FC<SecurityModalProps> = ({
           <View className="flex-1 bg-black/75 justify-end">
             <TouchableWithoutFeedback>
               <View className="bg-[#0A0B10]/98 rounded-t-[36px] border-t border-red-500/30 max-h-[85%] pb-8 shadow-2xl relative overflow-hidden">
-                {/* Blur Glass Layer */}
-                <BlurView
-                  intensity={Platform.OS === 'ios' ? 65 : 85}
-                  tint="dark"
-                  style={StyleSheet.absoluteFill}
-                />
+                {/* Blur Glass Layer solo en iOS (en Android evita caídas de FPS sobre el mapa) */}
+                {Platform.OS === 'ios' && (
+                  <BlurView
+                    intensity={65}
+                    tint="dark"
+                    style={StyleSheet.absoluteFill}
+                  />
+                )}
                 <View
                   pointerEvents="none"
                   style={StyleSheet.absoluteFill}
-                  className="bg-[#0A0B10]/90"
+                  className={Platform.OS === 'ios' ? 'bg-[#0A0B10]/90' : 'bg-[#0E1015]'}
                 />
 
                 {/* Top Specular Edge Glass Highlight */}

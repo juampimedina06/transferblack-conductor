@@ -44,6 +44,7 @@ import {
 import { usePeerAlertStore } from '../../presentation/safety/store/usePeerAlertStore';
 import { usePeerSafetySocket } from '../../presentation/safety/hooks/usePeerSafetySocket';
 import { PeerAlertModals } from '../../presentation/components/safety/PeerAlertModals';
+import { useDriverSettingsStore } from '../../presentation/settings/store/useDriverSettingsStore';
 
 export default function DriverDashboardScreen() {
   const user = useAuthStore(state => state.user);
@@ -124,7 +125,7 @@ export default function DriverDashboardScreen() {
         lat: location.latitude,
         lng: location.longitude,
         tripId: activeTrip?.status !== 'completed' ? activeTrip?.id ?? null : null,
-        radiusKm: 5,
+        radiusKm: useDriverSettingsStore.getState().peerSafetyRadiusKm,
       });
       setMyActivePeerAlert({
         id: created.id,

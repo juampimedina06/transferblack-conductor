@@ -18,7 +18,12 @@ export const syncActiveTripState = async (): Promise<void> => {
         if (freshTrip.status === 'cancelled') {
           useDriverTripStore.getState().setActiveTrip(null);
         } else {
-          useDriverTripStore.getState().setActiveTrip(freshTrip);
+          useDriverTripStore.getState().setActiveTrip({
+            ...freshTrip,
+            stops: activeSummary.stops?.length
+              ? activeSummary.stops
+              : freshTrip.stops ?? [],
+          });
         }
       }
     } else {

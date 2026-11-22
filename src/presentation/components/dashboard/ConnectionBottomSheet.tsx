@@ -213,6 +213,7 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
         boarding_pin: arrivingTripData?.boarding_pin ?? currentOffer.boarding_pin ?? null,
         pickup: currentOffer.pickup,
         dropoff: currentOffer.dropoff,
+        stops: currentOffer.stops ?? [],
         routeGeometry: currentOffer.routeGeometry,
         passenger: currentOffer.passenger,
         third_party: arrivingTripData?.third_party || currentOffer.third_party || undefined,
