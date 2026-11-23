@@ -26,6 +26,7 @@ import { PermissionStatus } from '@/core/location/interface/permission.interface
 import { driverOverlay } from '@/core/overlay/driverOverlay';
 import { usePushNotifications } from '@/presentation/hooks/usePushNotifications';
 import {
+  type OfferSoundTone,
   type PeerAlertRadiusKm,
   type VibrationIntensity,
   useDriverSettingsStore,
@@ -132,6 +133,13 @@ const PermissionStatusRow: React.FC<PermissionStatusRowProps> = ({
   </TouchableOpacity>
 );
 
+const SOUND_TONE_OPTIONS: { value: OfferSoundTone; label: string }[] = [
+  { value: 'ringtone', label: 'Llamada' },
+  { value: 'alarm', label: 'Alarma' },
+  { value: 'default', label: 'Aviso' },
+  { value: 'chime', label: 'Sutil' },
+];
+
 const VIBRATION_OPTIONS: { value: VibrationIntensity; label: string }[] = [
   { value: 'subtle', label: 'Suave' },
   { value: 'normal', label: 'Normal' },
@@ -201,6 +209,7 @@ export default function DriverSettingsScreen(): React.JSX.Element {
         vibrate: settings.offerVibrationEnabled,
         intensity: settings.offerVibrationIntensity,
         sound: settings.offerSoundEnabled,
+        tone: settings.offerSoundTone,
       });
     } finally {
       setTimeout(() => {
@@ -275,6 +284,50 @@ export default function DriverSettingsScreen(): React.JSX.Element {
                 onValueChange={(val) => settings.setSetting('offerSoundEnabled', val)}
                 showDivider
               />
+
+              {settings.offerSoundEnabled && (
+                <View className="px-4 py-3.5 border-b border-white/[0.07]">
+                  <Text className="text-white/80 font-montserrat-medium text-xs mb-2.5">
+                    Tono de alerta
+                  </Text>
+                  <View className="flex-row gap-2">
+                    {SOUND_TONE_OPTIONS.map((option) => {
+                      const selected = settings.offerSoundTone === option.value;
+                      return (
+                        <TouchableOpacity
+                          key={option.value}
+                          onPress={() => {
+                            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            settings.setSetting('offerSoundTone', option.value);
+                            void offerAlarmService.testAlert({
+                              vibrate: false,
+                              intensity: settings.offerVibrationIntensity,
+                              sound: true,
+                              tone: option.value,
+                            });
+                          }}
+                          activeOpacity={0.8}
+                          accessibilityRole="button"
+                          accessibilityState={{ selected }}
+                          className={`flex-1 h-10 rounded-xl items-center justify-center border ${
+                            selected
+                              ? 'bg-gold/15 border-gold/60'
+                              : 'bg-white/[0.04] border-white/10'
+                          }`}
+                        >
+                          <Text
+                            className={`font-montserrat-semibold text-xs ${
+                              selected ? 'text-gold' : 'text-white/65'
+                            }`}
+                          >
+                            {option.label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+              )}
 
               <SettingToggleRow
                 icon="phone-portrait-outline"

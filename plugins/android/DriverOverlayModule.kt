@@ -8,6 +8,11 @@ import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.media.AudioAttributes
+import android.media.AudioManager
+import android.media.Ringtone
+import android.media.RingtoneManager
+import android.media.ToneGenerator
 import android.net.Uri
 import android.os.Build
 import android.os.Handler
@@ -41,9 +46,6 @@ class DriverOverlayModule(reactContext: ReactApplicationContext) :
   LifecycleEventListener {
 
   private val mainHandler = Handler(Looper.getMainLooper())
-  private var windowManager: WindowManager? = null
-  private var overlayView: View? = null
-  private var autoDismissRunnable: Runnable? = null
 
   @Volatile
   private var isHostInForeground: Boolean = true
@@ -58,6 +60,7 @@ class DriverOverlayModule(reactContext: ReactApplicationContext) :
     isHostInForeground = true
     UiThreadUtil.runOnUiThread {
       removeBubbleInternal()
+      removeOverlayInternal()
     }
   }
 
@@ -70,6 +73,7 @@ class DriverOverlayModule(reactContext: ReactApplicationContext) :
     UiThreadUtil.runOnUiThread {
       removeBubbleInternal()
       removeOverlayInternal()
+      stopOfferSoundInternal()
     }
   }
 
@@ -170,13 +174,13 @@ class DriverOverlayModule(reactContext: ReactApplicationContext) :
           )
 
           wm.addView(cardView, layoutParams)
-          windowManager = wm
-          overlayView = cardView
+          activeOverlayWindowManager = wm
+          activeOverlayView = cardView
 
           val dismissCallback = Runnable {
             removeOverlayInternal()
           }
-          autoDismissRunnable = dismissCallback
+          activeOverlayDismissRunnable = dismissCallback
           mainHandler.postDelayed(dismissCallback, ttlSeconds * 1000L)
 
           promise.resolve(true)
@@ -199,6 +203,88 @@ class DriverOverlayModule(reactContext: ReactApplicationContext) :
   }
 
   @ReactMethod
+  fun playOfferSound(tone: String?, loop: Boolean, promise: Promise) {
+    UiThreadUtil.runOnUiThread {
+      try {
+        stopOfferSoundInternal()
+
+        if (tone == "chime") {
+          val generator = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 90)
+          activeToneGenerator = generator
+          generator.startTone(ToneGenerator.TONE_PROP_BEEP2, 900)
+          val stopChime = Runnable {
+            stopOfferSoundInternal()
+          }
+          activeSoundStopRunnable = stopChime
+          mainHandler.postDelayed(stopChime, if (loop) 1400L else 1000L)
+          promise.resolve(true)
+          return@runOnUiThread
+        }
+
+        val ringtoneType = when (tone) {
+          "alarm" -> RingtoneManager.TYPE_ALARM
+          "default" -> RingtoneManager.TYPE_NOTIFICATION
+          else -> RingtoneManager.TYPE_RINGTONE
+        }
+
+        val soundUri =
+          RingtoneManager.getDefaultUri(ringtoneType)
+            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+
+        if (soundUri == null) {
+          promise.resolve(false)
+          return@runOnUiThread
+        }
+
+        val ringtone = RingtoneManager.getRingtone(reactApplicationContext, soundUri)
+        if (ringtone == null) {
+          promise.resolve(false)
+          return@runOnUiThread
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+          val usage = if (tone == "alarm") {
+            AudioAttributes.USAGE_ALARM
+          } else {
+            AudioAttributes.USAGE_NOTIFICATION_RINGTONE
+          }
+          ringtone.audioAttributes = AudioAttributes.Builder()
+            .setUsage(usage)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .build()
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+          ringtone.isLooping = loop
+        }
+
+        activeOfferRingtone = ringtone
+        ringtone.play()
+
+        // Safety auto-stop after 22s so audio can never loop forever if app is killed
+        val safetyStop = Runnable {
+          stopOfferSoundInternal()
+        }
+        activeSoundStopRunnable = safetyStop
+        mainHandler.postDelayed(safetyStop, if (loop) 22_000L else 2_200L)
+
+        promise.resolve(true)
+      } catch (_: Exception) {
+        stopOfferSoundInternal()
+        promise.resolve(false)
+      }
+    }
+  }
+
+  @ReactMethod
+  fun stopOfferSound(promise: Promise) {
+    UiThreadUtil.runOnUiThread {
+      stopOfferSoundInternal()
+      promise.resolve(true)
+    }
+  }
+
+  @ReactMethod
   fun showFloatingBubble(status: String?, promise: Promise) {
     try {
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
@@ -213,7 +299,7 @@ class DriverOverlayModule(reactContext: ReactApplicationContext) :
       UiThreadUtil.runOnUiThread {
         try {
           // Si la app ya volvió al frente o hay una tarjeta de oferta visible, no mostrar la esfera
-          if (isHostInForeground || overlayView != null) {
+          if (isHostInForeground || activeOverlayView != null) {
             removeBubbleInternal()
             promise.resolve(false)
             return@runOnUiThread
@@ -295,6 +381,7 @@ class DriverOverlayModule(reactContext: ReactApplicationContext) :
     UiThreadUtil.runOnUiThread {
       removeOverlayInternal()
       removeBubbleInternal()
+      stopOfferSoundInternal()
     }
   }
 
@@ -538,14 +625,23 @@ class DriverOverlayModule(reactContext: ReactApplicationContext) :
       layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
     }
 
+    val closeBg = GradientDrawable().apply {
+      shape = GradientDrawable.OVAL
+      setColor(Color.parseColor("#27272A"))
+    }
+
     val closeButton = TextView(context).apply {
       text = "✕"
       setTextColor(Color.parseColor(COLOR_PLATINUM))
-      setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+      setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
       setTypeface(Typeface.DEFAULT_BOLD)
-      setPadding(dp(10), dp(4), dp(4), dp(4))
+      gravity = Gravity.CENTER
+      background = closeBg
+      layoutParams = LinearLayout.LayoutParams(dp(36), dp(36))
       contentDescription = "Cerrar alerta flotante"
+      isClickable = true
       setOnClickListener {
+        stopOfferSoundInternal()
         removeOverlayInternal()
       }
     }
@@ -698,26 +794,55 @@ class DriverOverlayModule(reactContext: ReactApplicationContext) :
   }
 
   private fun removeOverlayInternal() {
-    autoDismissRunnable?.let {
+    activeOverlayDismissRunnable?.let {
       mainHandler.removeCallbacks(it)
     }
-    autoDismissRunnable = null
+    activeOverlayDismissRunnable = null
 
-    val view = overlayView
-    val wm = windowManager
-    overlayView = null
+    val view = activeOverlayView
+    val wm = activeOverlayWindowManager
+    activeOverlayView = null
+    activeOverlayWindowManager = null
 
     if (view != null && wm != null) {
       try {
-        if (view.isAttachedToWindow) {
-          wm.removeViewImmediate(view)
-        }
+        wm.removeViewImmediate(view)
       } catch (_: Exception) {
         try {
           wm.removeView(view)
         } catch (_: Exception) {
           // La vista ya no estaba adjunta
         }
+      }
+    }
+  }
+
+  private fun stopOfferSoundInternal() {
+    activeSoundStopRunnable?.let {
+      mainHandler.removeCallbacks(it)
+    }
+    activeSoundStopRunnable = null
+
+    val ringtone = activeOfferRingtone
+    activeOfferRingtone = null
+    if (ringtone != null) {
+      try {
+        if (ringtone.isPlaying) {
+          ringtone.stop()
+        }
+      } catch (_: Exception) {
+        // Ignorar al detener ringtone
+      }
+    }
+
+    val toneGen = activeToneGenerator
+    activeToneGenerator = null
+    if (toneGen != null) {
+      try {
+        toneGen.stopTone()
+        toneGen.release()
+      } catch (_: Exception) {
+        // Ignorar al liberar ToneGenerator
       }
     }
   }
@@ -802,10 +927,22 @@ class DriverOverlayModule(reactContext: ReactApplicationContext) :
 
   companion object {
     @Volatile
+    private var activeOverlayWindowManager: WindowManager? = null
+    @Volatile
+    private var activeOverlayView: View? = null
+    private var activeOverlayDismissRunnable: Runnable? = null
+
+    @Volatile
     private var activeBubbleWindowManager: WindowManager? = null
     @Volatile
     private var activeBubbleView: View? = null
     private var activeBubbleSnapAnimator: ValueAnimator? = null
+
+    @Volatile
+    private var activeOfferRingtone: Ringtone? = null
+    @Volatile
+    private var activeToneGenerator: ToneGenerator? = null
+    private var activeSoundStopRunnable: Runnable? = null
 
     private const val DEFAULT_TTL_SECONDS = 20L
     private const val COLOR_OBSIDIAN = "#0A0A0C"

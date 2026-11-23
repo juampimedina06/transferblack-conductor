@@ -67,19 +67,23 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
     );
   }
 
+  if (messages.length === 0) {
+    return (
+      <View className="flex-1 items-center justify-center px-6">
+        <ChatEmptyState />
+      </View>
+    );
+  }
+
   return (
     <FlatList
+      className="flex-1"
       data={messages}
       renderItem={renderItem}
       keyExtractor={keyExtractor}
       inverted
       // Newest messages at the bottom without manual scrollToEnd
       contentContainerStyle={{ paddingVertical: 12, paddingHorizontal: 4 }}
-      ListEmptyComponent={
-        <View style={{ transform: [{ scaleY: -1 }], flex: 1, paddingVertical: 40 }}>
-          <ChatEmptyState />
-        </View>
-      }
       ListFooterComponent={<ChatListFooter isFetchingNextPage={isFetchingNextPage} />}
       onEndReached={() => {
         if (hasNextPage && !isFetchingNextPage) {
@@ -90,7 +94,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
       // Performance
-      removeClippedSubviews
+      removeClippedSubviews={false}
       maxToRenderPerBatch={15}
       windowSize={10}
     />
