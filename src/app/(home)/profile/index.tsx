@@ -20,6 +20,8 @@ import type { UserProfileResponse } from '@/core/auth/interface/auth.interface';
 import { THEME_COLORS } from '@/core/constants/theme';
 import { socket } from '@/core/socket/socket';
 import { useAuthStore } from '@/presentation/auth/store/useAuthStore';
+import { useDriverStatusStore } from '@/presentation/driver/store/useDriverStatusStore';
+import { getActiveGraceDocuments } from '@/core/driver/utils/documentCompliance.utils';
 import { useDriverTripStore } from '@/presentation/trip/store/useDriverTripStore';
 import { getDriverMe } from '@/core/driver/actions/driver.actions';
 import { ProfileAvatarImage } from '@/presentation/components/profile/ProfileAvatarImage';
@@ -40,6 +42,9 @@ export default function DriverProfileScreen() {
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const updateUser = useAuthStore((state) => state.updateUser);
+  const complianceStatus = useDriverStatusStore((state) => state.compliance.status);
+  const driverDocuments = useDriverStatusStore((state) => state.documents);
+  const hasActiveGraceDocs = getActiveGraceDocuments(driverDocuments).length > 0;
   const activeTrip = useDriverTripStore((state) => state.activeTrip);
   const setIsAvailable = useDriverTripStore((state) => state.setIsAvailable);
 
@@ -417,7 +422,15 @@ export default function DriverProfileScreen() {
                   subtitle="Licencia, seguro y habilitaciones"
                   iconName="document-text-outline"
                   onPress={handleDocumentsPress}
-                  badge="Al día"
+                  badge={
+                    complianceStatus === 'suspended_documents'
+                      ? 'Vencido'
+                      : hasActiveGraceDocs
+                        ? 'Prórroga'
+                        : complianceStatus === 'expiring_soon'
+                          ? 'Por vencer'
+                          : 'Al día'
+                  }
                   showDivider
                 />
                 <ProfileOptionItem

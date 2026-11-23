@@ -53,6 +53,7 @@ export interface DriverMeStatus {
 export type DriverDocumentStatus =
   | 'valid'
   | 'expiring_soon'
+  | 'grace_period'
   | 'expired'
   | 'pending_review'
   | 'rejected';
@@ -64,6 +65,7 @@ export interface DriverDocumentItem {
   status: DriverDocumentStatus;
   issuedAt?: string | null;
   expiresAt: string | null;
+  graceUntil?: string | null;
   daysRemaining?: number | null;
   daysUntilExpiry?: number | null;
   rejectionReason?: string | null;

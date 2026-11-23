@@ -12,6 +12,10 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useDriverStatusStore } from '../../driver/store/useDriverStatusStore';
 import { DriverDocumentItem } from '@/core/driver/interface/driverStatus.interface';
+import {
+  formatShortArDate,
+  isGracePeriodActive,
+} from '@/core/driver/utils/documentCompliance.utils';
 import { DocumentScannerModal } from '../ui/DocumentScannerModal';
 import { SkeletonBox } from '../ui/SkeletonBox';
 import { DatePickerInput } from '../ui/DatePickerInput';
@@ -152,6 +156,15 @@ export const DriverDocumentsModal: React.FC<DriverDocumentsModalProps> = ({
             </Text>
           </View>
         );
+      case 'grace_period':
+        return (
+          <View className="flex-row items-center bg-sky-500/15 border border-sky-400/35 px-2.5 py-1 rounded-full">
+            <Ionicons name="shield-checkmark" size={12} color="#38BDF8" />
+            <Text className="text-sky-300 font-montserrat-semibold text-[10px] ml-1">
+              En plazo de gracia
+            </Text>
+          </View>
+        );
       case 'expired':
         return (
           <View className="flex-row items-center bg-red-500/15 border border-red-500/30 px-2.5 py-1 rounded-full">
@@ -244,10 +257,19 @@ export const DriverDocumentsModal: React.FC<DriverDocumentsModalProps> = ({
                 ) : (
                   documents.map((doc) => {
                     const label = DOCUMENT_LABELS[doc.documentType] || doc.documentType;
+                    const hasActiveGrace = isGracePeriodActive(doc);
+                    const graceDeadline = formatShortArDate(doc.graceUntil);
+                    const effectiveStatus =
+                      hasActiveGrace
+                        ? 'grace_period'
+                        : doc.status === 'grace_period'
+                          ? 'expired'
+                          : doc.status;
                     const canRenew =
-                      doc.status === 'expiring_soon' ||
-                      doc.status === 'expired' ||
-                      doc.status === 'rejected';
+                      effectiveStatus === 'expiring_soon' ||
+                      effectiveStatus === 'grace_period' ||
+                      effectiveStatus === 'expired' ||
+                      effectiveStatus === 'rejected';
                     const isHighlighted =
                       Boolean(initialSelectedDocType) &&
                       doc.documentType === initialSelectedDocType;
@@ -266,17 +288,36 @@ export const DriverDocumentsModal: React.FC<DriverDocumentsModalProps> = ({
                             </Text>
                             {doc.expiresAt && (
                               <Text className="text-zinc-400 font-montserrat text-[11px] mt-1">
-                                Vencimiento:{' '}
-                                {new Date(doc.expiresAt).toLocaleDateString('es-AR', {
-                                  day: '2-digit',
-                                  month: '2-digit',
-                                  year: 'numeric',
-                                })}
+                                Vencimiento: {formatShortArDate(doc.expiresAt)}
                               </Text>
                             )}
+                            {hasActiveGrace && graceDeadline ? (
+                              <Text className="text-sky-300 font-montserrat-semibold text-[11px] mt-0.5">
+                                Prórroga hasta {graceDeadline}
+                                {doc.daysRemaining !== null && doc.daysRemaining !== undefined
+                                  ? ` (${doc.daysRemaining} día${doc.daysRemaining === 1 ? '' : 's'})`
+                                  : ''}
+                              </Text>
+                            ) : null}
                           </View>
-                          {renderStatusBadge(doc.status, doc.daysUntilExpiry)}
+                          {renderStatusBadge(effectiveStatus, doc.daysUntilExpiry)}
                         </View>
+
+                        {hasActiveGrace && (
+                          <View className="bg-sky-500/10 border border-sky-400/25 rounded-xl p-2.5 my-2 flex-row items-start">
+                            <Ionicons
+                              name="information-circle"
+                              size={15}
+                              color="#38BDF8"
+                              style={{ marginRight: 6, marginTop: 1 }}
+                            />
+                            <Text className="text-sky-200 font-montserrat text-[11px] leading-4 flex-1">
+                              {graceDeadline
+                                ? `Podés seguir trabajando con normalidad. Recordá subir la renovación antes del ${graceDeadline}.`
+                                : 'Podés seguir trabajando con normalidad. Recordá subir la renovación antes de que venza tu prórroga.'}
+                            </Text>
+                          </View>
+                        )}
 
                         {doc.rejectionReason && (
                           <View className="bg-red-500/10 border border-red-500/25 rounded-xl p-2.5 my-2">

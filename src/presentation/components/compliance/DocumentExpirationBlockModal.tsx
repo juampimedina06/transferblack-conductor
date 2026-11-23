@@ -3,6 +3,7 @@ import { Modal, View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useDriverStatusStore } from '../../driver/store/useDriverStatusStore';
+import { isGracePeriodActive } from '../../../core/driver/utils/documentCompliance.utils';
 import { DriverDocumentsModal } from './DriverDocumentsModal';
 
 interface DocumentExpirationBlockModalProps {
@@ -27,9 +28,15 @@ export const DocumentExpirationBlockModal: React.FC<DocumentExpirationBlockModal
   onClose,
 }) => {
   const compliance = useDriverStatusStore((state) => state.compliance);
+  const documents = useDriverStatusStore((state) => state.documents);
   const [isDocumentsModalVisible, setIsDocumentsModalVisible] = useState(false);
 
-  const blockingDocs = compliance.blockingDocuments || [];
+  const blockingDocs = (compliance.blockingDocuments || []).filter((docType) => {
+    const match = documents.find(
+      (doc) => doc.documentType === docType || doc.type === docType
+    );
+    return !match || !isGracePeriodActive(match);
+  });
 
   const handleOpenUpdate = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);

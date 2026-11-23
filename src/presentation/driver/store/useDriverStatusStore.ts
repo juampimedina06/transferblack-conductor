@@ -118,25 +118,37 @@ export const useDriverStatusStore = create<DriverStatusState>()(
           status?: DriverCompliance['status'];
           blockingDocuments?: string[];
         }) => {
+          const previousStatus = get().compliance.status;
           if (payload?.status) {
             get().setCompliance({
               status: payload.status,
               blockingDocuments: payload.blockingDocuments || [],
             });
+            const wasUnlocked =
+              previousStatus === 'suspended_documents' &&
+              payload.status !== 'suspended_documents';
             showBannerNotification({
-              type: payload.status === 'compliant' ? 'success' : 'warning',
+              type:
+                payload.status === 'compliant' || wasUnlocked
+                  ? 'success'
+                  : 'warning',
               title:
                 payload.status === 'compliant'
                   ? 'Documentación al día'
-                  : 'Atención con tu documentación',
+                  : wasUnlocked
+                    ? 'Cuenta habilitada para operar'
+                    : 'Atención con tu documentación',
               message:
                 payload.status === 'compliant'
-                  ? 'Tus documentos fueron aprobados y ya podés operar normalmente.'
-                  : 'Tenés documentos vencidos o próximos a vencer. Revisalos desde tu perfil.',
+                  ? 'Tus documentos fueron aprobados o cuentan con prórroga vigente. Ya podés operar.'
+                  : wasUnlocked
+                    ? 'Se actualizó el estado de tu documentación. Ya podés conectarte nuevamente.'
+                    : 'Tenés documentos vencidos o próximos a vencer. Revisalos desde tu perfil.',
               durationMs: 5200,
             });
           }
           void get().fetchStatus();
+          void get().fetchDocuments();
         };
 
         socket.on('driver:dispatch:suspended', handleSuspended);

@@ -22,6 +22,7 @@ import { AmbientGlow } from '../ui/AmbientGlow';
 import { offerAlarmService } from '../../trip/services/offerAlarmService';
 import { driverOverlay } from '../../../core/overlay/driverOverlay';
 import { useDriverStatusStore } from '../../driver/store/useDriverStatusStore';
+import { isComplianceBlockingOnline } from '../../../core/driver/utils/documentCompliance.utils';
 import { useDrivingTimeStore } from '../../driver/store/useDrivingTimeStore';
 import { formatDrivingDuration } from '../../../core/driver/interface/drivingTime.interface';
 import { DocumentExpirationBlockModal } from '../compliance/DocumentExpirationBlockModal';
@@ -46,8 +47,11 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
   const lastKnownLocation = useLocationStore((state) => state.lastKnownLocation);
   const dispatchSuspendedUntil = useDriverStatusStore((state) => state.dispatchSuspendedUntil);
   const compliance = useDriverStatusStore((state) => state.compliance);
+  const documents = useDriverStatusStore((state) => state.documents);
   const drivingTime = useDrivingTimeStore((state) => state.status);
   const hasAcceptedCurrentTerms = useLegalStore((state) => state.hasAcceptedCurrentTerms);
+
+  const isComplianceBlocked = isComplianceBlockingOnline(compliance, documents);
 
   const [isDocBlockModalVisible, setIsDocBlockModalVisible] = useState(false);
   const [isTermsModalVisible, setIsTermsModalVisible] = useState(false);
@@ -441,7 +445,7 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
                 );
                 return;
               }
-              if (!isAvailable && compliance.status === 'suspended_documents') {
+              if (!isAvailable && isComplianceBlocked) {
                 void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
                 setIsDocBlockModalVisible(true);
                 return;
@@ -537,7 +541,7 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
 
       {/* Modal bloqueante por documentación vencida */}
       <DocumentExpirationBlockModal
-        visible={isDocBlockModalVisible}
+        visible={isDocBlockModalVisible && isComplianceBlocked}
         onClose={() => setIsDocBlockModalVisible(false)}
       />
 

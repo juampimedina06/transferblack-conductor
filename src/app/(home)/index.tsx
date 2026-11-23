@@ -72,6 +72,7 @@ export default function DriverDashboardScreen() {
     fetchSummary();
     void pushNotificationService.initialize();
     void useDriverStatusStore.getState().fetchStatus();
+    void useDriverStatusStore.getState().fetchDocuments();
     const cleanupSocket = useDriverStatusStore.getState().initSocketListeners();
     return () => {
       cleanupSocket();
