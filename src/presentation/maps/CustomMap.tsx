@@ -15,12 +15,14 @@ import type {
 import { Ionicons } from '@expo/vector-icons';
 import { THEME_COLORS } from '../../core/constants/theme';
 import { LatLng } from '../../core/location/interface/latLng.interface';
+import { PermissionStatus } from '../../core/location/interface/permission.interface';
 import {
   getGoogleNavigationSdk,
   type GoogleNavigationSdkModule,
 } from '../../core/navigation/googleNavigationSdk';
 import { MapControlsDock } from '../components/maps/MapControlsDock';
 import { useLocationStore } from './store/useLocationStore';
+import { usePermissionsStore } from './store/usePermissionsStore';
 import { useDriverTripStore } from '../trip/store/useDriverTripStore';
 import { useActiveTripNavigation } from './hooks/useActiveTripNavigation';
 
@@ -94,6 +96,15 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
 
   const currentOffer = useDriverTripStore((state) => state.currentOffer);
   const activeTrip = useDriverTripStore((state) => state.activeTrip);
+  const locationStatus = usePermissionsStore((state) => state.locationStatus);
+  const checkLocationPermission = usePermissionsStore((state) => state.checkLocationPermission);
+  const hasLocationPermission = locationStatus === PermissionStatus.GRANTED;
+
+  useEffect(() => {
+    if (locationStatus === PermissionStatus.CHECKING) {
+      void checkLocationPermission();
+    }
+  }, [locationStatus, checkLocationPermission]);
 
   const {
     lastKnownLocation,
@@ -103,13 +114,14 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
     getLocation,
   } = useLocationStore();
 
-  // Mantiene nuestro sistema actual de GPS / Zustand / Socket.IO activo
+  // Mantiene nuestro sistema actual de GPS / Zustand / Socket.IO activo solo con permiso otorgado
   useEffect(() => {
+    if (!hasLocationPermission) return;
     watchLocation();
     return () => {
       clearWatchLocation();
     };
-  }, [watchLocation, clearWatchLocation]);
+  }, [hasLocationPermission, watchLocation, clearWatchLocation]);
 
   // Navegación giro a giro oficial de Google Navigation SDK durante el viaje activo
   const {
@@ -329,7 +341,7 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
         navigationUIEnabledPreference={NavigationUIEnabledPreference.DISABLED}
         mapStyle={DARK_MAP_STYLE_JSON}
         mapPadding={mapPadding}
-        myLocationEnabled={showUserLocation}
+        myLocationEnabled={showUserLocation && hasLocationPermission}
         myLocationButtonEnabled={false}
         compassEnabled={false}
         mapToolbarEnabled={false}
