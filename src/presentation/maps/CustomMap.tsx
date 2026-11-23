@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  AppState,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -101,10 +102,14 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
   const hasLocationPermission = locationStatus === PermissionStatus.GRANTED;
 
   useEffect(() => {
-    if (locationStatus === PermissionStatus.CHECKING) {
-      void checkLocationPermission();
-    }
-  }, [locationStatus, checkLocationPermission]);
+    void checkLocationPermission();
+    const sub = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        void checkLocationPermission();
+      }
+    });
+    return () => sub.remove();
+  }, [checkLocationPermission]);
 
   const {
     lastKnownLocation,
