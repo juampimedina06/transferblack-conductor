@@ -16,7 +16,8 @@ export type OfferSoundTone =
   | 'black_pulse'
   | 'executive_sonar'
   | 'gold_chord'
-  | 'turbo_dispatch';
+  | 'turbo_dispatch'
+  | 'transfer_voice';
 
 interface DriverOverlayNativeModule {
   canDrawOverlays?: () => Promise<boolean>;

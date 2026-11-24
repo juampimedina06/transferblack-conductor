@@ -33,9 +33,13 @@ import { pushNotificationService } from '../../core/push/services/pushNotificati
 import { DispatchSuspensionBanner } from '../../presentation/components/dashboard/DispatchSuspensionBanner';
 import { ComplianceRenewalBanner } from '../../presentation/components/compliance/ComplianceRenewalBanner';
 import { useDriverStatusStore } from '../../presentation/driver/store/useDriverStatusStore';
+import { updateDriverAvailability } from '../../core/driver/actions/driverStatus.actions';
 import { requestBackgroundLocationPermission } from '../../core/location/actions/permissions.actions';
 import { PermissionStatus } from '../../core/location/interface/permission.interface';
-import { startBackgroundLocationTracking } from '../../core/location/tasks/backgroundLocationTask';
+import {
+  startBackgroundLocationTracking,
+  stopBackgroundLocationTracking,
+} from '../../core/location/tasks/backgroundLocationTask';
 import { driverOverlay } from '../../core/overlay/driverOverlay';
 import {
   cancelPeerAlert,
@@ -60,10 +64,14 @@ export default function DriverDashboardScreen() {
   const [sosOpenTripId, setSosOpenTripId] = useState<string | null>(null);
   const [bottomHeight, setBottomHeight] = useState(100);
 
-  const hasActiveTrip = !!activeTrip;
+  const myActivePeerAlert = usePeerAlertStore((state) => state.myActiveAlert);
+  const setMyActivePeerAlert = usePeerAlertStore((state) => state.setMyActiveAlert);
+  const hasActivePeerAlert = !!myActivePeerAlert;
+
+  const hasActiveTrip = !!activeTrip && activeTrip.status !== 'completed' && activeTrip.status !== 'cancelled';
   const activeTripId = activeTrip?.id ?? null;
 
-  const { location, errorMsg } = useDriverLocation(isAvailable || hasActiveTrip);
+  const { location, errorMsg } = useDriverLocation(isAvailable || hasActiveTrip || hasActivePeerAlert);
   const { stats } = useDashboardStats(isAvailable);
   const { summary, fetchSummary } = useWalletStore();
   const { refreshAvatarUrl } = useProfileAvatar();
@@ -91,12 +99,12 @@ export default function DriverDashboardScreen() {
   useTripSocket();
   useTripTelemetry();
 
-  // Manejo declarativo de la conexión del socket (activo si está disponible o en viaje)
+  // Manejo declarativo de la conexión del socket (activo si está disponible, en viaje o con carita activa)
   useEffect(() => {
     let isCancelled = false;
 
     const manageSocketConnection = async () => {
-      if (isAvailable || hasActiveTrip) {
+      if (isAvailable || hasActiveTrip || hasActivePeerAlert) {
         const token = await authStorage.getAccessToken();
         if (token && !isCancelled) {
           if (!socket.connected) {
@@ -115,7 +123,7 @@ export default function DriverDashboardScreen() {
     return () => {
       isCancelled = true;
     };
-  }, [isAvailable, hasActiveTrip]);
+  }, [isAvailable, hasActiveTrip, hasActivePeerAlert]);
 
   // Sincroniza el estado del viaje activo con GET /driver/me/active-trip al abrir o montar la app
   useActiveTripSync();
@@ -124,8 +132,6 @@ export default function DriverDashboardScreen() {
   usePeerSafetySocket();
   useDrivingTimeSync();
 
-  const myActivePeerAlert = usePeerAlertStore((state) => state.myActiveAlert);
-  const setMyActivePeerAlert = usePeerAlertStore((state) => state.setMyActiveAlert);
   const [isSilentAlertBusy, setIsSilentAlertBusy] = useState(false);
 
   const handleTriggerSilentAlert = async (): Promise<void> => {
@@ -168,6 +174,8 @@ export default function DriverDashboardScreen() {
 
   const toggleAvailability = (value: boolean) => {
     setIsAvailable(value);
+    void updateDriverAvailability(value ? 'online' : 'offline').catch(() => {});
+
     if (value) {
       void requestBackgroundLocationPermission()
         .then((status) => {
@@ -183,16 +191,23 @@ export default function DriverDashboardScreen() {
     } else {
       void driverOverlay.hideOfferOverlay();
       void driverOverlay.hideFloatingBubble();
+      if (!hasActiveTrip && !hasActivePeerAlert) {
+        void stopBackgroundLocationTracking();
+      }
     }
   };
 
   const performLogout = async () => {
     setIsAvailable(false);
-    socket.disconnect();
-    await pushNotificationService.revoke();
-
     const trip = useDriverTripStore.getState().activeTrip;
     const isTripLive = !!trip && trip.status !== 'completed' && trip.status !== 'cancelled';
+
+    if (!isTripLive) {
+      await updateDriverAvailability('offline').catch(() => {});
+      await stopBackgroundLocationTracking();
+    }
+    socket.disconnect();
+    await pushNotificationService.revoke();
 
     // Un viaje en curso NO se borra. Es el unico id del viaje que la app tiene,
     // y no hay forma de recuperarlo si se pierde: no existe endpoint de "mi

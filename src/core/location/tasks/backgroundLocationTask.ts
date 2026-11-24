@@ -3,6 +3,7 @@ import * as TaskManager from 'expo-task-manager';
 import { Platform } from 'react-native';
 import { authStorage } from '../../../presentation/auth/store/authStorage';
 import { useLocationStore } from '../../../presentation/maps/store/useLocationStore';
+import { usePeerAlertStore } from '../../../presentation/safety/store/usePeerAlertStore';
 import { useDriverTripStore } from '../../../presentation/trip/store/useDriverTripStore';
 import { transferApi } from '../../api/transferApi';
 import { LocationReading } from '../interface/telemetry.interface';
@@ -68,13 +69,14 @@ export async function executeBackgroundLocationTask(
   });
 
   const { isAvailable, activeTrip } = useDriverTripStore.getState();
+  const hasActivePeerAlert = Boolean(usePeerAlertStore.getState().myActiveAlert);
   const isTripActive =
     !!activeTrip?.id &&
     activeTrip.status !== 'completed' &&
     activeTrip.status !== 'cancelled' &&
     activeTrip.status !== 'draft';
 
-  if (!isAvailable && !isTripActive) {
+  if (!isAvailable && !isTripActive && !hasActivePeerAlert) {
     return;
   }
 

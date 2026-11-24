@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  Linking,
   Modal,
-  Platform,
   Text,
   TouchableOpacity,
   View,
@@ -21,25 +19,6 @@ import { useLocationStore } from '@/presentation/maps/store/useLocationStore';
 import { usePeerAlertStore } from '@/presentation/safety/store/usePeerAlertStore';
 import { useBannerNotificationStore } from '@/presentation/notifications/store/useBannerNotificationStore';
 
-const openExternalNavigation = async (lat: number, lng: number): Promise<void> => {
-  const url = Platform.select({
-    ios: `maps://?daddr=${lat},${lng}&dirflg=d`,
-    android: `google.navigation:q=${lat},${lng}`,
-    default: `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`,
-  });
-  const fallbackUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
-
-  try {
-    if (url && (await Linking.canOpenURL(url))) {
-      await Linking.openURL(url);
-      return;
-    }
-    await Linking.openURL(fallbackUrl);
-  } catch {
-    // Ignorar si no hay app de mapas disponible
-  }
-};
-
 export const PeerAlertModals: React.FC = () => {
   const insets = useSafeAreaInsets();
   const location = useLocationStore((state) => state.lastKnownLocation);
@@ -47,6 +26,7 @@ export const PeerAlertModals: React.FC = () => {
   const followingAlert = usePeerAlertStore((state) => state.followingAlert);
   const setIncomingAlert = usePeerAlertStore((state) => state.setIncomingAlert);
   const setFollowingAlert = usePeerAlertStore((state) => state.setFollowingAlert);
+  const requestFocusOnPeer = usePeerAlertStore((state) => state.requestFocusOnPeer);
   const showBanner = useBannerNotificationStore((state) => state.show);
 
   const [isFollowingBusy, setIsFollowingBusy] = useState(false);
@@ -71,11 +51,19 @@ export const PeerAlertModals: React.FC = () => {
         plate: response.plate,
         lat: response.lat,
         lng: response.lng,
+        heading: null,
+        speed: null,
         updatedAt: new Date().toISOString(),
       });
       setIncomingAlert(null);
+      requestFocusOnPeer();
 
-      void openExternalNavigation(response.lat, response.lng);
+      showBanner({
+        title: 'Retaguardia activa en mapa',
+        message: `Viendo la posición en vivo de ${response.driverName} directamente en tu mapa.`,
+        type: 'info',
+        durationMs: 4000,
+      });
     } catch {
       showBanner({
         title: 'No se pudo conectar',
@@ -86,6 +74,11 @@ export const PeerAlertModals: React.FC = () => {
     } finally {
       setIsFollowingBusy(false);
     }
+  };
+
+  const handleCenterOnPeer = (): void => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    requestFocusOnPeer();
   };
 
   const handleStopFollowing = async (): Promise<void> => {
@@ -156,7 +149,7 @@ export const PeerAlertModals: React.FC = () => {
               disabled={isFollowingBusy}
               activeOpacity={0.85}
               accessibilityRole="button"
-              accessibilityLabel="Seguir al compañero como retaguardia"
+              accessibilityLabel="Ver vehículo del compañero en el mapa"
               className="w-full h-[52px] rounded-2xl bg-gold items-center justify-center flex-row"
             >
               {isFollowingBusy ? (
@@ -164,13 +157,13 @@ export const PeerAlertModals: React.FC = () => {
               ) : (
                 <>
                   <Ionicons
-                    name="navigate"
+                    name="car-sport"
                     size={18}
                     color="#0A0A0C"
                     style={{ marginRight: 8 }}
                   />
                   <Text className="text-obsidian font-montserrat-bold text-sm">
-                    Seguir (Retaguardia)
+                    Ver auto en mapa (Retaguardia)
                   </Text>
                 </>
               )}
@@ -192,34 +185,46 @@ export const PeerAlertModals: React.FC = () => {
         </View>
       </Modal>
 
-      {/* Banner flotante compacto mientras estás haciendo retaguardia */}
+      {/* Banner flotante compacto mientras estás viendo al compañero en el mapa de la app */}
       {followingAlert && (
         <View
           className="absolute left-4 right-4 z-[120]"
           style={{ top: Math.max(insets.top, 12) + 8 }}
         >
-          <View className="rounded-2xl bg-[#11131A] border border-gold/40 px-4 py-3 flex-row items-center justify-between">
-            <View className="flex-1 mr-3">
-              <Text className="text-gold font-montserrat-bold text-[10px] uppercase tracking-widest">
-                Siguiendo en retaguardia
-              </Text>
+          <View className="rounded-2xl bg-[#11131A]/95 border border-gold/50 px-4 py-3 flex-row items-center justify-between shadow-lg shadow-black">
+            <TouchableOpacity
+              onPress={handleCenterOnPeer}
+              activeOpacity={0.8}
+              className="flex-1 mr-3"
+              accessibilityRole="button"
+              accessibilityLabel={`Centrar mapa en el vehículo de ${followingAlert.driverName}`}
+            >
+              <View className="flex-row items-center">
+                <View className="w-2 h-2 rounded-full bg-emerald-400 mr-1.5" />
+                <Text className="text-gold font-montserrat-bold text-[10px] uppercase tracking-widest">
+                  Auto compañero en vivo
+                </Text>
+              </View>
               <Text numberOfLines={1} className="text-white font-montserrat-semibold text-sm mt-0.5">
                 {followingAlert.driverName}
                 {followingAlert.plate ? ` · ${followingAlert.plate}` : ''}
               </Text>
-            </View>
+              {followingAlert.vehicleLabel ? (
+                <Text numberOfLines={1} className="text-ash font-montserrat text-[11px] mt-0.5">
+                  {followingAlert.vehicleLabel}
+                </Text>
+              ) : null}
+            </TouchableOpacity>
 
             <View className="flex-row items-center gap-2">
               <TouchableOpacity
-                onPress={() => {
-                  void openExternalNavigation(followingAlert.lat, followingAlert.lng);
-                }}
+                onPress={handleCenterOnPeer}
                 activeOpacity={0.8}
                 accessibilityRole="button"
-                accessibilityLabel="Abrir ruta hacia el compañero"
+                accessibilityLabel="Centrar mapa en el auto del compañero"
                 className="w-11 h-11 rounded-full bg-gold items-center justify-center"
               >
-                <Ionicons name="navigate" size={18} color="#0A0A0C" />
+                <Ionicons name="locate" size={19} color="#0A0A0C" />
               </TouchableOpacity>
 
               <TouchableOpacity

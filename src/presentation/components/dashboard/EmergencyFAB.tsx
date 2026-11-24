@@ -46,7 +46,7 @@ export const EmergencyFAB = ({
     bottom: animatedBottom.get(),
   }));
 
-  const handleSilentLongPress = (): void => {
+  const handleSilentToggle = (): void => {
     if (isSilentAlertBusy) return;
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     if (isSilentAlertActive) {
@@ -56,29 +56,38 @@ export const EmergencyFAB = ({
     }
   };
 
+  const handleSilentPress = (): void => {
+    // Si la carita ya está enviando ubicación, tocarla de nuevo la detiene de inmediato.
+    if (isSilentAlertActive) {
+      handleSilentToggle();
+    }
+  };
+
   return (
     <Animated.View
       className="absolute left-4 z-[100] items-center gap-3"
       style={animatedStyle}
       pointerEvents="box-none"
     >
-      {/* Botón discreto de cara feliz (mantener presionado 1s para pedir/finalizar retaguardia) */}
+      {/* Botón discreto de cara feliz: envía ubicación continua hasta volver a presionarlo */}
       {(onTriggerSilentAlert || onCancelSilentAlert) && (
         <TouchableOpacity
-          onLongPress={handleSilentLongPress}
-          delayLongPress={1000}
+          onPress={handleSilentPress}
+          onLongPress={handleSilentToggle}
+          delayLongPress={800}
           disabled={isSilentAlertBusy}
           activeOpacity={0.85}
           hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
           className={`w-12 h-12 rounded-full items-center justify-center shadow-lg shadow-black/50 border relative ${
             isSilentAlertActive
-              ? 'bg-[#141720] border-gold/70'
+              ? 'bg-[#141720] border-gold/80'
               : 'bg-[#12141C]/95 border-white/15'
           }`}
           accessibilityRole="button"
+          accessibilityState={{ selected: isSilentAlertActive }}
           accessibilityLabel={
             isSilentAlertActive
-              ? 'Mantener presionado para finalizar aviso silencioso'
+              ? 'Presionar para finalizar el envío de ubicación a compañeros'
               : 'Mantener presionado para enviar aviso silencioso a compañeros cercanos'
           }
         >

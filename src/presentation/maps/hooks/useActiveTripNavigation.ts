@@ -190,6 +190,28 @@ export function useActiveTripNavigation({
   // Sincroniza el destino del navegador nativo con el viaje activo del backend
   useEffect(() => {
     let isCancelled = false;
+    const settleTimers: ReturnType<typeof setTimeout>[] = [];
+
+    const applyTiltedFollowCamera = async () => {
+      if (isCancelled || !navViewControllerRef.current) return;
+      try {
+        await navViewControllerRef.current.setNavigationUIEnabled(true);
+        await navViewControllerRef.current.setFollowingPerspective(
+          CameraPerspective.TILTED
+        );
+      } catch {
+        // No-op si el controlador nativo aún no terminó el layout
+      }
+    };
+
+    const scheduleCameraSettlePasses = () => {
+      for (const delayMs of [180, 600]) {
+        const timer = setTimeout(() => {
+          void applyTiltedFollowCamera();
+        }, delayMs);
+        settleTimers.push(timer);
+      }
+    };
 
     const stopNavigationSession = async () => {
       if (!activeRouteKeyRef.current && !isSessionInitializedRef.current) {
@@ -214,17 +236,9 @@ export function useActiveTripNavigation({
 
     const startOrUpdateNavigation = async (destination: ActiveTripDestination) => {
       if (activeRouteKeyRef.current === destination.key) {
-        // Si el NavigationViewController acaba de montarse, asegurar UI activa
-        if (navViewControllerRef.current) {
-          try {
-            await navViewControllerRef.current.setNavigationUIEnabled(true);
-            await navViewControllerRef.current.setFollowingPerspective(
-              CameraPerspective.TILTED
-            );
-          } catch {
-            // No-op
-          }
-        }
+        // Si el NavigationViewController acaba de montarse o cambió el layout, asegurar perspectiva 3D activa
+        await applyTiltedFollowCamera();
+        scheduleCameraSettlePasses();
         return;
       }
 
@@ -338,15 +352,12 @@ export function useActiveTripNavigation({
 
         // 4. Iniciar guía giro a giro y habilitar UI nativa en perspectiva 3D
         await navigationController.startGuidance();
-        await navViewControllerRef.current?.setNavigationUIEnabled(true);
-        await navViewControllerRef.current?.setFollowingPerspective(
-          CameraPerspective.TILTED
-        );
-
         activeRouteKeyRef.current = destination.key;
         if (!isCancelled) {
           setIsNavigating(true);
         }
+        await applyTiltedFollowCamera();
+        scheduleCameraSettlePasses();
       } catch (error) {
         console.warn('[GoogleNavigationSDK] Error iniciando guía:', error);
         if (!isCancelled) {
@@ -367,6 +378,9 @@ export function useActiveTripNavigation({
 
     return () => {
       isCancelled = true;
+      for (const timer of settleTimers) {
+        clearTimeout(timer);
+      }
     };
   }, [
     AudioGuidanceMode.SILENT,
