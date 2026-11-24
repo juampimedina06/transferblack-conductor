@@ -76,7 +76,9 @@ export function usePeerSafetySocket(): void {
           payload.alertId,
           payload.lat,
           payload.lng,
-          payload.updatedAt
+          payload.updatedAt,
+          payload.heading ?? null,
+          payload.speed ?? null
         );
     };
 

@@ -12,6 +12,12 @@ interface ScheduledTripCardProps {
 }
 
 export const ScheduledTripCard = ({ trip, onPress }: ScheduledTripCardProps) => {
+  const isActionableOffer = trip.status === 'searching';
+  const isLiveAssigned =
+    trip.status === 'assigned' ||
+    trip.status === 'driver_arriving' ||
+    trip.status === 'driver_arrived' ||
+    trip.status === 'in_progress';
   const isThirdParty = Boolean(trip.thirdPartyName);
   const passengerName = isThirdParty
     ? `Viaja: ${trip.thirdPartyName}`
@@ -222,11 +228,29 @@ export const ScheduledTripCard = ({ trip, onPress }: ScheduledTripCardProps) => 
             <Text className="text-white/50 font-montserrat text-[10px] mb-1" style={{ fontVariant: ['tabular-nums'] }}>
               Total: ${Number(trip.fare || 0).toLocaleString('es-AR')}
             </Text>
-            <View className="flex-row items-center bg-white/[0.06] border border-white/15 px-3 py-1 rounded-full">
-              <Text className="text-platinum font-montserrat-semibold text-[10px] uppercase tracking-wider mr-1">
-                Ver Ficha
+            <View
+              className={`flex-row items-center px-3 py-1.5 rounded-full border ${
+                isActionableOffer || isLiveAssigned
+                  ? 'bg-gold border-gold'
+                  : 'bg-white/[0.06] border-white/15'
+              }`}
+            >
+              <Text
+                className={`font-montserrat-bold text-[10px] uppercase tracking-wider mr-1 ${
+                  isActionableOffer || isLiveAssigned ? 'text-obsidian' : 'text-platinum'
+                }`}
+              >
+                {isActionableOffer
+                  ? 'Aceptar Reserva'
+                  : isLiveAssigned
+                    ? 'Ir al Viaje'
+                    : 'Ver Ficha'}
               </Text>
-              <Ionicons name="chevron-forward" size={12} color={THEME_COLORS.gold} />
+              <Ionicons
+                name="chevron-forward"
+                size={12}
+                color={isActionableOffer || isLiveAssigned ? '#0A0A0C' : THEME_COLORS.gold}
+              />
             </View>
           </View>
         </View>

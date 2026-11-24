@@ -134,6 +134,22 @@ export const TripOfferCard: React.FC<TripOfferCardProps> = ({
   const pickupDistance = (offer?.pickup as any)?.distanceKm;
 
   const isThirdParty = Boolean(offer?.third_party?.name);
+  const isScheduledOffer =
+    offer?.bookingType === 'scheduled' || Boolean(offer?.scheduledAt);
+  const scheduledTimeLabel = (() => {
+    if (!offer?.scheduledAt) return null;
+    try {
+      const d = new Date(offer.scheduledAt);
+      if (Number.isNaN(d.getTime())) return null;
+      return d.toLocaleTimeString('es-AR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      });
+    } catch {
+      return null;
+    }
+  })();
   const passengerName = isThirdParty
     ? `Viaja: ${offer.third_party?.name}`
     : offer?.passenger?.fullName || 'Pasajero Ejecutivo';
@@ -215,6 +231,14 @@ export const TripOfferCard: React.FC<TripOfferCardProps> = ({
                 {offer?.passenger?.category || 'TRANSFERBLACK VIP'}
               </Text>
             </View>
+            {isScheduledOffer && (
+              <View className="flex-row items-center bg-sky-500/20 border border-sky-400/45 px-2.5 py-1 rounded-full ml-2">
+                <Ionicons name="calendar" size={11} color="#38BDF8" />
+                <Text className="font-montserrat-bold text-[10px] text-sky-300 ml-1">
+                  {scheduledTimeLabel ? `Reserva ${scheduledTimeLabel} hs` : 'Reserva'}
+                </Text>
+              </View>
+            )}
             {(offer?.stops?.length ?? 0) > 0 && (
               <View className="bg-amber-500/15 border border-amber-400/40 px-2.5 py-1 rounded-full ml-2">
                 <Text className="font-montserrat-bold text-[10px] text-amber-300">

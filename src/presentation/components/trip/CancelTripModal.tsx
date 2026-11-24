@@ -17,6 +17,7 @@ import {
 } from '@/core/driver/interface/driverStatus.interface';
 import { driverCancelTrip } from '@/core/trip/actions/trip.actions';
 import { useDriverStatusStore } from '@/presentation/driver/store/useDriverStatusStore';
+import { useLocationStore } from '@/presentation/maps/store/useLocationStore';
 import { useDriverTripStore } from '@/presentation/trip/store/useDriverTripStore';
 import { LatLng } from '@/core/location/interface/latLng.interface';
 
@@ -79,8 +80,12 @@ export const CancelTripModal: React.FC<CancelTripModalProps> = ({
         }
       }
 
-      // Cerrar viaje en el store local
+      // Cerrar viaje en el store local manteniendo disponibilidad activa y refrescando sensor GPS
+      if (!cancellation?.suspension) {
+        useDriverTripStore.getState().setIsAvailable(true);
+      }
       useDriverTripStore.getState().setActiveTrip(null);
+      void useLocationStore.getState().restartWatchLocation();
       void fetchStatus();
 
       // Mostrar feedback si hubo advertencia o suspensión informada por el backend

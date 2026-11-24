@@ -12,23 +12,23 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { transferApi } from '../../../core/api/transferApi';
+import { getActiveDriverVehicleId } from '../../../core/driver/actions/driverStatus.actions';
+import { formatDrivingDuration } from '../../../core/driver/interface/drivingTime.interface';
+import { isComplianceBlockingOnline } from '../../../core/driver/utils/documentCompliance.utils';
+import { driverOverlay } from '../../../core/overlay/driverOverlay';
 import { acceptTripOffer, driverArriving } from '../../../core/trip/actions/trip.actions';
 import { Trip } from '../../../core/trip/interface/trip.interface';
-import { useLocationStore } from '../../maps/store/useLocationStore';
-import { useDriverTripStore } from '../../trip/store/useDriverTripStore';
 import { useAuthStore } from '../../auth/store/useAuthStore';
-import { AmbientGlow } from '../ui/AmbientGlow';
-import { offerAlarmService } from '../../trip/services/offerAlarmService';
-import { driverOverlay } from '../../../core/overlay/driverOverlay';
 import { useDriverStatusStore } from '../../driver/store/useDriverStatusStore';
-import { isComplianceBlockingOnline } from '../../../core/driver/utils/documentCompliance.utils';
 import { useDrivingTimeStore } from '../../driver/store/useDrivingTimeStore';
-import { formatDrivingDuration } from '../../../core/driver/interface/drivingTime.interface';
+import { useLegalStore } from '../../legal/store/useLegalStore';
+import { useLocationStore } from '../../maps/store/useLocationStore';
+import { offerAlarmService } from '../../trip/services/offerAlarmService';
+import { useDriverTripStore } from '../../trip/store/useDriverTripStore';
 import { DocumentExpirationBlockModal } from '../compliance/DocumentExpirationBlockModal';
 import { TermsAcceptanceModal } from '../legal/TermsAcceptanceModal';
-import { useLegalStore } from '../../legal/store/useLegalStore';
 import { TripOfferCard } from '../trip/TripOfferCard';
+import { AmbientGlow } from '../ui/AmbientGlow';
 
 interface ConnectionBottomSheetProps {
   isAvailable: boolean;
@@ -77,9 +77,9 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
   const restUntilFormatted =
     isRestLocked && drivingTime?.restUntil
       ? new Date(drivingTime.restUntil).toLocaleTimeString('es-AR', {
-          hour: '2-digit',
-          minute: '2-digit',
-        })
+        hour: '2-digit',
+        minute: '2-digit',
+      })
       : '';
   const drivingProgressPercent =
     drivingTime && drivingTime.maxSeconds > 0
@@ -114,21 +114,9 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
     let isMounted = true;
 
     const fetchVehicle = async () => {
-      try {
-        const res = await transferApi.get('/driver/me');
-        const vid =
-          res.data?.data?.vehicle?.id ||
-          res.data?.data?.driverProfile?.vehicles?.[0]?.id ||
-          res.data?.vehicle?.id ||
-          res.data?.data?.vehicleId;
-
-        if (isMounted && vid) {
-          setVehicleId(vid);
-        }
-      } catch (err: any) {
-        if (err?.response?.status !== 404) {
-          console.warn('Could not load vehicle from /driver/me:', err?.response?.data || err?.message);
-        }
+      const vid = await getActiveDriverVehicleId();
+      if (isMounted && vid) {
+        setVehicleId(vid);
       }
     };
 
@@ -189,18 +177,9 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
 
     let activeVehicle = vehicleId;
     if (!activeVehicle) {
-      try {
-        const res = await transferApi.get('/driver/me');
-        activeVehicle =
-          res.data?.data?.vehicle?.id ||
-          res.data?.data?.driverProfile?.vehicles?.[0]?.id ||
-          res.data?.vehicle?.id ||
-          res.data?.data?.vehicleId;
-        if (activeVehicle) {
-          setVehicleId(activeVehicle);
-        }
-      } catch (e: any) {
-        console.warn('Error fetching vehicle on accept:', e?.response?.data || e?.message);
+      activeVehicle = await getActiveDriverVehicleId();
+      if (activeVehicle) {
+        setVehicleId(activeVehicle);
       }
     }
 
@@ -263,9 +242,9 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
           is_third_party_trip: Boolean(arrivingTripData?.third_party || currentOffer.third_party),
           third_party: arrivingTripData?.third_party
             ? {
-                name: arrivingTripData.third_party.name,
-                phone_e164: arrivingTripData.third_party.phone_e164,
-              }
+              name: arrivingTripData.third_party.name,
+              phone_e164: arrivingTripData.third_party.phone_e164,
+            }
             : undefined,
         },
       };
@@ -310,24 +289,22 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
     <View
       onLayout={(e) => onHeightChange?.(e.nativeEvent.layout.height)}
       key="connection-bottom-bar"
-      className={`absolute bottom-0 left-0 right-0 w-full bg-[#090A0F]/96 rounded-t-[32px] border-t shadow-2xl shadow-black z-50 overflow-hidden ${
-        isAvailable
+      className={`absolute bottom-0 left-0 right-0 w-full bg-[#090A0F]/96 rounded-t-[32px] border-t shadow-2xl shadow-black z-50 overflow-hidden ${isAvailable
           ? isSuspended
             ? 'border-amber-500/40'
             : 'border-emerald-500/40'
           : 'border-gold/45'
-      }`}
+        }`}
       style={{ paddingBottom: Math.max(insets.bottom, 18) }}
     >
       {/* Top Specular Edge Glass Highlight */}
       <View
-        className={`absolute top-0 left-10 right-10 h-[1px] pointer-events-none ${
-          isAvailable
+        className={`absolute top-0 left-10 right-10 h-[1px] pointer-events-none ${isAvailable
             ? isSuspended
               ? 'bg-amber-400/50'
               : 'bg-emerald-400/50'
             : 'bg-gold/55'
-        }`}
+          }`}
       />
 
       {/* Ambient Glow Flare */}
@@ -376,11 +353,10 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
                   ]}
                 />
                 <View
-                  className={`w-9 h-9 rounded-full items-center justify-center border ${
-                    isSuspended
+                  className={`w-9 h-9 rounded-full items-center justify-center border ${isSuspended
                       ? 'bg-amber-500/20 border-amber-400'
                       : 'bg-emerald-500/20 border-emerald-400'
-                  }`}
+                    }`}
                 >
                   <Ionicons
                     name="radio"
@@ -400,13 +376,12 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
 
             <View className="flex-1">
               <Text
-                className={`font-montserrat-bold text-[9px] uppercase tracking-widest mb-0.5 ${
-                  isAvailable
+                className={`font-montserrat-bold text-[9px] uppercase tracking-widest mb-0.5 ${isAvailable
                     ? isSuspended
                       ? 'text-amber-400'
                       : 'text-emerald-400'
                     : 'text-gold'
-                }`}
+                  }`}
               >
                 {isAvailable
                   ? isSuspended
@@ -463,13 +438,12 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
               }
               onToggleAvailability(!isAvailable);
             }}
-            className={`h-12 px-5 rounded-2xl border flex-row items-center justify-center relative overflow-hidden shadow-lg ${
-              isAvailable
+            className={`h-12 px-5 rounded-2xl border flex-row items-center justify-center relative overflow-hidden shadow-lg ${isAvailable
                 ? 'bg-red-500/15 border-red-500/45 shadow-black'
                 : isRestLocked
-                ? 'bg-amber-500/15 border-amber-400/45 shadow-black'
-                : 'bg-gold border-gold shadow-gold/25'
-            }`}
+                  ? 'bg-amber-500/15 border-amber-400/45 shadow-black'
+                  : 'bg-gold border-gold shadow-gold/25'
+              }`}
           >
             <View className="absolute top-0 left-2 right-2 h-[1px] bg-white/35 pointer-events-none" />
             <Ionicons
@@ -481,13 +455,12 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
               style={{ marginRight: 7 }}
             />
             <Text
-              className={`font-montserrat-bold text-xs tracking-wider uppercase ${
-                isAvailable
+              className={`font-montserrat-bold text-xs tracking-wider uppercase ${isAvailable
                   ? 'text-red-400'
                   : isRestLocked
-                  ? 'text-amber-300'
-                  : 'text-obsidian'
-              }`}
+                    ? 'text-amber-300'
+                    : 'text-obsidian'
+                }`}
             >
               {isAvailable ? 'Desconectar' : isRestLocked ? 'Descanso' : 'Conectar'}
             </Text>
@@ -499,13 +472,12 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
           <View className="mt-3 pt-2.5 border-t border-white/[0.07]">
             <View className="flex-row items-center justify-between mb-1.5">
               <Text
-                className={`font-montserrat-medium text-[11px] ${
-                  isRestLocked
+                className={`font-montserrat-medium text-[11px] ${isRestLocked
                     ? 'text-amber-300'
                     : isDrivingLowRemaining
-                    ? 'text-amber-400'
-                    : 'text-white/55'
-                }`}
+                      ? 'text-amber-400'
+                      : 'text-white/55'
+                  }`}
                 style={{ fontVariant: ['tabular-nums'] }}
               >
                 {isRestLocked
@@ -513,13 +485,12 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
                   : `Jornada ${formatDrivingDuration(drivingTime.accumulatedSeconds)} / ${formatDrivingDuration(drivingTime.maxSeconds)}`}
               </Text>
               <Text
-                className={`font-montserrat-semibold text-[11px] ${
-                  isRestLocked
+                className={`font-montserrat-semibold text-[11px] ${isRestLocked
                     ? 'text-amber-300'
                     : isDrivingLowRemaining
-                    ? 'text-amber-400'
-                    : 'text-white/75'
-                }`}
+                      ? 'text-amber-400'
+                      : 'text-white/75'
+                  }`}
                 style={{ fontVariant: ['tabular-nums'] }}
               >
                 {isRestLocked
@@ -529,9 +500,8 @@ export const ConnectionBottomSheet = ({ isAvailable, onToggleAvailability, onHei
             </View>
             <View className="w-full h-1 rounded-full bg-white/[0.08] overflow-hidden">
               <View
-                className={`h-full rounded-full ${
-                  isRestLocked || isDrivingLowRemaining ? 'bg-amber-400' : 'bg-gold'
-                }`}
+                className={`h-full rounded-full ${isRestLocked || isDrivingLowRemaining ? 'bg-amber-400' : 'bg-gold'
+                  }`}
                 style={{ width: `${isRestLocked ? 100 : drivingProgressPercent}%` }}
               />
             </View>

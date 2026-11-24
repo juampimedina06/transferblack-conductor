@@ -139,6 +139,7 @@ const SOUND_TONE_OPTIONS: {
   description: string;
 }[] = [
   { value: 'executive_sonar', label: 'Radar VIP', description: 'Pulso de despacho' },
+  { value: 'transfer_voice', label: 'Voz Transfer', description: 'Voz femenina Transfer' },
   { value: 'black_pulse', label: 'Black Pulse', description: 'Firma Transfer Black' },
   { value: 'gold_chord', label: 'Acorde Gold', description: 'Campana ejecutiva' },
   { value: 'turbo_dispatch', label: 'Despacho Pro', description: 'Máxima presencia' },

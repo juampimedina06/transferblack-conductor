@@ -47,3 +47,40 @@ export async function getDriverDocuments(): Promise<DriverDocumentItem[]> {
     rejectionReason: item.rejectionReason || null,
   }));
 }
+
+/**
+ * Sincroniza explícitamente la disponibilidad operativa del conductor en el backend
+ * (`online` | `offline`) para que el despacho de reservas y el mapa en vivo del panel
+ * reflejen el cambio de estado de inmediato sin depender del timeout del socket.
+ */
+export async function updateDriverAvailability(
+  status: 'online' | 'offline'
+): Promise<void> {
+  await transferApi.put('/driver/me/availability', {
+    status,
+    availabilityStatus: status,
+  });
+}
+
+/**
+ * Resuelve de forma segura el ID del vehículo aprobado/activo del conductor desde `GET /driver/me`.
+ */
+export async function getActiveDriverVehicleId(): Promise<string | null> {
+  try {
+    const res = await transferApi.get('/driver/me');
+    const body = res.data;
+    const candidate =
+      body?.data?.vehicle?.id ??
+      body?.vehicle?.id ??
+      body?.data?.driverProfile?.vehicles?.[0]?.id ??
+      body?.driverProfile?.vehicles?.[0]?.id ??
+      body?.data?.vehicles?.[0]?.id ??
+      body?.vehicles?.[0]?.id ??
+      body?.data?.vehicleId ??
+      body?.vehicleId ??
+      null;
+    return typeof candidate === 'string' && candidate.length > 0 ? candidate : null;
+  } catch {
+    return null;
+  }
+}

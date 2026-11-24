@@ -1,34 +1,60 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import {
-  View,
-  Text,
-  Modal,
-  TouchableOpacity,
-  ScrollView,
-  Linking,
+  ActivityIndicator,
   Alert,
+  Linking,
+  Modal,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { useQuery } from '@tanstack/react-query';
-import { getTripById } from '../../../core/trip/actions/trip.actions';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  acceptTripOffer,
+  driverArriving,
+  DriverScheduledTrip,
+  getPendingDriverOffers,
+  getTripById,
+} from '../../../core/trip/actions/trip.actions';
+import {
+  getActiveDriverVehicleId,
+  updateDriverAvailability,
+} from '../../../core/driver/actions/driverStatus.actions';
 import { THEME_COLORS } from '../../../core/constants/theme';
 import { SkeletonBox } from '@/presentation/components/ui/SkeletonBox';
+import { useLocationStore } from '@/presentation/maps/store/useLocationStore';
+import { useDriverTripStore } from '@/presentation/trip/store/useDriverTripStore';
 import { LiquidGlassContainer } from '../ui/LiquidGlassContainer';
 import { AmbientGlow } from '../ui/AmbientGlow';
 
 interface ScheduledTripDetailModalProps {
   tripId: string | null;
+  summaryTrip?: DriverScheduledTrip | null;
   visible: boolean;
   onClose: () => void;
 }
 
 export const ScheduledTripDetailModal = ({
   tripId,
+  summaryTrip,
   visible,
   onClose,
 }: ScheduledTripDetailModalProps) => {
+  const queryClient = useQueryClient();
+  const [isActionLoading, setIsActionLoading] = useState(false);
+
+  const isAvailable = useDriverTripStore((state) => state.isAvailable);
+  const setIsAvailable = useDriverTripStore((state) => state.setIsAvailable);
+  const setActiveTrip = useDriverTripStore((state) => state.setActiveTrip);
+  const clearAllOffers = useDriverTripStore((state) => state.clearAllOffers);
+  const currentOffer = useDriverTripStore((state) => state.currentOffer);
+  const offerQueue = useDriverTripStore((state) => state.offerQueue);
+
   const {
     data: tripDetail,
     isLoading,
@@ -41,35 +67,64 @@ export const ScheduledTripDetailModal = ({
     retry: 1,
   });
 
+  const { data: pendingOffersData } = useQuery({
+    queryKey: ['driver', 'pending-offers', visible ? tripId : null],
+    queryFn: () => getPendingDriverOffers(),
+    enabled: Boolean(visible && tripId),
+    retry: 0,
+  });
+
+  const matchingPendingOffer = useMemo(() => {
+    if (!tripId) return null;
+    if (currentOffer?.tripId === tripId) return currentOffer;
+    const inQueue = offerQueue.find((q) => q.offer.tripId === tripId)?.offer;
+    if (inQueue) return inQueue;
+    return pendingOffersData?.offers?.find((o) => o.tripId === tripId) ?? null;
+  }, [currentOffer, offerQueue, pendingOffersData?.offers, tripId]);
+
+  const effectiveStatus = (tripDetail?.status as string | undefined) ?? summaryTrip?.status ?? 'scheduled';
+  const canAcceptNow = effectiveStatus === 'searching' || Boolean(matchingPendingOffer);
+  const isAssignedLive =
+    effectiveStatus === 'assigned' ||
+    effectiveStatus === 'driver_arriving' ||
+    effectiveStatus === 'driver_arrived' ||
+    effectiveStatus === 'in_progress';
+
   const errorMessage = error
     ? (error as any).status === 403
-      ? 'No tienes permiso para consultar el detalle de este viaje programado.'
-      : (error as any).message || 'No se pudo cargar la información del viaje. Intenta nuevamente.'
+      ? 'No tenés permiso para consultar el detalle de este viaje programado.'
+      : (error as any).message || 'No se pudo cargar la información del viaje. Intentá nuevamente.'
     : null;
 
   const rawThirdPartyName =
     tripDetail?.thirdPartyName ||
     tripDetail?.third_party?.name ||
-    tripDetail?.chat?.third_party?.name;
+    tripDetail?.chat?.third_party?.name ||
+    summaryTrip?.thirdPartyName;
   const rawThirdPartyPhone =
     tripDetail?.thirdPartyPhone ||
     tripDetail?.third_party?.phone_e164 ||
-    tripDetail?.chat?.third_party?.phone_e164;
+    tripDetail?.chat?.third_party?.phone_e164 ||
+    summaryTrip?.thirdPartyPhone;
 
   const isThirdParty = Boolean(rawThirdPartyName || tripDetail?.chat?.is_third_party_trip);
   const passengerName =
     isThirdParty && rawThirdPartyName
       ? `Viaja: ${rawThirdPartyName}`
-      : tripDetail?.passenger?.fullName || 'Pasajero Ejecutivo';
+      : tripDetail?.passenger?.fullName || summaryTrip?.passenger?.firstName || 'Pasajero Ejecutivo';
   const passengerPhone =
     isThirdParty && rawThirdPartyPhone
       ? rawThirdPartyPhone
-      : tripDetail?.passenger?.phone || '';
+      : tripDetail?.passenger?.phone || summaryTrip?.passenger?.phone || '';
+
+  const scheduledDateSource =
+    summaryTrip?.scheduledAt || tripDetail?.confirmed_at || tripDetail?.assigned_at;
 
   const formatScheduledDate = (dateStr?: string | null): string => {
     if (!dateStr) return 'Horario a confirmar';
     try {
       const d = new Date(dateStr);
+      if (Number.isNaN(d.getTime())) return dateStr;
       const datePart = d.toLocaleDateString('es-AR', {
         weekday: 'long',
         day: 'numeric',
@@ -100,6 +155,124 @@ export const ScheduledTripDetailModal = ({
     onClose();
   };
 
+  const resolveCurrentCoordinates = async () => {
+    const existing = useLocationStore.getState().lastKnownLocation;
+    if (existing) return existing;
+    return useLocationStore.getState().getLocation();
+  };
+
+  const handleAcceptScheduledTrip = async (): Promise<void> => {
+    if (!tripId || isActionLoading) return;
+
+    try {
+      setIsActionLoading(true);
+      const coords = await resolveCurrentCoordinates();
+      if (!coords) {
+        Alert.alert(
+          'Ubicación requerida',
+          'Necesitamos tu posición GPS actual para aceptar el viaje reservado.'
+        );
+        return;
+      }
+
+      const vehicleId = await getActiveDriverVehicleId();
+      if (!vehicleId) {
+        Alert.alert('Vehículo requerido', 'No se encontró un vehículo aprobado en tu perfil.');
+        return;
+      }
+
+      setIsAvailable(true);
+      await updateDriverAvailability('online').catch(() => {});
+
+      await acceptTripOffer(tripId, {
+        vehicle_id: vehicleId,
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+      });
+
+      await driverArriving(tripId, {
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+      }).catch(() => {});
+
+      const freshTrip = await getTripById(tripId);
+      setActiveTrip({
+        ...freshTrip,
+        status:
+          freshTrip.status === 'assigned' ? 'driver_arriving' : freshTrip.status,
+      });
+      clearAllOffers();
+
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      await queryClient.invalidateQueries({ queryKey: ['driver', 'scheduled-trips'] });
+      onClose();
+      router.replace('/(home)' as any);
+    } catch (err: any) {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert(
+        'No se pudo aceptar la reserva',
+        err?.message || 'Verificá estar en línea y que la reserva esté activa para despacho.'
+      );
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  const handleOpenAssignedTripOnMap = async (): Promise<void> => {
+    if (!tripId || isActionLoading) return;
+    try {
+      setIsActionLoading(true);
+      const coords = await resolveCurrentCoordinates();
+      const freshTrip = tripDetail ?? (await getTripById(tripId));
+
+      if (freshTrip.status === 'assigned' && coords) {
+        await driverArriving(tripId, {
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+        }).catch(() => {});
+      }
+
+      setIsAvailable(true);
+      setActiveTrip({
+        ...freshTrip,
+        status:
+          freshTrip.status === 'assigned' ? 'driver_arriving' : freshTrip.status,
+      });
+
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      onClose();
+      router.replace('/(home)' as any);
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'No se pudo abrir el viaje en el mapa.');
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  const handleGoOnlineForReservation = async (): Promise<void> => {
+    if (isActionLoading) return;
+    try {
+      setIsActionLoading(true);
+      await updateDriverAvailability('online');
+      setIsAvailable(true);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert(
+        'Ya estás En Línea',
+        'Quedaste conectado para recibir la activación automática de esta reserva 20 minutos antes del horario pactado.'
+      );
+    } catch (err: any) {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert(
+        'No se pudo conectar',
+        err?.response?.data?.error?.message ||
+          err?.message ||
+          'Revisá tu estado documental o descanso obligatorio antes de conectarte.'
+      );
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
   return (
     <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={handleClose}>
       <View className="flex-1 bg-obsidian">
@@ -124,9 +297,9 @@ export const ScheduledTripDetailModal = ({
                 <Text className="text-white font-montserrat-bold text-lg">
                   Detalle de Reserva
                 </Text>
-                {tripDetail?.public_code && (
+                {(tripDetail?.public_code || summaryTrip?.code) && (
                   <Text className="text-ash font-montserrat text-xs">
-                    Código #{tripDetail.public_code}
+                    Código #{tripDetail?.public_code || summaryTrip?.code}
                   </Text>
                 )}
               </View>
@@ -190,7 +363,7 @@ export const ScheduledTripDetailModal = ({
                       FECHA Y HORA PROGRAMADA
                     </Text>
                     <Text className="text-white font-montserrat-bold text-base">
-                      {formatScheduledDate(tripDetail.confirmed_at || tripDetail.assigned_at)}
+                      {formatScheduledDate(scheduledDateSource)}
                     </Text>
                   </View>
                 </View>
@@ -254,7 +427,7 @@ export const ScheduledTripDetailModal = ({
                         PUNTO DE PARTIDA
                       </Text>
                       <Text className="text-white font-montserrat-semibold text-sm leading-5">
-                        {tripDetail.pickup?.address || 'Ubicación de recogida'}
+                        {tripDetail.pickup?.address || summaryTrip?.origin?.address || 'Ubicación de recogida'}
                       </Text>
                     </View>
                   </View>
@@ -271,7 +444,7 @@ export const ScheduledTripDetailModal = ({
                         DESTINO FINAL
                       </Text>
                       <Text className="text-white font-montserrat-semibold text-sm leading-5">
-                        {tripDetail.dropoff?.address || 'Ubicación de destino'}
+                        {tripDetail.dropoff?.address || summaryTrip?.destination?.address || 'Ubicación de destino'}
                       </Text>
                     </View>
                   </View>
@@ -289,7 +462,7 @@ export const ScheduledTripDetailModal = ({
                       className="text-white font-montserrat-semibold text-xs"
                       style={{ fontVariant: ['tabular-nums'] }}
                     >
-                      ${Number(tripDetail.final_fare || tripDetail.estimated_fare || 0).toLocaleString('es-AR')} {tripDetail.currency || 'ARS'}
+                      ${Number(tripDetail.final_fare || tripDetail.estimated_fare || summaryTrip?.fare || 0).toLocaleString('es-AR')} {tripDetail.currency || 'ARS'}
                     </Text>
                   </View>
 
@@ -304,6 +477,7 @@ export const ScheduledTripDetailModal = ({
                       ${Number(
                         tripDetail.driver_earnings ||
                           tripDetail.fare_details?.netEarnings ||
+                          summaryTrip?.netEarnings ||
                           Math.round(Number(tripDetail.estimated_fare || 0) * 0.8)
                       ).toLocaleString('es-AR')}{' '}
                       <Text className="text-xs font-montserrat-semibold">{tripDetail.currency || 'ARS'}</Text>
@@ -313,27 +487,106 @@ export const ScheduledTripDetailModal = ({
               </LiquidGlassContainer>
 
               {/* Operational Advisory Pill */}
-              <View className="rounded-2xl p-4 mb-6 flex-row items-start bg-gold/10 border border-gold/30">
+              <View className="rounded-2xl p-4 mb-5 flex-row items-start bg-gold/10 border border-gold/30">
                 <Ionicons name="shield-checkmark-outline" size={20} color={THEME_COLORS.gold} />
                 <View className="flex-1 ml-3">
                   <Text className="text-gold font-montserrat-bold text-xs mb-1 uppercase tracking-wider">
                     Protocolo de Puntualidad VIP
                   </Text>
                   <Text className="text-ash font-montserrat text-xs leading-5">
-                    El despacho activará tu hoja de ruta automáticamente 20 minutos antes de la hora pactada. Mantené tu estado En Línea para confirmar recepción.
+                    {canAcceptNow
+                      ? 'Esta reserva ya está lista para ser aceptada e iniciar traslado.'
+                      : isAssignedLive
+                        ? 'Esta reserva ya está asignada a tu cuenta. Abrila en el mapa para iniciar la ruta hacia el pasajero.'
+                        : 'El despacho activará tu hoja de ruta automáticamente 20 minutos antes de la hora pactada. Mantené tu estado En Línea para recibirla directo.'}
                   </Text>
                 </View>
               </View>
 
+              {/* Primary Action CTA according to reservation status */}
+              {canAcceptNow ? (
+                <TouchableOpacity
+                  onPress={() => {
+                    void handleAcceptScheduledTrip();
+                  }}
+                  disabled={isActionLoading}
+                  className="w-full h-14 rounded-2xl items-center justify-center bg-gold active:opacity-90 mb-3 shadow-lg shadow-gold/25 flex-row"
+                  accessibilityRole="button"
+                  accessibilityLabel="Aceptar viaje reservado"
+                >
+                  {isActionLoading ? (
+                    <ActivityIndicator color="#0A0A0C" size="small" />
+                  ) : (
+                    <>
+                      <Ionicons name="checkmark-circle" size={20} color="#0A0A0C" style={{ marginRight: 8 }} />
+                      <Text className="font-montserrat-bold text-xs text-obsidian tracking-widest uppercase">
+                        ACEPTAR VIAJE RESERVADO
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              ) : isAssignedLive ? (
+                <TouchableOpacity
+                  onPress={() => {
+                    void handleOpenAssignedTripOnMap();
+                  }}
+                  disabled={isActionLoading}
+                  className="w-full h-14 rounded-2xl items-center justify-center bg-gold active:opacity-90 mb-3 shadow-lg shadow-gold/25 flex-row"
+                  accessibilityRole="button"
+                  accessibilityLabel="Abrir viaje reservado en el mapa"
+                >
+                  {isActionLoading ? (
+                    <ActivityIndicator color="#0A0A0C" size="small" />
+                  ) : (
+                    <>
+                      <Ionicons name="navigate" size={19} color="#0A0A0C" style={{ marginRight: 8 }} />
+                      <Text className="font-montserrat-bold text-xs text-obsidian tracking-widest uppercase">
+                        ABRIR VIAJE EN EL MAPA
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              ) : !isAvailable ? (
+                <TouchableOpacity
+                  onPress={() => {
+                    void handleGoOnlineForReservation();
+                  }}
+                  disabled={isActionLoading}
+                  className="w-full h-14 rounded-2xl items-center justify-center bg-gold active:opacity-90 mb-3 shadow-lg shadow-gold/25 flex-row"
+                  accessibilityRole="button"
+                  accessibilityLabel="Conectarme para recibir esta reserva"
+                >
+                  {isActionLoading ? (
+                    <ActivityIndicator color="#0A0A0C" size="small" />
+                  ) : (
+                    <>
+                      <Ionicons name="power" size={18} color="#0A0A0C" style={{ marginRight: 8 }} />
+                      <Text className="font-montserrat-bold text-xs text-obsidian tracking-widest uppercase">
+                        CONECTARME PARA RECIBIR RESERVA
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              ) : null}
+
               {/* Close Button */}
               <TouchableOpacity
                 onPress={handleClose}
-                className="w-full h-14 rounded-2xl items-center justify-center bg-gold active:opacity-90 mb-8 shadow-lg shadow-gold/25"
+                disabled={isActionLoading}
+                className={`w-full h-13 py-4 rounded-2xl items-center justify-center mb-8 ${
+                  canAcceptNow || isAssignedLive || !isAvailable
+                    ? 'bg-white/[0.06] border border-white/15'
+                    : 'bg-gold shadow-lg shadow-gold/25'
+                }`}
                 accessibilityRole="button"
                 accessibilityLabel="Cerrar detalle"
               >
-                <Text className="font-montserrat-bold text-xs text-obsidian tracking-widest uppercase">
-                  ENTENDIDO · VOLVER A AGENDA
+                <Text
+                  className={`font-montserrat-bold text-xs tracking-widest uppercase ${
+                    canAcceptNow || isAssignedLive || !isAvailable ? 'text-platinum' : 'text-obsidian'
+                  }`}
+                >
+                  VOLVER A AGENDA
                 </Text>
               </TouchableOpacity>
             </ScrollView>

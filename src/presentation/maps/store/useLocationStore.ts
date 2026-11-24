@@ -14,6 +14,7 @@ interface LocationState {
 
   getLocation: () => Promise<LatLng | null>;
   watchLocation: (onUpdate?: (coords: LocationReading) => void) => Promise<void>;
+  restartWatchLocation: () => Promise<void>;
   clearWatchLocation: () => void;
   clearLocationHistory: () => void;
 }
@@ -100,6 +101,55 @@ export const useLocationStore = create<LocationState>((set, get) => ({
 
     pendingWatchPromise = startPromise;
     await startPromise;
+  },
+
+  restartWatchLocation: async (): Promise<void> => {
+    const activeSub = get().watchSubscription;
+    if (activeSub !== null) {
+      try {
+        activeSub.remove();
+      } catch {
+        // Ignorar error al remover suscripción previa
+      }
+      set({ watchSubscription: null });
+    }
+    pendingWatchPromise = null;
+
+    void get().getLocation();
+
+    if (watchConsumerCount <= 0) {
+      return;
+    }
+
+    try {
+      const subscription = await watchCurrentPosition((reading: LocationReading) => {
+        const coords: LatLng = {
+          latitude: reading.latitude,
+          longitude: reading.longitude,
+        };
+        set((state) => ({
+          lastKnownLocation: coords,
+          lastKnownReading: reading,
+          userLocationList: [
+            ...state.userLocationList.slice(-(MAX_LOCATION_HISTORY - 1)),
+            coords,
+          ],
+        }));
+      });
+
+      if (watchConsumerCount <= 0) {
+        subscription.remove();
+        return;
+      }
+
+      const existing = get().watchSubscription;
+      if (existing && existing !== subscription) {
+        existing.remove();
+      }
+      set({ watchSubscription: subscription });
+    } catch {
+      // Fallo silencioso si el proveedor de ubicación no está listo todavía
+    }
   },
 
   clearWatchLocation: (): void => {

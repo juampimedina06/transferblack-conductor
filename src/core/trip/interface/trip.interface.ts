@@ -46,6 +46,8 @@ export interface TripOfferPayload {
   offerId: string;
   ttlSeconds: number;
   expiresAt?: string | null;
+  bookingType?: 'immediate' | 'scheduled' | string;
+  scheduledAt?: string | null;
   fare: TripFareDetails;
   pickup: TripPickupDetails;
   dropoff: TripDropoffDetails;

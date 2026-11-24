@@ -14,6 +14,7 @@ import { offerAlarmService } from '../services/offerAlarmService';
 import { showBannerNotification } from '../../notifications/store/useBannerNotificationStore';
 import { driverOverlay } from '../../../core/overlay/driverOverlay';
 import { TRIP_OFFERS_CHANNEL_ID } from '../../../core/push/services/pushNotificationService';
+import { useLocationStore } from '../../maps/store/useLocationStore';
 import { useDriverSettingsStore } from '../../settings/store/useDriverSettingsStore';
 
 const isExpoGoOnAndroid =
@@ -171,7 +172,9 @@ export const useTripSocket = () => {
         const wasCash = getPaymentMethodInfo(currentTrip?.payment_method).isCash;
 
         socket.emit('ride:leave', { rideId });
+        useDriverTripStore.getState().setIsAvailable(true);
         setActiveTrip(null);
+        void useLocationStore.getState().restartWatchLocation();
 
         if (wasInProgress) {
           void (async () => {

@@ -9,6 +9,7 @@ import {
 } from '../../../core/location/interface/telemetry.interface';
 import { initialTelemetryDetectorState } from '../../../core/location/utils/telemetryEventDetector';
 import { useLocationStore } from '../../maps/store/useLocationStore';
+import { usePeerAlertStore } from '../../safety/store/usePeerAlertStore';
 import { useDriverTripStore } from '../store/useDriverTripStore';
 
 import {
@@ -30,7 +31,8 @@ export const useTripTelemetry = (options?: UseTripTelemetryOptions): void => {
   const config = options?.config ?? DEFAULT_TELEMETRY_CONFIG;
   const activeTrip = useDriverTripStore((state) => state.activeTrip);
   const isAvailable = useDriverTripStore((state) => state.isAvailable);
-  const { watchLocation, clearWatchLocation } = useLocationStore();
+  const hasActivePeerAlert = usePeerAlertStore((state) => Boolean(state.myActiveAlert));
+  const { watchLocation, restartWatchLocation, clearWatchLocation } = useLocationStore();
 
   const isTripActive =
     !!activeTrip?.id &&
@@ -39,7 +41,7 @@ export const useTripTelemetry = (options?: UseTripTelemetryOptions): void => {
     activeTrip.status !== 'draft';
 
   const activeTripId = isTripActive ? activeTrip.id : null;
-  const shouldTrack = isAvailable || isTripActive;
+  const shouldTrack = isAvailable || isTripActive || hasActivePeerAlert;
 
   // Sliding window of recent readings for event detection
   const readingsHistoryRef = useRef<LocationReading[]>([]);
@@ -57,10 +59,41 @@ export const useTripTelemetry = (options?: UseTripTelemetryOptions): void => {
     activeTripIdRef.current = activeTripId;
   }, [activeTripId]);
 
-  const isAvailableRef = useRef<boolean>(isAvailable);
+  const isAvailableRef = useRef<boolean>(isAvailable || hasActivePeerAlert);
   useEffect(() => {
-    isAvailableRef.current = isAvailable;
-  }, [isAvailable]);
+    isAvailableRef.current = isAvailable || hasActivePeerAlert;
+  }, [isAvailable, hasActivePeerAlert]);
+
+  // Cuando finaliza o se cancela un viaje y el conductor sigue en línea (o con alerta activa),
+  // refrescamos la suscripción GPS para evitar que la detención de Google Navigation pause el sensor.
+  const prevActiveTripIdRef = useRef<string | null>(activeTripId);
+  useEffect(() => {
+    const hadTrip = prevActiveTripIdRef.current !== null;
+    prevActiveTripIdRef.current = activeTripId;
+
+    if (hadTrip && activeTripId === null && shouldTrack) {
+      const recoveryTimer = setTimeout(() => {
+        void restartWatchLocation().then(() => {
+          const freshReading = useLocationStore.getState().lastKnownReading;
+          if (freshReading && socket.connected) {
+            const { emittedPayload } = processTelemetryTick(
+              freshReading,
+              readingsHistoryRef.current,
+              detectorStateRef.current,
+              config,
+              null,
+              socket.connected,
+              true
+            );
+            if (emittedPayload) {
+              socket.emit('driver:location_update', emittedPayload);
+            }
+          }
+        });
+      }, 350);
+      return () => clearTimeout(recoveryTimer);
+    }
+  }, [activeTripId, config, restartWatchLocation, shouldTrack]);
 
   useEffect(() => {
     isMountedRef.current = true;

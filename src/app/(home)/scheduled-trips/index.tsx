@@ -56,6 +56,11 @@ export default function ScheduledTripsScreen() {
     [trips]
   );
 
+  const selectedTripSummary = useMemo(
+    () => trips.find((t) => t.id === selectedTripId) ?? null,
+    [selectedTripId, trips]
+  );
+
   const handleCardPress = (trip: DriverScheduledTrip): void => {
     setSelectedTripId(trip.id);
     setIsDetailVisible(true);
@@ -235,6 +240,7 @@ export default function ScheduledTripsScreen() {
         {/* Anticipated Detail Modal */}
         <ScheduledTripDetailModal
           tripId={selectedTripId}
+          summaryTrip={selectedTripSummary}
           visible={isDetailVisible}
           onClose={handleCloseDetail}
         />

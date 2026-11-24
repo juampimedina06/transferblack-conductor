@@ -1,10 +1,21 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { Link, router, usePathname } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import * as z from 'zod';
+import { THEME_COLORS } from '../../../core/constants/theme';
 import { authActions } from '../../../core/auth/action/auth.actions';
 import { useRateLimit } from '../../../presentation/auth/hooks/useRateLimit';
 import { AmbientGlow } from '../../../presentation/components/ui/AmbientGlow';
@@ -15,14 +26,26 @@ import { useAuthStore } from '../../../presentation/auth/store/useAuthStore';
 import { authStorage } from '../../../presentation/auth/store/authStorage';
 
 const loginSchema = z.object({
-  email: z.string().trim().toLowerCase().email('El email no tiene un formato válido').max(320, 'El email es demasiado largo'),
-  password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres').max(128, 'La contraseña no puede superar los 128 caracteres').regex(/[a-z]/, 'La contraseña debe incluir una minúscula').regex(/[A-Z]/, 'La contraseña debe incluir una mayúscula').regex(/[0-9]/, 'La contraseña debe incluir un número'),
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .email('El email no tiene un formato válido')
+    .max(320, 'El email es demasiado largo'),
+  password: z
+    .string()
+    .min(8, 'La contraseña debe tener al menos 8 caracteres')
+    .max(128, 'La contraseña no puede superar los 128 caracteres')
+    .regex(/[a-z]/, 'La contraseña debe incluir una minúscula')
+    .regex(/[A-Z]/, 'La contraseña debe incluir una mayúscula')
+    .regex(/[0-9]/, 'La contraseña debe incluir un número'),
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function LoginScreen(): React.JSX.Element {
   const [isLoading, setIsLoading] = useState(false);
+  const [rememberAccount, setRememberAccount] = useState(true);
   const setSession = useAuthStore((state) => state.setSession);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const userId = useAuthStore((state) => state.user?.id);
@@ -55,7 +78,12 @@ export default function LoginScreen(): React.JSX.Element {
     };
   }, [isAuthenticated, userId, emailVerifiedAt, isLoading, pathname]);
 
-  const { control, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
       email: '',
@@ -63,10 +91,46 @@ export default function LoginScreen(): React.JSX.Element {
     },
   });
 
+  // Pre-carga credenciales guardadas en expo-secure-store si "Recordar mi cuenta" estaba activo
+  useEffect(() => {
+    let cancelled = false;
+    void authStorage.getRememberedCredentials().then((saved) => {
+      if (cancelled) return;
+      setRememberAccount(saved.remember);
+      if (saved.remember && (saved.email || saved.password)) {
+        reset({
+          email: saved.email,
+          password: saved.password,
+        });
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [reset]);
+
+  const handleToggleRemember = (): void => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setRememberAccount((prev) => {
+      const next = !prev;
+      if (!next) {
+        void authStorage.clearRememberedCredentials();
+      }
+      return next;
+    });
+  };
+
   const onSubmit = async (data: LoginFormData): Promise<void> => {
     try {
       setIsLoading(true);
       const session = await authActions.login(data.email, data.password);
+
+      if (rememberAccount) {
+        await authStorage.saveRememberedCredentials(data.email, data.password);
+      } else {
+        await authStorage.clearRememberedCredentials();
+      }
+
       await setSession(session);
 
       const profile = session.data.profile;
@@ -89,16 +153,24 @@ export default function LoginScreen(): React.JSX.Element {
   };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1 bg-obsidian relative overflow-hidden">
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      className="flex-1 bg-obsidian relative overflow-hidden"
+    >
       {/* Champagne Ambient Glow Flare */}
       <AmbientGlow position="top" height={380} opacity={0.25} />
 
       <ScrollView
-        contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, paddingTop: 40, paddingBottom: 180 }}
+        contentContainerStyle={{
+          flexGrow: 1,
+          justifyContent: 'center',
+          paddingHorizontal: 24,
+          paddingTop: 40,
+          paddingBottom: 180,
+        }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-
         <View className="items-center mb-12 mt-10">
           <Image
             source={require('../../../../assets/images/transferblack/logo_transferblack_sinfodo.png')}
@@ -106,12 +178,16 @@ export default function LoginScreen(): React.JSX.Element {
             contentFit="contain"
             transition={500}
           />
-          <Text className="text-gold font-montserrat-medium mt-4 tracking-widest text-xs uppercase">Conducí con estilo</Text>
+          <Text className="text-gold font-montserrat-medium mt-4 tracking-widest text-xs uppercase">
+            Conducí con estilo
+          </Text>
         </View>
 
         <View className="mb-8">
           <Text className="text-3xl font-montserrat-bold text-platinum mb-2">Bienvenido</Text>
-          <Text className="text-ash font-montserrat text-base">Iniciá sesión para continuar ganando con la mejor tarifa del mercado.</Text>
+          <Text className="text-ash font-montserrat text-base">
+            Iniciá sesión para continuar ganando con la mejor tarifa del mercado.
+          </Text>
         </View>
 
         <Controller
@@ -123,6 +199,8 @@ export default function LoginScreen(): React.JSX.Element {
               placeholder="conductor@transferblack.com"
               keyboardType="email-address"
               autoCapitalize="none"
+              autoComplete="email"
+              textContentType="emailAddress"
               onBlur={onBlur}
               onChangeText={onChange}
               value={value}
@@ -139,6 +217,8 @@ export default function LoginScreen(): React.JSX.Element {
               label="Contraseña"
               placeholder="••••••••"
               secureTextEntry
+              autoComplete="password"
+              textContentType="password"
               onBlur={onBlur}
               onChangeText={onChange}
               value={value}
@@ -147,14 +227,36 @@ export default function LoginScreen(): React.JSX.Element {
           )}
         />
 
-        <View className="flex-row justify-end -mt-2 mb-6">
+        <View className="flex-row items-center justify-between -mt-1 mb-6">
+          <TouchableOpacity
+            onPress={handleToggleRemember}
+            activeOpacity={0.75}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: rememberAccount }}
+            accessibilityLabel="Recordar mi cuenta en este dispositivo"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            className="flex-row items-center min-h-[44px]"
+          >
+            <Ionicons
+              name={rememberAccount ? 'checkbox' : 'square-outline'}
+              size={20}
+              color={rememberAccount ? THEME_COLORS.gold : '#A1A1AA'}
+            />
+            <Text className="text-platinum font-montserrat-medium text-sm ml-2">
+              Recordar mi cuenta
+            </Text>
+          </TouchableOpacity>
+
           <Link href={'/forgot-password' as any} asChild>
             <TouchableOpacity
               accessibilityRole="button"
               accessibilityLabel="¿Olvidaste tu contraseña?"
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              className="min-h-[44px] justify-center"
             >
-              <Text className="text-gold font-montserrat-medium text-sm">¿Olvidaste tu contraseña?</Text>
+              <Text className="text-gold font-montserrat-medium text-sm">
+                ¿Olvidaste tu contraseña?
+              </Text>
             </TouchableOpacity>
           </Link>
         </View>
@@ -180,7 +282,6 @@ export default function LoginScreen(): React.JSX.Element {
             <Text className="text-gold font-montserrat-bold text-base ml-1">Sumate acá</Text>
           </Link>
         </View>
-
       </ScrollView>
     </KeyboardAvoidingView>
   );
