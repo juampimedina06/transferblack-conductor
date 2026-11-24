@@ -1,13 +1,13 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
-import { useDriverStatusStore } from '../../driver/store/useDriverStatusStore';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Text, TouchableOpacity, View } from 'react-native';
 import {
   formatShortArDate,
   getActiveGraceDocuments,
 } from '../../../core/driver/utils/documentCompliance.utils';
+import { useDriverStatusStore } from '../../driver/store/useDriverStatusStore';
 import { DriverDocumentsModal } from './DriverDocumentsModal';
 
 const DISMISSED_COMPLIANCE_BANNER_KEY = '@transferblack/dismissed-compliance-banner';
@@ -82,7 +82,7 @@ export const ComplianceRenewalBanner: React.FC = () => {
   const handleDismiss = () => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setDismissedSignature(bannerSignature);
-    void AsyncStorage.setItem(DISMISSED_COMPLIANCE_BANNER_KEY, bannerSignature).catch(() => {});
+    void AsyncStorage.setItem(DISMISSED_COMPLIANCE_BANNER_KEY, bannerSignature).catch(() => { });
   };
 
   if (soonestGraceDoc) {

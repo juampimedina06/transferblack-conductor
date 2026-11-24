@@ -1,5 +1,5 @@
-import { zodResolver } from '@hookform/resolvers/zod';
 import { Ionicons } from '@expo/vector-icons';
+import { zodResolver } from '@hookform/resolvers/zod';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { Link, router, usePathname } from 'expo-router';
@@ -15,15 +15,15 @@ import {
   View,
 } from 'react-native';
 import * as z from 'zod';
-import { THEME_COLORS } from '../../../core/constants/theme';
 import { authActions } from '../../../core/auth/action/auth.actions';
+import { THEME_COLORS } from '../../../core/constants/theme';
 import { useRateLimit } from '../../../presentation/auth/hooks/useRateLimit';
+import { authStorage } from '../../../presentation/auth/store/authStorage';
+import { useAuthStore } from '../../../presentation/auth/store/useAuthStore';
 import { AmbientGlow } from '../../../presentation/components/ui/AmbientGlow';
 import { Button } from '../../../presentation/components/ui/Button';
 import { Input } from '../../../presentation/components/ui/Input';
 import { RateLimitBanner } from '../../../presentation/components/ui/RateLimitBanner';
-import { useAuthStore } from '../../../presentation/auth/store/useAuthStore';
-import { authStorage } from '../../../presentation/auth/store/authStorage';
 
 const loginSchema = z.object({
   email: z
