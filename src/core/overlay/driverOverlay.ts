@@ -238,7 +238,7 @@ export async function hideFloatingBubble(): Promise<void> {
  * Reproduce un tono nativo de oferta Transfer Black en Android.
  */
 export async function playOfferSound(
-  tone: OfferSoundTone = 'black_pulse',
+  tone: OfferSoundTone = 'executive_sonar',
   loop = true
 ): Promise<boolean> {
   const nativeModule = getNativeDriverOverlay();

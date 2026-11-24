@@ -11,7 +11,7 @@ export type OfferSoundTone =
 export type PeerAlertRadiusKm = 3 | 5 | 10;
 
 const LEGACY_TONE_MAP: Record<string, OfferSoundTone> = {
-  ringtone: 'black_pulse',
+  ringtone: 'executive_sonar',
   default: 'executive_sonar',
   chime: 'gold_chord',
   alarm: 'turbo_dispatch',
@@ -33,7 +33,7 @@ export function normalizeOfferSoundTone(value: unknown): OfferSoundTone {
       return LEGACY_TONE_MAP[value];
     }
   }
-  return 'black_pulse';
+  return 'executive_sonar';
 }
 
 export interface DriverSettingsValues {
@@ -65,7 +65,7 @@ export interface DriverSettingsState extends DriverSettingsValues {
 
 export const DEFAULT_DRIVER_SETTINGS: DriverSettingsValues = {
   offerSoundEnabled: true,
-  offerSoundTone: 'black_pulse',
+  offerSoundTone: 'executive_sonar',
   offerVibrationEnabled: true,
   offerVibrationIntensity: 'normal',
   offerOverlayEnabled: true,
