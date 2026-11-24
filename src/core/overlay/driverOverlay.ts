@@ -12,6 +12,7 @@ export interface DriverOverlayPayload {
 }
 
 export type FloatingBubbleStatus = 'online' | 'trip';
+export type OfferSoundTone = 'ringtone' | 'alarm' | 'default' | 'chime';
 
 interface DriverOverlayNativeModule {
   canDrawOverlays?: () => Promise<boolean>;
@@ -20,6 +21,8 @@ interface DriverOverlayNativeModule {
   hideOfferOverlay?: () => Promise<boolean>;
   showFloatingBubble?: (status: FloatingBubbleStatus) => Promise<boolean>;
   hideFloatingBubble?: () => Promise<boolean>;
+  playOfferSound?: (tone: OfferSoundTone, loop: boolean) => Promise<boolean>;
+  stopOfferSound?: () => Promise<boolean>;
 }
 
 const DEFAULT_OVERLAY_TTL_SECONDS = 20;
@@ -227,6 +230,41 @@ export async function hideFloatingBubble(): Promise<void> {
   }
 }
 
+/**
+ * Reproduce un tono nativo de oferta en Android (ringtone, alarm, default, chime).
+ */
+export async function playOfferSound(
+  tone: OfferSoundTone = 'ringtone',
+  loop = true
+): Promise<boolean> {
+  const nativeModule = getNativeDriverOverlay();
+  if (!nativeModule || typeof nativeModule.playOfferSound !== 'function') {
+    return false;
+  }
+
+  try {
+    return Boolean(await nativeModule.playOfferSound(tone, loop));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Detiene inmediatamente cualquier tono de oferta en reproducción.
+ */
+export async function stopOfferSound(): Promise<void> {
+  const nativeModule = getNativeDriverOverlay();
+  if (!nativeModule || typeof nativeModule.stopOfferSound !== 'function') {
+    return;
+  }
+
+  try {
+    await nativeModule.stopOfferSound();
+  } catch {
+    // Evitar errores no manejados al detener audio
+  }
+}
+
 export const driverOverlay = {
   canDrawOverlays,
   requestOverlayPermission,
@@ -235,5 +273,7 @@ export const driverOverlay = {
   hideOfferOverlay,
   showFloatingBubble,
   hideFloatingBubble,
+  playOfferSound,
+  stopOfferSound,
   resetOverlayPromptStateForTests,
 };

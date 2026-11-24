@@ -154,7 +154,7 @@ const ChatView: React.FC<ChatViewProps> = ({ trip, driverUserId }) => {
 
       <KeyboardAvoidingView
         className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={0}
       >
         {isError && messages.length === 0 ? (

@@ -3,11 +3,13 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 export type VibrationIntensity = 'subtle' | 'normal' | 'strong';
+export type OfferSoundTone = 'ringtone' | 'alarm' | 'default' | 'chime';
 export type PeerAlertRadiusKm = 3 | 5 | 10;
 
 export interface DriverSettingsValues {
   // Alertas de ofertas de viaje
   offerSoundEnabled: boolean;
+  offerSoundTone: OfferSoundTone;
   offerVibrationEnabled: boolean;
   offerVibrationIntensity: VibrationIntensity;
   offerOverlayEnabled: boolean;
@@ -33,6 +35,7 @@ export interface DriverSettingsState extends DriverSettingsValues {
 
 export const DEFAULT_DRIVER_SETTINGS: DriverSettingsValues = {
   offerSoundEnabled: true,
+  offerSoundTone: 'ringtone',
   offerVibrationEnabled: true,
   offerVibrationIntensity: 'normal',
   offerOverlayEnabled: true,

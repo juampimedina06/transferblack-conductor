@@ -72,11 +72,20 @@ export default function DriverDashboardScreen() {
     fetchSummary();
     void pushNotificationService.initialize();
     void useDriverStatusStore.getState().fetchStatus();
+    void useDriverStatusStore.getState().fetchDocuments();
     const cleanupSocket = useDriverStatusStore.getState().initSocketListeners();
     return () => {
       cleanupSocket();
     };
   }, [fetchSummary]);
+
+  // Asegurar que la tarjeta flotante de oferta y su sonido se cierren al aceptar o finalizar un viaje
+  useEffect(() => {
+    if (activeTrip) {
+      void driverOverlay.hideOfferOverlay();
+      void driverOverlay.stopOfferSound();
+    }
+  }, [activeTrip]);
 
   // Inicializa la escucha de eventos de socket (trip:offer)
   useTripSocket();
