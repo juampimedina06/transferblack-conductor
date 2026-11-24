@@ -1,9 +1,19 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { Link, router } from 'expo-router';
+import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as z from 'zod';
 import { authActions } from '../../../core/auth/action/auth.actions';
 import { AmbientGlow } from '../../../presentation/components/ui/AmbientGlow';
@@ -32,6 +42,14 @@ export default function RegisterScreen(): React.JSX.Element {
   const [isLoading, setIsLoading] = useState(false);
   const setSession = useAuthStore((state) => state.setSession);
   const updateUser = useAuthStore((state) => state.updateUser);
+  const logout = useAuthStore((state) => state.logout);
+
+  const handleBackToLogin = async (): Promise<void> => {
+    if (useAuthStore.getState().isAuthenticated) {
+      await logout();
+    }
+    router.replace('/auth/login' as any);
+  };
 
   const { control, handleSubmit, formState: { errors } } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
@@ -81,17 +99,32 @@ export default function RegisterScreen(): React.JSX.Element {
   };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1 bg-obsidian relative overflow-hidden">
-      {/* Champagne Ambient Glow Flare */}
-      <AmbientGlow position="top" height={380} opacity={0.25} />
+    <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-obsidian">
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1 bg-obsidian relative overflow-hidden">
+        {/* Champagne Ambient Glow Flare */}
+        <AmbientGlow position="top" height={380} opacity={0.25} />
 
-      <ScrollView
-        contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 40, paddingBottom: 260 }}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 12, paddingBottom: 140 }}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Top Back Button */}
+          <View className="flex-row items-center mb-4">
+            <TouchableOpacity
+              onPress={() => {
+                void handleBackToLogin();
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Volver al inicio de sesión"
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              className="w-11 h-11 items-center justify-center rounded-2xl bg-white/5 border border-white/10 active:scale-95"
+            >
+              <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
 
-        <View className="items-center mb-8">
+          <View className="items-center mb-6">
           <Image
             source={require('../../../../assets/images/transferblack/logo_transferblack_sinfodo.png')}
             style={{ width: 180, height: 50 }}
@@ -216,11 +249,19 @@ export default function RegisterScreen(): React.JSX.Element {
 
         <View className="mt-8 flex-row justify-center items-center">
           <Text className="text-ash font-montserrat text-base">¿Ya sos parte del equipo? </Text>
-          <Link href="/auth/login" asChild>
+          <TouchableOpacity
+            onPress={() => {
+              void handleBackToLogin();
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Ir a iniciar sesión"
+            hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
+          >
             <Text className="text-gold font-montserrat-bold text-base ml-1">Iniciá sesión</Text>
-          </Link>
+          </TouchableOpacity>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
