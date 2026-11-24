@@ -3,8 +3,38 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 export type VibrationIntensity = 'subtle' | 'normal' | 'strong';
-export type OfferSoundTone = 'ringtone' | 'alarm' | 'default' | 'chime';
+export type OfferSoundTone =
+  | 'black_pulse'
+  | 'executive_sonar'
+  | 'gold_chord'
+  | 'turbo_dispatch';
 export type PeerAlertRadiusKm = 3 | 5 | 10;
+
+const LEGACY_TONE_MAP: Record<string, OfferSoundTone> = {
+  ringtone: 'black_pulse',
+  default: 'executive_sonar',
+  chime: 'gold_chord',
+  alarm: 'turbo_dispatch',
+};
+
+const VALID_OFFER_TONES = new Set<OfferSoundTone>([
+  'black_pulse',
+  'executive_sonar',
+  'gold_chord',
+  'turbo_dispatch',
+]);
+
+export function normalizeOfferSoundTone(value: unknown): OfferSoundTone {
+  if (typeof value === 'string') {
+    if (VALID_OFFER_TONES.has(value as OfferSoundTone)) {
+      return value as OfferSoundTone;
+    }
+    if (value in LEGACY_TONE_MAP) {
+      return LEGACY_TONE_MAP[value];
+    }
+  }
+  return 'black_pulse';
+}
 
 export interface DriverSettingsValues {
   // Alertas de ofertas de viaje
@@ -35,7 +65,7 @@ export interface DriverSettingsState extends DriverSettingsValues {
 
 export const DEFAULT_DRIVER_SETTINGS: DriverSettingsValues = {
   offerSoundEnabled: true,
-  offerSoundTone: 'ringtone',
+  offerSoundTone: 'black_pulse',
   offerVibrationEnabled: true,
   offerVibrationIntensity: 'normal',
   offerOverlayEnabled: true,
@@ -65,6 +95,14 @@ export const useDriverSettingsStore = create<DriverSettingsState>()(
     {
       name: '@transferblack/driver-settings',
       storage: createJSONStorage(() => AsyncStorage),
+      merge: (persistedState, currentState) => {
+        const persisted = (persistedState ?? {}) as Partial<DriverSettingsValues>;
+        return {
+          ...currentState,
+          ...persisted,
+          offerSoundTone: normalizeOfferSoundTone(persisted.offerSoundTone),
+        };
+      },
     }
   )
 );

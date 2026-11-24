@@ -12,7 +12,11 @@ export interface DriverOverlayPayload {
 }
 
 export type FloatingBubbleStatus = 'online' | 'trip';
-export type OfferSoundTone = 'ringtone' | 'alarm' | 'default' | 'chime';
+export type OfferSoundTone =
+  | 'black_pulse'
+  | 'executive_sonar'
+  | 'gold_chord'
+  | 'turbo_dispatch';
 
 interface DriverOverlayNativeModule {
   canDrawOverlays?: () => Promise<boolean>;
@@ -231,10 +235,10 @@ export async function hideFloatingBubble(): Promise<void> {
 }
 
 /**
- * Reproduce un tono nativo de oferta en Android (ringtone, alarm, default, chime).
+ * Reproduce un tono nativo de oferta Transfer Black en Android.
  */
 export async function playOfferSound(
-  tone: OfferSoundTone = 'ringtone',
+  tone: OfferSoundTone = 'black_pulse',
   loop = true
 ): Promise<boolean> {
   const nativeModule = getNativeDriverOverlay();

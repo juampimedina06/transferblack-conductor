@@ -133,11 +133,15 @@ const PermissionStatusRow: React.FC<PermissionStatusRowProps> = ({
   </TouchableOpacity>
 );
 
-const SOUND_TONE_OPTIONS: { value: OfferSoundTone; label: string }[] = [
-  { value: 'ringtone', label: 'Llamada' },
-  { value: 'alarm', label: 'Alarma' },
-  { value: 'default', label: 'Aviso' },
-  { value: 'chime', label: 'Sutil' },
+const SOUND_TONE_OPTIONS: {
+  value: OfferSoundTone;
+  label: string;
+  description: string;
+}[] = [
+  { value: 'black_pulse', label: 'Black Pulse', description: 'Firma Transfer Black' },
+  { value: 'executive_sonar', label: 'Radar VIP', description: 'Pulso de despacho' },
+  { value: 'gold_chord', label: 'Acorde Gold', description: 'Campana ejecutiva' },
+  { value: 'turbo_dispatch', label: 'Despacho Pro', description: 'Máxima presencia' },
 ];
 
 const VIBRATION_OPTIONS: { value: VibrationIntensity; label: string }[] = [
@@ -288,9 +292,9 @@ export default function DriverSettingsScreen(): React.JSX.Element {
               {settings.offerSoundEnabled && (
                 <View className="px-4 py-3.5 border-b border-white/[0.07]">
                   <Text className="text-white/80 font-montserrat-medium text-xs mb-2.5">
-                    Tono de alerta
+                    Tono exclusivo Transfer Black
                   </Text>
-                  <View className="flex-row gap-2">
+                  <View className="flex-row flex-wrap gap-2">
                     {SOUND_TONE_OPTIONS.map((option) => {
                       const selected = settings.offerSoundTone === option.value;
                       return (
@@ -309,18 +313,32 @@ export default function DriverSettingsScreen(): React.JSX.Element {
                           activeOpacity={0.8}
                           accessibilityRole="button"
                           accessibilityState={{ selected }}
-                          className={`flex-1 h-10 rounded-xl items-center justify-center border ${
+                          accessibilityLabel={`${option.label}: ${option.description}`}
+                          className={`w-[48%] min-h-[54px] px-3 py-2 rounded-xl justify-center border ${
                             selected
                               ? 'bg-gold/15 border-gold/60'
                               : 'bg-white/[0.04] border-white/10'
                           }`}
                         >
+                          <View className="flex-row items-center justify-between">
+                            <Text
+                              className={`font-montserrat-semibold text-xs ${
+                                selected ? 'text-gold' : 'text-white/85'
+                              }`}
+                            >
+                              {option.label}
+                            </Text>
+                            <Ionicons
+                              name={selected ? 'volume-high' : 'play-outline'}
+                              size={13}
+                              color={selected ? THEME_COLORS.gold : 'rgba(255,255,255,0.45)'}
+                            />
+                          </View>
                           <Text
-                            className={`font-montserrat-semibold text-xs ${
-                              selected ? 'text-gold' : 'text-white/65'
-                            }`}
+                            className="text-ash font-montserrat text-[10px] mt-0.5"
+                            numberOfLines={1}
                           >
-                            {option.label}
+                            {option.description}
                           </Text>
                         </TouchableOpacity>
                       );

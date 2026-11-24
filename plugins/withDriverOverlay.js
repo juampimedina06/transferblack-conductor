@@ -105,6 +105,21 @@ const withDriverOverlayKotlinFiles = (config) => {
         fs.copyFileSync(logoSrc, path.join(drawableDir, 'tb_floating_bubble_logo.png'));
       }
 
+      const soundsSourceDir = path.join(projectRoot, 'assets', 'sounds');
+      const rawDir = path.join(platformRoot, 'app', 'src', 'main', 'res', 'raw');
+      fs.mkdirSync(rawDir, { recursive: true });
+      for (const soundFile of [
+        'tb_offer_black_pulse.wav',
+        'tb_offer_executive_sonar.wav',
+        'tb_offer_gold_chord.wav',
+        'tb_offer_turbo_dispatch.wav',
+      ]) {
+        const srcSound = path.join(soundsSourceDir, soundFile);
+        if (fs.existsSync(srcSound)) {
+          fs.copyFileSync(srcSound, path.join(rawDir, soundFile));
+        }
+      }
+
       return modConfig;
     },
   ]);

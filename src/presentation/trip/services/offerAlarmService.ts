@@ -4,6 +4,7 @@ import { driverOverlay } from '@/core/overlay/driverOverlay';
 import {
   type OfferSoundTone,
   type VibrationIntensity,
+  normalizeOfferSoundTone,
   useDriverSettingsStore,
 } from '@/presentation/settings/store/useDriverSettingsStore';
 
@@ -38,7 +39,7 @@ class OfferAlarmService {
     const shouldVibrate = options.vibrate ?? settings.offerVibrationEnabled;
     const intensity = options.intensity ?? settings.offerVibrationIntensity;
     const shouldSound = options.sound ?? settings.offerSoundEnabled;
-    const tone = options.tone ?? settings.offerSoundTone ?? 'ringtone';
+    const tone = normalizeOfferSoundTone(options.tone ?? settings.offerSoundTone);
 
     if (shouldVibrate) {
       Vibration.vibrate(VIBRATION_PATTERNS[intensity], true);
@@ -90,7 +91,9 @@ class OfferAlarmService {
     sound: boolean;
     tone?: OfferSoundTone;
   }): Promise<void> {
-    const tone = options.tone ?? useDriverSettingsStore.getState().offerSoundTone ?? 'ringtone';
+    const tone = normalizeOfferSoundTone(
+      options.tone ?? useDriverSettingsStore.getState().offerSoundTone
+    );
 
     if (options.vibrate) {
       Vibration.vibrate(VIBRATION_PATTERNS[options.intensity], false);
@@ -108,7 +111,7 @@ class OfferAlarmService {
           if (!this.isPlaying) {
             void driverOverlay.stopOfferSound();
           }
-        }, 1800);
+        }, 2100);
         return;
       }
 

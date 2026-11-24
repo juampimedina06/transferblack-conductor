@@ -10,6 +10,7 @@ import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.media.AudioAttributes
 import android.media.AudioManager
+import android.media.MediaPlayer
 import android.media.Ringtone
 import android.media.RingtoneManager
 import android.media.ToneGenerator
@@ -208,22 +209,62 @@ class DriverOverlayModule(reactContext: ReactApplicationContext) :
       try {
         stopOfferSoundInternal()
 
-        if (tone == "chime") {
-          val generator = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 90)
-          activeToneGenerator = generator
-          generator.startTone(ToneGenerator.TONE_PROP_BEEP2, 900)
-          val stopChime = Runnable {
+        val rawResName = when (tone) {
+          "executive_sonar", "default" -> "tb_offer_executive_sonar"
+          "gold_chord", "chime" -> "tb_offer_gold_chord"
+          "turbo_dispatch", "alarm" -> "tb_offer_turbo_dispatch"
+          else -> "tb_offer_black_pulse"
+        }
+
+        val context = reactApplicationContext
+        val rawResId = context.resources.getIdentifier(rawResName, "raw", context.packageName)
+
+        if (rawResId != 0) {
+          val player = MediaPlayer()
+          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            val usage = if (rawResName == "tb_offer_turbo_dispatch") {
+              AudioAttributes.USAGE_ALARM
+            } else {
+              AudioAttributes.USAGE_NOTIFICATION_RINGTONE
+            }
+            player.setAudioAttributes(
+              AudioAttributes.Builder()
+                .setUsage(usage)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build()
+            )
+          } else {
+            @Suppress("DEPRECATION")
+            player.setAudioStreamType(AudioManager.STREAM_RING)
+          }
+
+          val rawUri = Uri.parse("android.resource://${context.packageName}/$rawResId")
+          player.setDataSource(context, rawUri)
+          player.isLooping = loop
+          player.setVolume(1.0f, 1.0f)
+          if (!loop) {
+            player.setOnCompletionListener {
+              stopOfferSoundInternal()
+            }
+          }
+          player.prepare()
+          activeMediaPlayer = player
+          player.start()
+
+          // Safety auto-stop so audio can never loop forever if app is killed
+          val safetyStop = Runnable {
             stopOfferSoundInternal()
           }
-          activeSoundStopRunnable = stopChime
-          mainHandler.postDelayed(stopChime, if (loop) 1400L else 1000L)
+          activeSoundStopRunnable = safetyStop
+          mainHandler.postDelayed(safetyStop, if (loop) 22_000L else 2_400L)
+
           promise.resolve(true)
           return@runOnUiThread
         }
 
         val ringtoneType = when (tone) {
-          "alarm" -> RingtoneManager.TYPE_ALARM
-          "default" -> RingtoneManager.TYPE_NOTIFICATION
+          "turbo_dispatch", "alarm" -> RingtoneManager.TYPE_ALARM
+          "executive_sonar", "default" -> RingtoneManager.TYPE_NOTIFICATION
           else -> RingtoneManager.TYPE_RINGTONE
         }
 
@@ -243,7 +284,7 @@ class DriverOverlayModule(reactContext: ReactApplicationContext) :
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-          val usage = if (tone == "alarm") {
+          val usage = if (tone == "turbo_dispatch" || tone == "alarm") {
             AudioAttributes.USAGE_ALARM
           } else {
             AudioAttributes.USAGE_NOTIFICATION_RINGTONE
@@ -823,6 +864,23 @@ class DriverOverlayModule(reactContext: ReactApplicationContext) :
     }
     activeSoundStopRunnable = null
 
+    val mediaPlayer = activeMediaPlayer
+    activeMediaPlayer = null
+    if (mediaPlayer != null) {
+      try {
+        if (mediaPlayer.isPlaying) {
+          mediaPlayer.stop()
+        }
+      } catch (_: Exception) {
+        // Ignorar al detener MediaPlayer
+      }
+      try {
+        mediaPlayer.release()
+      } catch (_: Exception) {
+        // Ignorar al liberar MediaPlayer
+      }
+    }
+
     val ringtone = activeOfferRingtone
     activeOfferRingtone = null
     if (ringtone != null) {
@@ -938,6 +996,8 @@ class DriverOverlayModule(reactContext: ReactApplicationContext) :
     private var activeBubbleView: View? = null
     private var activeBubbleSnapAnimator: ValueAnimator? = null
 
+    @Volatile
+    private var activeMediaPlayer: MediaPlayer? = null
     @Volatile
     private var activeOfferRingtone: Ringtone? = null
     @Volatile
