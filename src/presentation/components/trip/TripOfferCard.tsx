@@ -1,11 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Platform,
-  StyleSheet,
   Text,
   TouchableOpacity,
   View,
@@ -14,6 +11,7 @@ import Animated, {
   FadeIn,
   FadeInDown,
   FadeOutDown,
+  useAnimatedStyle,
   useReducedMotion,
 } from 'react-native-reanimated';
 
@@ -24,10 +22,7 @@ import {
   getPaymentMethodInfo,
 } from '../../../core/trip/interface/trip.interface';
 import { useOfferTimer } from '../../trip/hooks/useOfferTimer';
-import { AmbientGlow } from '../ui/AmbientGlow';
-import { getTripOfferTheme } from './theme/tripOfferTheme';
 import { AppleIntelligenceOfferAura } from './ui/AppleIntelligenceOfferAura';
-import { CountdownRing } from './ui/CountdownRing';
 
 export interface TripOfferCardProps {
   offer: TripOfferPayload;
@@ -41,8 +36,9 @@ export interface TripOfferCardProps {
 }
 
 /**
- * Tarjeta Ejecutiva de Solicitud de Viaje (TransferBlack VIP):
- * Estética Liquid Glass en Obsidiana y Oro Champán con jerarquía de alto contraste para conducción.
+ * Hoja inferior de solicitud de viaje (TransferBlack VIP):
+ * Contenedor único sin efecto caja, foco en ganancia neta, línea de tiempo integrada
+ * y botón de aceptación con barra de progreso de cuenta regresiva.
  */
 export const TripOfferCard: React.FC<TripOfferCardProps> = ({
   offer,
@@ -54,22 +50,7 @@ export const TripOfferCard: React.FC<TripOfferCardProps> = ({
   bottomInset = 16,
   isLoading = false,
 }) => {
-  const baseTheme = useMemo(() => getTripOfferTheme(true), []);
   const reduceMotion = useReducedMotion();
-
-  // Tema en Oro Champán para el anillo de cuenta regresiva
-  const vipRingTheme = useMemo(
-    () => ({
-      ...baseTheme,
-      accent: THEME_COLORS.gold,
-      urgentAccent: '#F43F5E',
-      textPrimary: '#FFFFFF',
-      textSecondary: 'rgba(255, 255, 255, 0.8)',
-      textMuted: 'rgba(255, 255, 255, 0.6)',
-      textSubtle: 'rgba(255, 255, 255, 0.4)',
-    }),
-    [baseTheme]
-  );
 
   const ttlSeconds = offer?.ttlSeconds || 30;
   const [secondsLeft, setSecondsLeft] = useState(ttlSeconds);
@@ -105,6 +86,10 @@ export const TripOfferCard: React.FC<TripOfferCardProps> = ({
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }, [offer?.offerId]);
 
+  const progressFillStyle = useAnimatedStyle(() => ({
+    width: `${Math.max(0, Math.min(1, progress.value)) * 100}%`,
+  }));
+
   const paymentInfo = useMemo(
     () => getPaymentMethodInfo(offer?.fare?.paymentMethod),
     [offer?.fare?.paymentMethod]
@@ -131,7 +116,7 @@ export const TripOfferCard: React.FC<TripOfferCardProps> = ({
   }, [offer?.pickup, offer?.dropoff, durationMin]);
 
   const pickupEta = offer?.pickup?.etaMinutes || 2;
-  const pickupDistance = (offer?.pickup as any)?.distanceKm;
+  const pickupDistance = (offer?.pickup as { distanceKm?: number } | undefined)?.distanceKm;
 
   const isThirdParty = Boolean(offer?.third_party?.name);
   const isScheduledOffer =
@@ -150,6 +135,7 @@ export const TripOfferCard: React.FC<TripOfferCardProps> = ({
       return null;
     }
   })();
+
   const passengerName = isThirdParty
     ? `Viaja: ${offer.third_party?.name}`
     : offer?.passenger?.fullName || 'Pasajero Ejecutivo';
@@ -161,235 +147,186 @@ export const TripOfferCard: React.FC<TripOfferCardProps> = ({
     .charAt(0)
     .toUpperCase();
   const ratingAvg = offer?.passengerRating?.average ?? offer?.passenger?.rating ?? 5.0;
+  const categoryLabel = offer?.passenger?.category || 'VIP';
 
   if (isLoading) {
     return (
       <View
         onLayout={(e) => onHeightChange?.(e.nativeEvent.layout.height)}
-        className="absolute bottom-0 left-0 right-0 w-full z-50 overflow-hidden rounded-t-[32px] border-t border-gold/40 bg-[#090A0F]/95 px-6 pt-3"
-        style={{ paddingBottom: Math.max(bottomInset, 24) }}
+        className="absolute bottom-0 left-0 right-0 w-full z-50 rounded-t-[28px] border-t border-white/10 bg-[#14161B] px-5 pt-3"
+        style={{ paddingBottom: Math.max(bottomInset, 20) }}
       >
         <View className="w-10 h-1 bg-white/20 rounded-full self-center mb-4" />
-        <View className="w-32 h-6 bg-white/10 rounded-lg mb-3" />
-        <View className="w-48 h-12 bg-white/10 rounded-lg mb-4" />
-        <View className="w-full h-14 bg-white/10 rounded-xl" />
+        <View className="w-32 h-4 bg-white/10 rounded-md mb-2" />
+        <View className="w-48 h-11 bg-white/10 rounded-lg mb-4" />
+        <View className="w-full h-14 bg-white/10 rounded-2xl" />
       </View>
     );
   }
 
   return (
     <>
-      {/* Aura perimetral en los bordes de la pantalla estilo Apple Intelligence */}
+      {/* Aura perimetral sutil en bordes de pantalla */}
       <AppleIntelligenceOfferAura isUrgent={isUrgent} />
 
       <Animated.View
         onLayout={(e) => onHeightChange?.(e.nativeEvent.layout.height)}
-        entering={reduceMotion ? FadeIn : FadeInDown.springify().damping(16).mass(0.9)}
-        exiting={reduceMotion ? undefined : FadeOutDown.duration(200)}
-        className="absolute bottom-0 left-0 right-0 w-full z-50 overflow-hidden rounded-t-[34px] border-t border-gold/55 shadow-2xl px-5 pt-3"
-        style={{ paddingBottom: Math.max(bottomInset, 22) }}
+        entering={reduceMotion ? FadeIn : FadeInDown.duration(220)}
+        exiting={reduceMotion ? undefined : FadeOutDown.duration(180)}
+        className="absolute bottom-0 left-0 right-0 w-full z-50 rounded-t-[28px] border-t border-white/10 bg-[#14161B] px-5 pt-3 shadow-2xl"
+        style={{ paddingBottom: Math.max(bottomInset, 18) }}
       >
-        {/* Capa Liquid Glass solo en iOS (en Android evita caídas de FPS sobre el mapa) */}
-        {Platform.OS === 'ios' && (
-          <BlurView
-            intensity={75}
-            tint="dark"
-            style={StyleSheet.absoluteFill}
-          />
-        )}
-        <View
-          pointerEvents="none"
-          style={StyleSheet.absoluteFill}
-          className={Platform.OS === 'ios' ? 'bg-[#090A0F]/92' : 'bg-[#0E1015]'}
-        />
+        {/* Handle sutil */}
+        <View className="w-10 h-1 rounded-full bg-white/20 self-center mb-3" />
 
-        {/* Ambient Champagne Gold Glow */}
-        <AmbientGlow
-          position="top"
-          height={220}
-          opacity={isUrgent ? 0.22 : 0.18}
-          color={isUrgent ? '#F43F5E' : THEME_COLORS.gold}
-        />
-
-        {/* Resplandor especular superior en Oro */}
-        <View
-          pointerEvents="none"
-          className="absolute top-0 left-10 right-10 h-[1.5px] bg-gold/65 rounded-full"
-        />
-
-        {/* Handle indicador */}
-        <View className="w-11 h-1 rounded-full bg-white/25 self-center mb-3" />
-
-        {/* ====================================================================
-          1. HEADER CON BADGE VIP Y ANILLO DE CUENTA REGRESIVA EN ORO
-          ==================================================================== */}
-        <View className="flex-row items-center justify-between mb-3">
-          <View className="flex-row items-center">
-            <View className="flex-row items-center bg-gold/15 border border-gold/45 px-3 py-1 rounded-full">
-              <Ionicons name="diamond" size={11} color={THEME_COLORS.gold} />
-              <Text className="font-montserrat-bold text-[10px] tracking-widest text-gold uppercase ml-1.5">
-                {offer?.passenger?.category || 'TRANSFERBLACK VIP'}
+        {/* 1. CABECERA FINANCIERA (GANANCIA NETA) + OMITIR Y PÍLDORAS A LA DERECHA */}
+        <View className="flex-row items-start justify-between">
+          <View className="flex-1 mr-3">
+            <View className="flex-row items-center flex-wrap gap-1.5 mb-0.5">
+              <Text className="font-montserrat-bold text-xs tracking-wider text-white/90 uppercase">
+                Ganancia neta
               </Text>
+              {isScheduledOffer && (
+                <View className="flex-row items-center bg-white/[0.08] px-2 py-0.5 rounded-full">
+                  <Ionicons name="calendar-outline" size={10} color={THEME_COLORS.gold} />
+                  <Text className="font-montserrat-semibold text-[10px] text-gold ml-1">
+                    {scheduledTimeLabel ? `Reserva ${scheduledTimeLabel}` : 'Reserva'}
+                  </Text>
+                </View>
+              )}
+              {queueCount > 0 && (
+                <View className="bg-white/[0.08] px-2 py-0.5 rounded-full">
+                  <Text className="font-montserrat-semibold text-[10px] text-white/75">
+                    +{queueCount}
+                  </Text>
+                </View>
+              )}
             </View>
-            {isScheduledOffer && (
-              <View className="flex-row items-center bg-sky-500/20 border border-sky-400/45 px-2.5 py-1 rounded-full ml-2">
-                <Ionicons name="calendar" size={11} color="#38BDF8" />
-                <Text className="font-montserrat-bold text-[10px] text-sky-300 ml-1">
-                  {scheduledTimeLabel ? `Reserva ${scheduledTimeLabel} hs` : 'Reserva'}
-                </Text>
-              </View>
-            )}
-            {(offer?.stops?.length ?? 0) > 0 && (
-              <View className="bg-amber-500/15 border border-amber-400/40 px-2.5 py-1 rounded-full ml-2">
-                <Text className="font-montserrat-bold text-[10px] text-amber-300">
-                  {offer.stops!.length}{' '}
-                  {offer.stops!.length === 1 ? 'parada' : 'paradas'}
-                </Text>
-              </View>
-            )}
-            {queueCount > 0 && (
-              <View className="bg-white/10 border border-white/15 px-2.5 py-1 rounded-full ml-2">
-                <Text className="font-montserrat-bold text-[10px] text-platinum">
-                  +{queueCount} en espera
-                </Text>
-              </View>
-            )}
-          </View>
 
-          <CountdownRing
-            theme={vipRingTheme}
-            progress={progress}
-            secondsLeft={remainingSeconds}
-            size={40}
-            strokeWidth={3.5}
-            isUrgent={isUrgent}
-          />
-        </View>
-
-        {/* ====================================================================
-          2. TARIFA PROTAGONISTA Y MODALIDAD DE COBRO
-          ==================================================================== */}
-        <View className="flex-row items-end justify-between mb-3.5">
-          <View className="flex-1 mr-2">
-            <Text className="font-montserrat-bold text-[10px] tracking-widest text-ash uppercase mb-0.5">
-              VALOR DEL SERVICIO
-            </Text>
             <Text
-              className="font-montserrat-bold text-5xl text-white tracking-tight"
+              className="font-montserrat-bold text-[42px] leading-[48px] text-[#34D399] tracking-tight"
+              style={{ fontVariant: ['tabular-nums'] }}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+            >
+              ${netEarningsAmount.toLocaleString('es-AR', { minimumFractionDigits: 0 })}
+            </Text>
+
+            <Text
+              className="font-montserrat-medium text-[13px] text-white/55 mt-0.5"
               style={{ fontVariant: ['tabular-nums'] }}
             >
-              ${totalFareAmount.toLocaleString('es-AR', { minimumFractionDigits: 0 })}
+              Valor del servicio: ${totalFareAmount.toLocaleString('es-AR', { minimumFractionDigits: 0 })}
             </Text>
           </View>
 
           <View className="items-end">
-            <View
-              className={`flex-row items-center px-3 py-1.5 rounded-xl border mb-1 ${isCashOffer
-                  ? 'bg-emerald-500/15 border-emerald-400/40'
-                  : 'bg-gold/15 border-gold/40'
-                }`}
+            {/* Botón Omitir separado del CTA principal para evitar toques accidentales */}
+            <TouchableOpacity
+              onPress={() => {
+                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                onReject();
+              }}
+              disabled={isAccepting}
+              activeOpacity={0.75}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel="Omitir oferta de viaje"
+              className="px-4 py-1.5 rounded-full bg-white/[0.08] border border-white/15 mb-2.5 active:bg-white/15"
             >
-              <Ionicons
-                name={paymentInfo.icon}
-                size={14}
-                color={isCashOffer ? '#34D399' : THEME_COLORS.gold}
-              />
+              <Text className="font-montserrat-semibold text-xs text-white/90">
+                Omitir
+              </Text>
+            </TouchableOpacity>
+
+            {/* Píldora discreta de método de pago */}
+            <View
+              className={`px-3 py-1 rounded-full border mb-1.5 ${
+                isCashOffer
+                  ? 'bg-emerald-500/15 border-emerald-400/35'
+                  : 'bg-gold/15 border-gold/35'
+              }`}
+            >
               <Text
-                className={`font-montserrat-bold text-[11px] uppercase tracking-wider ml-1.5 ${isCashOffer ? 'text-emerald-400' : 'text-gold'
-                  }`}
+                className={`font-montserrat-bold text-[11px] uppercase tracking-wider ${
+                  isCashOffer ? 'text-[#34D399]' : 'text-gold'
+                }`}
               >
                 {isCashOffer ? 'Efectivo' : 'Pago Digital'}
               </Text>
             </View>
-            {netEarningsAmount > 0 && (
-              <Text
-                className="text-gold/90 font-montserrat-semibold text-[11px]"
-                style={{ fontVariant: ['tabular-nums'] }}
-              >
-                Neto: ${netEarningsAmount.toLocaleString('es-AR')}
+
+            {/* Píldora de categoría VIP */}
+            <View className="flex-row items-center px-2.5 py-1 rounded-full bg-gold/12 border border-gold/35">
+              <Ionicons name="diamond" size={11} color={THEME_COLORS.gold} />
+              <Text className="font-montserrat-bold text-[10px] tracking-wider text-gold uppercase ml-1">
+                {categoryLabel}
               </Text>
-            )}
+            </View>
           </View>
         </View>
 
-        {/* ====================================================================
-          3. CÁMARAS GEMELAS DE TELEMETRÍA (RETIRO Y RECORRIDO)
-          ==================================================================== */}
-        <View className="flex-row items-center gap-2.5 mb-3">
-          <View className="flex-1 bg-white/[0.04] border border-white/10 rounded-2xl p-3">
-            <View className="flex-row items-center mb-1">
-              <Ionicons name="navigate-circle" size={14} color="#34D399" />
-              <Text className="font-montserrat-bold text-[9px] tracking-widest text-emerald-400 uppercase ml-1">
-                PUNTO DE RETIRO
-              </Text>
-            </View>
-            <Text className="font-montserrat-bold text-xl text-white">
-              ~{pickupEta} min
-            </Text>
-            <Text className="font-montserrat text-[11px] text-ash mt-0.5" numberOfLines={1}>
-              {pickupDistance ? `A ${pickupDistance} km de tu posición` : 'Cercano a tu ubicación'}
-            </Text>
-          </View>
+        <View className="h-px bg-white/[0.07] my-4" />
 
-          <View className="flex-1 bg-white/[0.04] border border-white/10 rounded-2xl p-3">
-            <View className="flex-row items-center mb-1">
-              <Ionicons name="time" size={14} color={THEME_COLORS.gold} />
-              <Text className="font-montserrat-bold text-[9px] tracking-widest text-gold uppercase ml-1">
-                VIAJE ESTIMADO
-              </Text>
-            </View>
-            <Text className="font-montserrat-bold text-xl text-white">
-              ~{durationMin} min
-            </Text>
-            <Text className="font-montserrat text-[11px] text-ash mt-0.5" numberOfLines={1}>
-              Trayecto de {tripDistanceKm}
-            </Text>
-          </View>
-        </View>
-
-        {/* ====================================================================
-          4. ITINERARIO CONECTADO EN CÁMARA GLASS
-          ==================================================================== */}
-        <View className="bg-white/[0.03] border border-white/10 rounded-2xl p-3.5 mb-3">
-          {/* Origen */}
-          <View className="flex-row items-start">
-            <View className="items-center mr-3 pt-0.5">
-              <View className="w-6 h-6 rounded-full bg-emerald-500/15 border border-emerald-400/50 items-center justify-center">
-                <View className="w-2 h-2 rounded-full bg-emerald-400" />
+        {/* 2. LÍNEA DE TIEMPO VERTICAL UNIFICADA (TIEMPOS, DISTANCIAS Y DIRECCIONES) */}
+        <View className="mb-4">
+          {/* Punto A: Retiro (Verde) */}
+          <View className="flex-row items-stretch">
+            <View className="w-7 items-center mr-3">
+              <View className="w-6 h-6 rounded-full bg-emerald-500/15 border border-emerald-400/80 items-center justify-center mt-0.5">
+                <View className="w-2.5 h-2.5 rounded-full bg-[#34D399]" />
               </View>
-              <View className="w-[1.5px] h-5 bg-white/15 my-0.5" />
+              <View className="w-[1.5px] flex-1 min-h-[24px] bg-white/15 my-1" />
             </View>
-            <View className="flex-1 pb-1.5">
-              <Text className="font-montserrat-bold text-[9px] uppercase tracking-widest text-emerald-400/90">
-                ORIGEN DE RETIRO
-              </Text>
+
+            <View className="flex-1 pb-3.5">
+              <View className="flex-row items-baseline flex-wrap">
+                <Text
+                  className="font-montserrat-bold text-lg text-white"
+                  style={{ fontVariant: ['tabular-nums'] }}
+                >
+                  ~{pickupEta} min
+                </Text>
+                {pickupDistance != null && (
+                  <Text
+                    className="font-montserrat-medium text-sm text-white/55 ml-1.5"
+                    style={{ fontVariant: ['tabular-nums'] }}
+                  >
+                    ({pickupDistance} km)
+                  </Text>
+                )}
+              </View>
               <Text
-                numberOfLines={1}
-                className="font-montserrat-semibold text-sm text-white mt-0.5"
+                numberOfLines={2}
+                className="font-montserrat-medium text-[13px] text-white/75 leading-5 mt-0.5"
               >
                 {offer?.pickup?.address || 'Punto de encuentro fijado'}
               </Text>
             </View>
           </View>
 
-          {/* Paradas intermedias (viajes múltiples) */}
+          {/* Paradas intermedias (si existen) */}
           {(offer?.stops ?? []).map((stop, idx) => (
-            <View key={`${stop.latitude}-${stop.longitude}-${idx}`} className="flex-row items-start">
-              <View className="items-center mr-3 pt-0.5">
-                <View className="w-6 h-6 rounded-full bg-amber-500/15 border border-amber-400/50 items-center justify-center">
-                  <Text className="font-montserrat-bold text-[10px] text-amber-300">
+            <View
+              key={`${stop.latitude}-${stop.longitude}-${idx}`}
+              className="flex-row items-stretch"
+            >
+              <View className="w-7 items-center mr-3">
+                <View className="w-6 h-6 rounded-full bg-gold/15 border border-gold/60 items-center justify-center mt-0.5">
+                  <Text className="font-montserrat-bold text-[10px] text-gold">
                     {idx + 1}
                   </Text>
                 </View>
-                <View className="w-[1.5px] h-5 bg-white/15 my-0.5" />
+                <View className="w-[1.5px] flex-1 min-h-[18px] bg-white/15 my-1" />
               </View>
-              <View className="flex-1 pb-1.5">
-                <Text className="font-montserrat-bold text-[9px] uppercase tracking-widest text-amber-300/90">
-                  PARADA {idx + 1}
+
+              <View className="flex-1 pb-3">
+                <Text className="font-montserrat-semibold text-xs text-white/55">
+                  Parada {idx + 1}
                 </Text>
                 <Text
                   numberOfLines={1}
-                  className="font-montserrat-semibold text-sm text-white mt-0.5"
+                  className="font-montserrat-medium text-[13px] text-white/80 mt-0.5"
                 >
                   {stop.address || `Parada intermedia ${idx + 1}`}
                 </Text>
@@ -397,20 +334,32 @@ export const TripOfferCard: React.FC<TripOfferCardProps> = ({
             </View>
           ))}
 
-          {/* Destino */}
+          {/* Punto B: Destino (Dorado) */}
           <View className="flex-row items-start">
-            <View className="items-center mr-3 pt-0.5">
-              <View className="w-6 h-6 rounded-full bg-gold/15 border border-gold/50 items-center justify-center">
+            <View className="w-7 items-center mr-3">
+              <View className="w-6 h-6 rounded-full bg-gold/15 border border-gold/80 items-center justify-center mt-0.5">
                 <Ionicons name="location" size={13} color={THEME_COLORS.gold} />
               </View>
             </View>
+
             <View className="flex-1">
-              <Text className="font-montserrat-bold text-[9px] uppercase tracking-widest text-gold/90">
-                DESTINO FINAL
-              </Text>
+              <View className="flex-row items-baseline flex-wrap">
+                <Text
+                  className="font-montserrat-bold text-lg text-white"
+                  style={{ fontVariant: ['tabular-nums'] }}
+                >
+                  ~{durationMin} min
+                </Text>
+                <Text
+                  className="font-montserrat-medium text-sm text-white/55 ml-1.5"
+                  style={{ fontVariant: ['tabular-nums'] }}
+                >
+                  ({tripDistanceKm})
+                </Text>
+              </View>
               <Text
-                numberOfLines={1}
-                className="font-montserrat-semibold text-sm text-white mt-0.5"
+                numberOfLines={2}
+                className="font-montserrat-medium text-[13px] text-white/75 leading-5 mt-0.5"
               >
                 {offer?.dropoff?.address || 'Destino fijado por el pasajero'}
               </Text>
@@ -418,85 +367,102 @@ export const TripOfferCard: React.FC<TripOfferCardProps> = ({
           </View>
         </View>
 
-        {/* ====================================================================
-          5. PASAJERO EJECUTIVO
-          ==================================================================== */}
-        <View className="flex-row items-center justify-between px-1 mb-4">
+        <View className="h-px bg-white/[0.07] mb-3.5" />
+
+        {/* 3. PASAJERO */}
+        <View className="flex-row items-center justify-between mb-4">
           <View className="flex-row items-center flex-1 mr-2">
-            <View className="w-8 h-8 rounded-full bg-gold/15 border border-gold/45 items-center justify-center mr-2.5">
-              <Text className="text-gold font-montserrat-bold text-xs">
+            <View className="w-8 h-8 rounded-full bg-white/[0.09] border border-white/15 items-center justify-center mr-2.5">
+              <Text className="text-white font-montserrat-bold text-xs">
                 {passengerInitial}
               </Text>
             </View>
-            <Text numberOfLines={1} className="font-montserrat-bold text-xs text-white mr-2 flex-shrink">
+            <Text
+              numberOfLines={1}
+              className="font-montserrat-semibold text-sm text-white flex-shrink mr-2"
+            >
               {passengerName}
             </Text>
-            <View className="flex-row items-center bg-gold/15 border border-gold/35 px-2 py-0.5 rounded-full">
-              <Ionicons name="star" size={10} color={THEME_COLORS.gold} />
-              <Text className="font-montserrat-bold text-[10px] text-gold ml-1">
+            <View className="flex-row items-center">
+              <Ionicons name="star" size={12} color="#9CA3AF" />
+              <Text
+                className="font-montserrat-medium text-xs text-white/65 ml-1"
+                style={{ fontVariant: ['tabular-nums'] }}
+              >
                 {Number(ratingAvg).toFixed(1)}
               </Text>
             </View>
           </View>
 
-          <View className="flex-row items-center bg-white/[0.05] border border-white/10 px-2.5 py-1 rounded-full">
-            <Ionicons name="shield-checkmark" size={11} color={THEME_COLORS.gold} />
-            <Text className="font-montserrat-semibold text-[10px] text-platinum ml-1">
+          <View className="flex-row items-center bg-gold/10 border border-gold/30 px-2.5 py-1 rounded-full">
+            <Ionicons name="shield-checkmark" size={12} color={THEME_COLORS.gold} />
+            <Text className="font-montserrat-semibold text-[11px] text-white/85 ml-1">
               Verificado
             </Text>
           </View>
         </View>
 
-        {/* ====================================================================
-          6. ACCIONES: BOTÓN ACEPTAR EN ORO CHAMPÁN + RECHAZAR
-          ==================================================================== */}
-        <View className="flex-row items-center gap-3">
-          {/* Botón Aceptar en Oro Champán */}
-          <TouchableOpacity
-            onPress={() => {
-              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              onAccept();
-            }}
-            disabled={isAccepting}
-            activeOpacity={0.85}
-            accessibilityRole="button"
-            accessibilityLabel={`Aceptar viaje por $${totalFareAmount.toLocaleString('es-AR')}`}
-            className="flex-1 h-14 rounded-2xl bg-gold items-center justify-center active:opacity-90 shadow-xl shadow-gold/30 relative overflow-hidden"
-          >
-            <View className="absolute top-0 left-4 right-4 h-[1px] bg-white/45 pointer-events-none" />
-            {isAccepting ? (
-              <ActivityIndicator color="#0A0A0C" size="small" />
-            ) : (
-              <View className="flex-row items-center">
-                <Ionicons
-                  name="checkmark-circle"
-                  size={21}
-                  color="#0A0A0C"
-                  style={{ marginRight: 8 }}
-                />
-                <Text className="font-montserrat-bold text-sm text-obsidian tracking-widest uppercase">
-                  ACEPTAR VIAJE VIP
+        {/* 4. BOTÓN PRINCIPAL CON BARRA DE PROGRESO Y CONTADOR INTEGRADO */}
+        <TouchableOpacity
+          onPress={() => {
+            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            onAccept();
+          }}
+          disabled={isAccepting}
+          activeOpacity={0.88}
+          accessibilityRole="button"
+          accessibilityLabel={`Aceptar viaje VIP por $${netEarningsAmount.toLocaleString('es-AR')} netos, quedan ${remainingSeconds} segundos`}
+          accessibilityState={{ disabled: isAccepting }}
+          className="w-full h-14 rounded-2xl bg-[#8F741D] items-center justify-center overflow-hidden relative"
+        >
+          {/* Barra de progreso principal que se vacía con el tiempo */}
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              progressFillStyle,
+              {
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                bottom: 0,
+                backgroundColor: isUrgent ? '#EAB308' : THEME_COLORS.gold,
+              },
+            ]}
+          />
+
+          {/* Filete inferior luminoso de lectura rápida */}
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              progressFillStyle,
+              {
+                position: 'absolute',
+                left: 0,
+                bottom: 0,
+                height: 3,
+                backgroundColor: '#FEF3C7',
+              },
+            ]}
+          />
+
+          {isAccepting ? (
+            <ActivityIndicator color="#0E1015" size="small" />
+          ) : (
+            <View className="w-full flex-row items-center justify-center px-4">
+              <Text className="font-montserrat-bold text-[15px] text-[#0E1015] tracking-wider uppercase">
+                ACEPTAR VIAJE VIP
+              </Text>
+              <View className="absolute right-3 min-w-[34px] h-8 px-2 rounded-lg bg-black/20 items-center justify-center">
+                <Text
+                  className="font-montserrat-bold text-sm text-[#0E1015]"
+                  style={{ fontVariant: ['tabular-nums'] }}
+                >
+                  {remainingSeconds}
                 </Text>
               </View>
-            )}
-          </TouchableOpacity>
-
-          {/* Botón Rechazar */}
-          <TouchableOpacity
-            onPress={() => {
-              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              onReject();
-            }}
-            disabled={isAccepting}
-            activeOpacity={0.75}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            accessibilityRole="button"
-            accessibilityLabel="Rechazar y descartar oferta"
-            className="w-14 h-14 rounded-2xl bg-white/[0.08] border border-white/20 items-center justify-center active:bg-white/15"
-          >
-            <Ionicons name="close" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
+            </View>
+          )}
+        </TouchableOpacity>
       </Animated.View>
     </>
   );
