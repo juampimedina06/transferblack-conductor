@@ -106,6 +106,14 @@
           "isAndroidForegroundServiceEnabled": true
         }
       ],
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "organization": "transferblack",
+          "project": "transferblack-conductor"
+        }
+      ],
       "./plugins/withDriverOverlay"
     ],
     "experiments": {

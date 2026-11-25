@@ -5,6 +5,7 @@ import {
     Montserrat_700Bold,
     useFonts,
 } from "@expo-google-fonts/montserrat";
+import * as Sentry from "@sentry/react-native";
 import * as SplashScreen from "expo-splash-screen";
 import { router, Stack, type ErrorBoundaryProps } from "expo-router";
 import { useEffect } from "react";
@@ -28,6 +29,15 @@ import { pushNotificationService } from "../core/push/services/pushNotificationS
 import { stopBackgroundLocationTracking } from "../core/location/tasks/backgroundLocationTask";
 import { driverOverlay } from "../core/overlay/driverOverlay";
 import "../global.css";
+
+const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN;
+
+Sentry.init({
+    dsn: sentryDsn,
+    enabled: Boolean(sentryDsn),
+    sendDefaultPii: false,
+    tracesSampleRate: __DEV__ ? 0.2 : 0.25,
+});
 
 // Mantiene el splash nativo hasta que las fuentes e inicialización estén listas
 void SplashScreen.preventAutoHideAsync();
@@ -98,7 +108,7 @@ const Layout = () => {
     );
 };
 
-export default Layout;
+export default Sentry.wrap(Layout);
 
 /**
  * ErrorBoundary de nivel raíz para evitar que cualquier excepción de render
@@ -106,6 +116,7 @@ export default Layout;
  */
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
     useEffect(() => {
+        Sentry.captureException(error);
         console.error('Error de render en la raíz de la app:', error);
     }, [error]);
 
