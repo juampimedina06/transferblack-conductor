@@ -4,26 +4,25 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 export type VibrationIntensity = 'subtle' | 'normal' | 'strong';
 export type OfferSoundTone =
-  | 'black_pulse'
-  | 'executive_sonar'
-  | 'gold_chord'
-  | 'turbo_dispatch';
+  | 'transfer_black'
+  | 'transfer_black_male';
 export type PeerAlertRadiusKm = 3 | 5 | 10;
 
 const LEGACY_TONE_MAP: Record<string, OfferSoundTone> = {
-  ringtone: 'executive_sonar',
-  default: 'executive_sonar',
-  chime: 'gold_chord',
-  alarm: 'turbo_dispatch',
-  transfer_voice: 'executive_sonar',
-  transfer_black_male: 'executive_sonar',
+  ringtone: 'transfer_black',
+  default: 'transfer_black',
+  chime: 'transfer_black',
+  alarm: 'transfer_black',
+  executive_sonar: 'transfer_black',
+  black_pulse: 'transfer_black',
+  gold_chord: 'transfer_black',
+  turbo_dispatch: 'transfer_black',
+  transfer_voice: 'transfer_black',
 };
 
 const VALID_OFFER_TONES = new Set<OfferSoundTone>([
-  'black_pulse',
-  'executive_sonar',
-  'gold_chord',
-  'turbo_dispatch',
+  'transfer_black',
+  'transfer_black_male',
 ]);
 
 export function normalizeOfferSoundTone(value: unknown): OfferSoundTone {
@@ -35,7 +34,7 @@ export function normalizeOfferSoundTone(value: unknown): OfferSoundTone {
       return LEGACY_TONE_MAP[value];
     }
   }
-  return 'executive_sonar';
+  return 'transfer_black';
 }
 
 export interface DriverSettingsValues {
@@ -67,7 +66,7 @@ export interface DriverSettingsState extends DriverSettingsValues {
 
 export const DEFAULT_DRIVER_SETTINGS: DriverSettingsValues = {
   offerSoundEnabled: true,
-  offerSoundTone: 'executive_sonar',
+  offerSoundTone: 'transfer_black',
   offerVibrationEnabled: true,
   offerVibrationIntensity: 'normal',
   offerOverlayEnabled: true,

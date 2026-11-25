@@ -210,10 +210,8 @@ class DriverOverlayModule(reactContext: ReactApplicationContext) :
         stopOfferSoundInternal()
 
         val rawResName = when (tone) {
-          "black_pulse" -> "tb_offer_black_pulse"
-          "gold_chord", "chime" -> "tb_offer_gold_chord"
-          "turbo_dispatch", "alarm" -> "tb_offer_turbo_dispatch"
-          else -> "tb_offer_executive_sonar"
+          "transfer_black_male" -> "tb_offer_transfer_black_male"
+          else -> "tb_offer_transfer_black"
         }
 
         val context = reactApplicationContext
@@ -222,14 +220,9 @@ class DriverOverlayModule(reactContext: ReactApplicationContext) :
         if (rawResId != 0) {
           val player = MediaPlayer()
           if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            val usage = if (rawResName == "tb_offer_turbo_dispatch") {
-              AudioAttributes.USAGE_ALARM
-            } else {
-              AudioAttributes.USAGE_NOTIFICATION_RINGTONE
-            }
             player.setAudioAttributes(
               AudioAttributes.Builder()
-                .setUsage(usage)
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
                 .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                 .build()
             )

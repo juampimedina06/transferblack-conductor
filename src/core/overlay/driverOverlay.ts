@@ -13,10 +13,8 @@ export interface DriverOverlayPayload {
 
 export type FloatingBubbleStatus = 'online' | 'trip';
 export type OfferSoundTone =
-  | 'black_pulse'
-  | 'executive_sonar'
-  | 'gold_chord'
-  | 'turbo_dispatch';
+  | 'transfer_black'
+  | 'transfer_black_male';
 
 interface DriverOverlayNativeModule {
   canDrawOverlays?: () => Promise<boolean>;
@@ -238,7 +236,7 @@ export async function hideFloatingBubble(): Promise<void> {
  * Reproduce un tono nativo de oferta Transfer Black en Android.
  */
 export async function playOfferSound(
-  tone: OfferSoundTone = 'executive_sonar',
+  tone: OfferSoundTone = 'transfer_black',
   loop = true
 ): Promise<boolean> {
   const nativeModule = getNativeDriverOverlay();

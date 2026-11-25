@@ -109,10 +109,8 @@ const withDriverOverlayKotlinFiles = (config) => {
       const rawDir = path.join(platformRoot, 'app', 'src', 'main', 'res', 'raw');
       fs.mkdirSync(rawDir, { recursive: true });
       for (const soundFile of [
-        'tb_offer_black_pulse.wav',
-        'tb_offer_executive_sonar.wav',
-        'tb_offer_gold_chord.wav',
-        'tb_offer_turbo_dispatch.wav',
+        'tb_offer_transfer_black.wav',
+        'tb_offer_transfer_black_male.wav',
       ]) {
         const srcSound = path.join(soundsSourceDir, soundFile);
         if (fs.existsSync(srcSound)) {
