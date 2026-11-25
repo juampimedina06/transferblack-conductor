@@ -27,6 +27,7 @@ export interface UseActiveTripNavigationParams {
 }
 
 export interface UseActiveTripNavigationResult {
+  shouldNavigate: boolean;
   isNavigating: boolean;
   isInitializing: boolean;
   isMuted: boolean;
@@ -131,6 +132,8 @@ export function useActiveTripNavigation({
 
   const {
     navigationController,
+    setOnStartGuidance,
+    setOnRouteChanged,
     setOnArrival,
     setOnRemainingTimeOrDistanceChanged,
     removeAllListeners,
@@ -163,8 +166,24 @@ export function useActiveTripNavigation({
     targetPhaseRef.current = targetDestination?.phase ?? null;
   }, [targetDestination?.phase]);
 
-  // Suscripción a eventos nativos de llegada y ETA/distancia restante
+  // Suscripción a eventos nativos de inicio/cambio de ruta, llegada y ETA/distancia restante
   useEffect(() => {
+    const enforceNative3dFollow = () => {
+      if (!activeRouteKeyRef.current || !navViewControllerRef.current) return;
+      void navViewControllerRef.current.setNavigationUIEnabled(true).catch(() => {});
+      void navViewControllerRef.current
+        .setFollowingPerspective(CameraPerspective.TILTED)
+        .catch(() => {});
+    };
+
+    setOnStartGuidance(() => {
+      enforceNative3dFollow();
+    });
+
+    setOnRouteChanged(() => {
+      enforceNative3dFollow();
+    });
+
     setOnArrival((arrivalEvent) => {
       const label =
         targetPhaseRef.current === 'pickup'
@@ -185,7 +204,14 @@ export function useActiveTripNavigation({
     return () => {
       removeAllListeners();
     };
-  }, [removeAllListeners, setOnArrival, setOnRemainingTimeOrDistanceChanged]);
+  }, [
+    CameraPerspective.TILTED,
+    removeAllListeners,
+    setOnArrival,
+    setOnRemainingTimeOrDistanceChanged,
+    setOnRouteChanged,
+    setOnStartGuidance,
+  ]);
 
   // Sincroniza el destino del navegador nativo con el viaje activo del backend
   useEffect(() => {
@@ -205,7 +231,7 @@ export function useActiveTripNavigation({
     };
 
     const scheduleCameraSettlePasses = () => {
-      for (const delayMs of [180, 600]) {
+      for (const delayMs of [120, 420, 1100]) {
         const timer = setTimeout(() => {
           void applyTiltedFollowCamera();
         }, delayMs);
@@ -431,6 +457,7 @@ export function useActiveTripNavigation({
 
   const recenterNavigation = useCallback(async () => {
     try {
+      await navViewControllerRef.current?.setNavigationUIEnabled(true);
       await navViewControllerRef.current?.setFollowingPerspective(
         CameraPerspective.TILTED
       );
@@ -448,6 +475,7 @@ export function useActiveTripNavigation({
   }, []);
 
   return {
+    shouldNavigate: Boolean(targetDestination),
     isNavigating,
     isInitializing,
     isMuted,

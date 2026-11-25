@@ -211,6 +211,7 @@ class DriverOverlayModule(reactContext: ReactApplicationContext) :
 
         val rawResName = when (tone) {
           "transfer_voice" -> "tb_offer_transfer_voice"
+          "transfer_black_male" -> "tb_offer_transfer_black_male"
           "black_pulse" -> "tb_offer_black_pulse"
           "gold_chord", "chime" -> "tb_offer_gold_chord"
           "turbo_dispatch", "alarm" -> "tb_offer_turbo_dispatch"
@@ -257,7 +258,7 @@ class DriverOverlayModule(reactContext: ReactApplicationContext) :
             stopOfferSoundInternal()
           }
           activeSoundStopRunnable = safetyStop
-          mainHandler.postDelayed(safetyStop, if (loop) 22_000L else 2_400L)
+          mainHandler.postDelayed(safetyStop, if (loop) 22_000L else 3_600L)
 
           promise.resolve(true)
           return@runOnUiThread

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   AppState,
+  PixelRatio,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -9,9 +10,11 @@ import {
   ViewProps,
 } from 'react-native';
 import type {
+  AndroidStylingOptions,
   LatLng as NavLatLng,
   MapViewController,
   NavigationViewController,
+  iOSStylingOptions,
 } from '@googlemaps/react-native-navigation-sdk';
 import { Ionicons } from '@expo/vector-icons';
 import { THEME_COLORS } from '../../core/constants/theme';
@@ -34,34 +37,85 @@ interface Props extends ViewProps {
   bottomOffset?: number;
 }
 
+const OFFER_CASING_POLYLINE_ID = 'transferblack-offer-route-casing';
 const OFFER_POLYLINE_ID = 'transferblack-offer-route';
-const FALLBACK_TRIP_POLYLINE_ID = 'transferblack-active-trip-route';
+const ARRIVED_CASING_POLYLINE_ID = 'transferblack-arrived-route-casing';
+const ARRIVED_POLYLINE_ID = 'transferblack-arrived-route';
 const DRIVER_TRAIL_POLYLINE_ID = 'transferblack-driver-trail';
 const PICKUP_MARKER_ID = 'transferblack-pickup-marker';
 const DROPOFF_MARKER_ID = 'transferblack-dropoff-marker';
 const PEER_VEHICLE_MARKER_ID = 'transferblack-peer-vehicle-marker';
 const PEER_ROUTE_POLYLINE_ID = 'transferblack-peer-vehicle-route';
 
-// Estilo oscuro alineado con la paleta TransferBlack Obsidian
-const darkMapStyle = [
-  { elementType: 'geometry', stylers: [{ color: '#0A0A0C' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#8E8E93' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#0A0A0C' }] },
-  { elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
-  { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+// Colores de ruta limpios estilo Uber Driver (sin líneas amarillas ni trazos crudos)
+const UBER_ROUTE_PRIMARY = '#276EF1';
+const UBER_ROUTE_CASING = '#102A6B';
+const UBER_PEER_LINE = '#38BDF8';
+
+// Paleta nocturna estilo Uber Driver con contraste arquitectónico real para edificios 3D y calles legibles
+const uberCleanDarkMapStyle = [
+  { featureType: 'poi.business', stylers: [{ visibility: 'off' }] },
+  { featureType: 'poi.attraction', stylers: [{ visibility: 'off' }] },
+  { featureType: 'poi.government', stylers: [{ visibility: 'off' }] },
+  { featureType: 'poi.medical', stylers: [{ visibility: 'off' }] },
+  { featureType: 'poi.place_of_worship', stylers: [{ visibility: 'off' }] },
+  { featureType: 'poi.school', stylers: [{ visibility: 'off' }] },
+  { featureType: 'poi.sports_complex', stylers: [{ visibility: 'off' }] },
   { featureType: 'transit', stylers: [{ visibility: 'off' }] },
-  { featureType: 'administrative', elementType: 'geometry', stylers: [{ color: '#2C2C2E' }] },
-  { featureType: 'landscape', elementType: 'geometry', stylers: [{ color: '#101012' }] },
-  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#1A1A1C' }] },
-  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#0A0A0C' }] },
-  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#2C2C2E' }] },
-  { featureType: 'road.arterial', elementType: 'labels', stylers: [{ visibility: 'off' }] },
-  { featureType: 'road.local', elementType: 'labels', stylers: [{ visibility: 'off' }] },
-  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#050507' }] },
-  { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#2C2C2E' }] },
+  { elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#8E9BAE' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#0E131B' }] },
+  { featureType: 'landscape.natural', elementType: 'geometry', stylers: [{ color: '#121722' }] },
+  { featureType: 'landscape.man_made', elementType: 'geometry.fill', stylers: [{ color: '#1B2333' }] },
+  { featureType: 'landscape.man_made', elementType: 'geometry.stroke', stylers: [{ color: '#273349' }] },
+  { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#132026' }] },
+  { featureType: 'poi.park', elementType: 'labels', stylers: [{ visibility: 'off' }] },
+  { featureType: 'administrative', elementType: 'geometry.stroke', stylers: [{ color: '#253042' }] },
+  { featureType: 'road.local', elementType: 'geometry.fill', stylers: [{ color: '#212A3B' }] },
+  { featureType: 'road.local', elementType: 'geometry.stroke', stylers: [{ color: '#0F141D' }] },
+  { featureType: 'road.arterial', elementType: 'geometry.fill', stylers: [{ color: '#293448' }] },
+  { featureType: 'road.arterial', elementType: 'geometry.stroke', stylers: [{ color: '#101620' }] },
+  { featureType: 'road.highway', elementType: 'geometry.fill', stylers: [{ color: '#334159' }] },
+  { featureType: 'road.highway', elementType: 'geometry.stroke', stylers: [{ color: '#131A26' }] },
+  { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#94A3B8' }] },
+  { featureType: 'road', elementType: 'labels.text.stroke', stylers: [{ color: '#0E131B' }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#090E17' }] },
+  { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#334155' }] },
 ];
 
-const DARK_MAP_STYLE_JSON = JSON.stringify(darkMapStyle);
+const UBER_CLEAN_DARK_STYLE_JSON = JSON.stringify(uberCleanDarkMapStyle);
+
+const ANDROID_NAV_STYLING: AndroidStylingOptions = {
+  primaryDayModeThemeColor: '#111622',
+  secondaryDayModeThemeColor: '#192132',
+  primaryNightModeThemeColor: '#111622',
+  secondaryNightModeThemeColor: '#192132',
+  headerLargeManeuverIconColor: '#FFFFFF',
+  headerSmallManeuverIconColor: '#CBD5E1',
+  headerInstructionsTextColor: '#FFFFFF',
+  headerNextStepTextColor: '#CBD5E1',
+  headerDistanceValueTextColor: '#FFFFFF',
+  headerDistanceUnitsTextColor: '#94A3B8',
+  headerGuidanceRecommendedLaneColor: UBER_ROUTE_PRIMARY,
+};
+
+const IOS_NAV_STYLING: iOSStylingOptions = {
+  navigationHeaderPrimaryBackgroundColor: '#111622',
+  navigationHeaderSecondaryBackgroundColor: '#192132',
+  navigationHeaderPrimaryBackgroundColorNightMode: '#111622',
+  navigationHeaderSecondaryBackgroundColorNightMode: '#192132',
+  navigationHeaderLargeManeuverIconColor: '#FFFFFF',
+  navigationHeaderSmallManeuverIconColor: '#CBD5E1',
+  navigationHeaderInstructionsTextColor: '#FFFFFF',
+  navigationHeaderNextStepTextColor: '#CBD5E1',
+  navigationHeaderDistanceValueTextColor: '#FFFFFF',
+  navigationHeaderDistanceUnitsTextColor: '#94A3B8',
+  navigationHeaderGuidanceRecommendedLaneColor: UBER_ROUTE_PRIMARY,
+};
+
+function dpToPx(dp: number): number {
+  return Math.max(2, Math.round(PixelRatio.getPixelSizeForLayoutSize(dp)));
+}
 
 function toNavLatLng(coord: LatLng): NavLatLng {
   return { lat: coord.latitude, lng: coord.longitude };
@@ -78,6 +132,29 @@ function computeBearingDegrees(from: LatLng, to: LatLng): number {
     Math.cos(lat1) * Math.sin(lat2) -
     Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
   return (toDeg(Math.atan2(y, x)) + 360) % 360;
+}
+
+function extractRoadPolylinePoints(
+  geom?: { type?: string; coordinates?: unknown } | null
+): NavLatLng[] {
+  if (!geom || !Array.isArray(geom.coordinates)) return [];
+
+  if (geom.type === 'MultiLineString') {
+    const pts = (geom.coordinates as [number, number][][])
+      .flat()
+      .filter((pair) => Array.isArray(pair) && pair.length >= 2)
+      .map(([lng, lat]) => ({ lat, lng }));
+    return pts.length > 2 ? pts : [];
+  }
+
+  if (geom.type === 'LineString') {
+    const pts = (geom.coordinates as [number, number][])
+      .filter((pair) => Array.isArray(pair) && pair.length >= 2)
+      .map(([lng, lat]) => ({ lat, lng }));
+    return pts.length > 2 ? pts : [];
+  }
+
+  return [];
 }
 
 interface GoogleNavigationMapProps extends Props {
@@ -162,6 +239,7 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
 
   // Navegación giro a giro oficial de Google Navigation SDK durante el viaje activo
   const {
+    shouldNavigate,
     isNavigating,
     isInitializing,
     isMuted,
@@ -175,142 +253,88 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
     navigationViewController: isMapReady ? navigationViewController : null,
   });
 
-  // Cada vez que cambia la etapa del viaje (aceptado -> llegó -> en progreso -> finalizado),
-  // re-encuadramos la cámara de forma limpia sobre el vehículo y dirección de avance.
+  // Mientras Navigation SDK tenga destino activo (o esté inicializando), él es dueño absoluto de la cámara 3D.
+  const isNavCameraOwner = shouldNavigate || isNavigating || isInitializing;
+
+  // En punto de encuentro (`driver_arrived`), encuadramos una sola vez en perspectiva 3D apuntando al próximo destino
   useEffect(() => {
     if (!isMapReadyRef.current) return;
 
     if (isNavigating) {
       const timer = setTimeout(() => {
         void recenterNavigation();
-      }, 220);
+      }, 180);
       return () => clearTimeout(timer);
     }
 
+    if (isNavCameraOwner) return;
+
     const controller = mapControllerRef.current;
-    if (!controller) return;
+    if (!controller || activeTrip?.status !== 'driver_arrived') return;
 
     const driverPos = useLocationStore.getState().lastKnownLocation;
-    const driverHeading = useLocationStore.getState().lastKnownReading?.heading;
     if (!driverPos) return;
 
-    if (
-      activeTrip &&
-      activeTrip.status !== 'completed' &&
-      activeTrip.status !== 'cancelled'
-    ) {
-      let computedBearing =
-        typeof driverHeading === 'number' && Number.isFinite(driverHeading) && driverHeading >= 0
-          ? driverHeading
-          : 0;
+    const firstStop = activeTrip.stops?.[0];
+    const nextTarget =
+      firstStop?.latitude != null && firstStop?.longitude != null
+        ? { latitude: firstStop.latitude, longitude: firstStop.longitude }
+        : activeTrip.dropoff?.latitude != null && activeTrip.dropoff?.longitude != null
+          ? { latitude: activeTrip.dropoff.latitude, longitude: activeTrip.dropoff.longitude }
+          : null;
 
-      if (
-        computedBearing === 0 &&
-        activeTrip.status === 'in_progress' &&
-        activeTrip.dropoff?.latitude != null &&
-        activeTrip.dropoff?.longitude != null
-      ) {
-        computedBearing = computeBearingDegrees(driverPos, {
-          latitude: activeTrip.dropoff.latitude,
-          longitude: activeTrip.dropoff.longitude,
-        });
-      } else if (
-        computedBearing === 0 &&
-        activeTrip.pickup?.latitude != null &&
-        activeTrip.pickup?.longitude != null
-      ) {
-        computedBearing = computeBearingDegrees(driverPos, {
-          latitude: activeTrip.pickup.latitude,
-          longitude: activeTrip.pickup.longitude,
-        });
-      }
+    const arrivedBearing = nextTarget
+      ? computeBearingDegrees(driverPos, nextTarget)
+      : useLocationStore.getState().lastKnownReading?.heading || 0;
 
-      try {
-        void Promise.resolve(
-          controller.moveCamera({
-            target: toNavLatLng(driverPos),
-            zoom: activeTrip.status === 'driver_arrived' ? 17.5 : 17,
-            tilt: activeTrip.status === 'in_progress' ? 45 : 30,
-            bearing: computedBearing,
-          })
-        ).catch(() => {});
-      } catch {
-        // Ignorar si el controlador todavía está montándose
-      }
+    try {
+      void Promise.resolve(
+        controller.moveCamera({
+          target: toNavLatLng(driverPos),
+          zoom: 17.6,
+          tilt: 52,
+          bearing: arrivedBearing,
+        })
+      ).catch(() => {});
+    } catch {
+      // No-op
     }
-  }, [activeTrip, activeTrip?.id, activeTrip?.status, isNavigating, recenterNavigation]);
+  }, [
+    activeTrip?.dropoff?.latitude,
+    activeTrip?.dropoff?.longitude,
+    activeTrip?.id,
+    activeTrip?.status,
+    activeTrip?.stops,
+    isNavCameraOwner,
+    isNavigating,
+    recenterNavigation,
+  ]);
 
-  // Cuando cambia el alto de la tarjeta inferior en plena navegación giro a giro (ej. al iniciar viaje),
-  // re-centramos la perspectiva 3D para que el auto quede bien ubicado sobre la tarjeta.
+  // Re-afirma perspectiva 3D cuando cambia la etapa de navegación o se estabiliza la tarjeta inferior
+  const roundedBottomBucket = Math.round(bottomOffset / 24) * 24;
   useEffect(() => {
     if (!isNavigating || !isMapReady) return;
     const timer = setTimeout(() => {
       void recenterNavigation();
-    }, 180);
+    }, 200);
     return () => clearTimeout(timer);
-  }, [activeDestinationPhase, bottomOffset, isMapReady, isNavigating, recenterNavigation]);
+  }, [activeDestinationPhase, isMapReady, isNavigating, recenterNavigation, roundedBottomBucket]);
 
-  // Coordenadas de oferta entrante (cuando todavía no se inició navegación giro a giro)
+  // Coordenadas reales sobre calles para previsualizar oferta entrante (nunca líneas rectas diagonales)
   const offerRouteCoordinates = useMemo((): NavLatLng[] => {
-    if (isNavigating || !currentOffer) return [];
-    const geom = currentOffer.routeGeometry;
-    if (geom?.type === 'MultiLineString' && Array.isArray(geom.coordinates)) {
-      return geom.coordinates
-        .flat()
-        .map(([lng, lat]: [number, number]) => ({ lat, lng }));
-    }
-    if (geom?.type === 'LineString' && Array.isArray(geom.coordinates)) {
-      return geom.coordinates.map(([lng, lat]: [number, number]) => ({ lat, lng }));
-    }
-    if (
-      currentOffer.pickup?.latitude != null &&
-      currentOffer.pickup?.longitude != null &&
-      currentOffer.dropoff?.latitude != null &&
-      currentOffer.dropoff?.longitude != null
-    ) {
-      return [
-        { lat: currentOffer.pickup.latitude, lng: currentOffer.pickup.longitude },
-        { lat: currentOffer.dropoff.latitude, lng: currentOffer.dropoff.longitude },
-      ];
-    }
-    return [];
-  }, [currentOffer, isNavigating]);
+    if (isNavCameraOwner || !currentOffer) return [];
+    return extractRoadPolylinePoints(currentOffer.routeGeometry);
+  }, [currentOffer, isNavCameraOwner]);
 
-  // Ruta de respaldo del viaje activo cuando Navigation SDK aún está inicializando o en espera en pickup
-  const fallbackActiveTripCoordinates = useMemo((): NavLatLng[] => {
-    if (
-      isNavigating ||
-      !activeTrip ||
-      activeTrip.status === 'completed' ||
-      activeTrip.status === 'cancelled'
-    ) {
+  // Ruta limpia sobre calles únicamente mientras el conductor espera en el punto de encuentro (`driver_arrived`)
+  const arrivedPreviewCoordinates = useMemo((): NavLatLng[] => {
+    if (isNavCameraOwner || activeTrip?.status !== 'driver_arrived') {
       return [];
     }
-    const geom = activeTrip.routeGeometry;
-    if (geom?.type === 'MultiLineString' && Array.isArray(geom.coordinates)) {
-      return geom.coordinates
-        .flat()
-        .map(([lng, lat]: [number, number]) => ({ lat, lng }));
-    }
-    if (geom?.type === 'LineString' && Array.isArray(geom.coordinates)) {
-      return geom.coordinates.map(([lng, lat]: [number, number]) => ({ lat, lng }));
-    }
-    const pts: NavLatLng[] = [];
-    if (activeTrip.pickup?.latitude != null && activeTrip.pickup?.longitude != null) {
-      pts.push({ lat: activeTrip.pickup.latitude, lng: activeTrip.pickup.longitude });
-    }
-    for (const stop of activeTrip.stops ?? []) {
-      if (stop.latitude != null && stop.longitude != null) {
-        pts.push({ lat: stop.latitude, lng: stop.longitude });
-      }
-    }
-    if (activeTrip.dropoff?.latitude != null && activeTrip.dropoff?.longitude != null) {
-      pts.push({ lat: activeTrip.dropoff.latitude, lng: activeTrip.dropoff.longitude });
-    }
-    return pts.length > 1 ? pts : [];
-  }, [activeTrip, isNavigating]);
+    return extractRoadPolylinePoints(activeTrip.routeGeometry);
+  }, [activeTrip, isNavCameraOwner]);
 
-  // Dibuja / limpia la ruta y marcadores de la oferta entrante o respaldo de viaje activo
+  // Dibuja / limpia rutas de previsualización con doble capa estilo Uber (borde oscuro + línea azul limpia)
   useEffect(() => {
     const controller = mapControllerRef.current;
     if (!controller || !isMapReady) return;
@@ -323,47 +347,77 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
       }
     };
 
-    if (isNavigating) {
+    if (isNavCameraOwner) {
+      safeCall(() => controller.removePolyline(OFFER_CASING_POLYLINE_ID));
       safeCall(() => controller.removePolyline(OFFER_POLYLINE_ID));
-      safeCall(() => controller.removePolyline(FALLBACK_TRIP_POLYLINE_ID));
+      safeCall(() => controller.removePolyline(ARRIVED_CASING_POLYLINE_ID));
+      safeCall(() => controller.removePolyline(ARRIVED_POLYLINE_ID));
       safeCall(() => controller.removeMarker(PICKUP_MARKER_ID));
       safeCall(() => controller.removeMarker(DROPOFF_MARKER_ID));
       return;
     }
 
-    if (fallbackActiveTripCoordinates.length > 1) {
+    if (arrivedPreviewCoordinates.length > 2) {
       safeCall(() =>
         controller.addPolyline({
-          id: FALLBACK_TRIP_POLYLINE_ID,
-          points: fallbackActiveTripCoordinates,
-          color: THEME_COLORS.gold,
-          width: 5,
+          id: ARRIVED_CASING_POLYLINE_ID,
+          points: arrivedPreviewCoordinates,
+          color: UBER_ROUTE_CASING,
+          width: dpToPx(7),
+          visible: true,
+        })
+      );
+      safeCall(() =>
+        controller.addPolyline({
+          id: ARRIVED_POLYLINE_ID,
+          points: arrivedPreviewCoordinates,
+          color: UBER_ROUTE_PRIMARY,
+          width: dpToPx(4.5),
+          visible: true,
         })
       );
     } else {
-      safeCall(() => controller.removePolyline(FALLBACK_TRIP_POLYLINE_ID));
+      safeCall(() => controller.removePolyline(ARRIVED_CASING_POLYLINE_ID));
+      safeCall(() => controller.removePolyline(ARRIVED_POLYLINE_ID));
     }
 
     if (!currentOffer) {
+      safeCall(() => controller.removePolyline(OFFER_CASING_POLYLINE_ID));
       safeCall(() => controller.removePolyline(OFFER_POLYLINE_ID));
       safeCall(() => controller.removeMarker(PICKUP_MARKER_ID));
       safeCall(() => controller.removeMarker(DROPOFF_MARKER_ID));
       return;
     }
 
-    if (offerRouteCoordinates.length > 1) {
+    if (offerRouteCoordinates.length > 2) {
+      safeCall(() =>
+        controller.addPolyline({
+          id: OFFER_CASING_POLYLINE_ID,
+          points: offerRouteCoordinates,
+          color: UBER_ROUTE_CASING,
+          width: dpToPx(7.5),
+          visible: true,
+        })
+      );
       safeCall(() =>
         controller.addPolyline({
           id: OFFER_POLYLINE_ID,
           points: offerRouteCoordinates,
-          color: THEME_COLORS.gold,
-          width: 6,
+          color: UBER_ROUTE_PRIMARY,
+          width: dpToPx(4.5),
+          visible: true,
         })
       );
+    } else {
+      safeCall(() => controller.removePolyline(OFFER_CASING_POLYLINE_ID));
+      safeCall(() => controller.removePolyline(OFFER_POLYLINE_ID));
     }
 
     const pickupLat = currentOffer.pickup?.latitude;
     const pickupLng = currentOffer.pickup?.longitude;
+    const dropoffLat = currentOffer.dropoff?.latitude;
+    const dropoffLng = currentOffer.dropoff?.longitude;
+
     if (pickupLat != null && pickupLng != null) {
       safeCall(() =>
         controller.addMarker({
@@ -374,18 +428,24 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
         })
       );
 
+      const offerBearing =
+        dropoffLat != null && dropoffLng != null
+          ? computeBearingDegrees(
+              { latitude: pickupLat, longitude: pickupLng },
+              { latitude: dropoffLat, longitude: dropoffLng }
+            )
+          : 0;
+
       safeCall(() =>
         controller.moveCamera({
           target: { lat: pickupLat, lng: pickupLng },
-          zoom: 14,
-          tilt: 0,
-          bearing: 0,
+          zoom: 15,
+          tilt: 40,
+          bearing: offerBearing,
         })
       );
     }
 
-    const dropoffLat = currentOffer.dropoff?.latitude;
-    const dropoffLng = currentOffer.dropoff?.longitude;
     if (dropoffLat != null && dropoffLng != null) {
       safeCall(() =>
         controller.addMarker({
@@ -397,10 +457,10 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
       );
     }
   }, [
+    arrivedPreviewCoordinates,
     currentOffer,
-    fallbackActiveTripCoordinates,
     isMapReady,
-    isNavigating,
+    isNavCameraOwner,
     mapViewController,
     offerRouteCoordinates,
   ]);
@@ -446,19 +506,20 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
       })
     );
 
-    if (!isNavigating && lastKnownLocation) {
+    if (!isNavCameraOwner && lastKnownLocation) {
       safeCall(() =>
         controller.addPolyline({
           id: PEER_ROUTE_POLYLINE_ID,
           points: [toNavLatLng(lastKnownLocation), peerPosition],
-          color: THEME_COLORS.gold,
-          width: 5,
+          color: UBER_PEER_LINE,
+          width: dpToPx(3.5),
+          visible: true,
         })
       );
     } else {
       safeCall(() => controller.removePolyline(PEER_ROUTE_POLYLINE_ID));
     }
-  }, [followingPeerAlert, isMapReady, isNavigating, lastKnownLocation, mapViewController]);
+  }, [followingPeerAlert, isMapReady, isNavCameraOwner, lastKnownLocation, mapViewController]);
 
   // Enfoca la cámara sobre el auto del compañero al iniciar seguimiento o tocar "Centrar"
   useEffect(() => {
@@ -470,7 +531,7 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
         mapControllerRef.current.moveCamera({
           target: { lat: followingPeerAlert.lat, lng: followingPeerAlert.lng },
           zoom: 16.5,
-          tilt: 35,
+          tilt: 45,
           bearing:
             typeof followingPeerAlert.heading === 'number' &&
             Number.isFinite(followingPeerAlert.heading)
@@ -484,12 +545,12 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusPeerNonce, isMapReady]);
 
-  // Rastro GPS opcional (desactivado por defecto)
+  // Rastro GPS opcional en modo libre (desactivado por defecto)
   useEffect(() => {
     const controller = mapControllerRef.current;
     if (!controller || !isMapReady) return;
 
-    if (!isPolyline || isNavigating || userLocationList.length < 2) {
+    if (!isPolyline || isNavCameraOwner || userLocationList.length < 2) {
       try {
         void Promise.resolve(controller.removePolyline(DRIVER_TRAIL_POLYLINE_ID)).catch(() => {});
       } catch {
@@ -503,16 +564,17 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
         controller.addPolyline({
           id: DRIVER_TRAIL_POLYLINE_ID,
           points: userLocationList.map(toNavLatLng),
-          color: THEME_COLORS.gold,
-          width: 4,
+          color: UBER_ROUTE_PRIMARY,
+          width: dpToPx(3.5),
+          visible: true,
         })
       ).catch(() => {});
     } catch {
       // No-op
     }
-  }, [isMapReady, isNavigating, isPolyline, mapViewController, userLocationList]);
+  }, [isMapReady, isNavCameraOwner, isPolyline, mapViewController, userLocationList]);
 
-  // Seguimiento suave de cámara en modo libre o respaldo de viaje activo cuando Navigation SDK no está guiando
+  // Seguimiento suave en modo libre (solo cuando NO hay viaje activo guiado ni espera en pickup)
   useEffect(() => {
     const controller = mapControllerRef.current;
     if (
@@ -520,21 +582,17 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
       !isMapReady ||
       !lastKnownLocation ||
       !isFollowingUser ||
-      isNavigating ||
+      isNavCameraOwner ||
+      activeTripStatus === 'driver_arrived' ||
       currentOffer
     ) {
       return;
     }
 
-    const isTripInProgress = activeTrip?.status === 'in_progress';
-    const isOnActiveTrip =
-      Boolean(activeTrip) &&
-      activeTrip?.status !== 'completed' &&
-      activeTrip?.status !== 'cancelled';
     const heading =
       typeof lastKnownReading?.heading === 'number' &&
       Number.isFinite(lastKnownReading.heading) &&
-      lastKnownReading.heading >= 0
+      lastKnownReading.heading > 0
         ? lastKnownReading.heading
         : 0;
 
@@ -542,40 +600,41 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
       void Promise.resolve(
         controller.moveCamera({
           target: toNavLatLng(lastKnownLocation),
-          zoom: isOnActiveTrip ? 17 : 16,
-          tilt: isTripInProgress ? 45 : isOnActiveTrip ? 25 : 0,
-          bearing: isOnActiveTrip ? heading : 0,
+          zoom: 16.5,
+          tilt: 38,
+          bearing: heading,
         })
       ).catch(() => {});
     } catch {
       // No-op
     }
   }, [
-    activeTrip,
+    activeTripStatus,
     currentOffer,
     isFollowingUser,
     isMapReady,
-    isNavigating,
+    isNavCameraOwner,
     lastKnownLocation,
     lastKnownReading?.heading,
     mapViewController,
   ]);
 
   const moveToCurrentLocation = useCallback(async () => {
-    if (isNavigating) {
+    if (isNavigating || shouldNavigate) {
       await recenterNavigation();
       return;
     }
 
     setFollowPreference({ contextKey: cameraContextKey, following: true });
     const target = lastKnownLocation || initialLocation;
+    const tiltAngle = activeTripStatus === 'driver_arrived' ? 52 : 38;
     if (isMapReadyRef.current && mapControllerRef.current) {
       try {
         void Promise.resolve(
           mapControllerRef.current.moveCamera({
             target: toNavLatLng(target),
-            zoom: 16.5,
-            tilt: activeTripStatus === 'in_progress' ? 45 : 0,
+            zoom: 17,
+            tilt: tiltAngle,
           })
         ).catch(() => {});
       } catch {
@@ -589,32 +648,45 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
         void Promise.resolve(
           mapControllerRef.current.moveCamera({
             target: toNavLatLng(freshLocation),
-            zoom: 16.5,
-            tilt: activeTripStatus === 'in_progress' ? 45 : 0,
+            zoom: 17,
+            tilt: tiltAngle,
           })
         ).catch(() => {});
       } catch {
         // No-op
       }
     }
-  }, [activeTripStatus, cameraContextKey, getLocation, initialLocation, isNavigating, lastKnownLocation, recenterNavigation]);
+  }, [
+    activeTripStatus,
+    cameraContextKey,
+    getLocation,
+    initialLocation,
+    isNavigating,
+    lastKnownLocation,
+    recenterNavigation,
+    shouldNavigate,
+  ]);
 
   const initialCameraPosition = useMemo(
     () => ({
       target: toNavLatLng(initialLocation),
-      zoom: 15,
+      zoom: 16,
+      tilt: 38,
     }),
     [initialLocation]
   );
 
+  // Mantiene amplio horizonte vertical en navegación para que Google Navigation SDK conserve el 3D inclinado
   const mapPadding = useMemo(
     () => ({
-      top: isNavigating ? 16 : 90,
-      bottom: Math.max(bottomOffset, 100) + 16,
+      top: isNavigating ? 8 : 88,
+      bottom: isNavigating
+        ? Math.min(Math.max(Math.round(roundedBottomBucket * 0.7), 110), 210)
+        : Math.max(roundedBottomBucket, 100) + 16,
       left: 12,
       right: 12,
     }),
-    [bottomOffset, isNavigating]
+    [isNavigating, roundedBottomBucket]
   );
 
   return (
@@ -624,22 +696,22 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
         initialCameraPosition={initialCameraPosition}
         mapColorScheme={MapColorScheme.DARK}
         navigationNightMode={NavigationNightMode.FORCE_NIGHT}
-        navigationUIEnabledPreference={
-          isNavigating
-            ? NavigationUIEnabledPreference.AUTOMATIC
-            : NavigationUIEnabledPreference.DISABLED
-        }
-        mapStyle={DARK_MAP_STYLE_JSON}
+        navigationUIEnabledPreference={NavigationUIEnabledPreference.AUTOMATIC}
+        androidStylingOptions={ANDROID_NAV_STYLING}
+        iOSStylingOptions={IOS_NAV_STYLING}
+        mapStyle={UBER_CLEAN_DARK_STYLE_JSON}
         mapPadding={mapPadding}
         myLocationEnabled={showUserLocation && hasLocationPermission}
         myLocationButtonEnabled={false}
         compassEnabled={false}
         mapToolbarEnabled={false}
         buildingsEnabled={true}
-        trafficEnabled={true}
+        trafficEnabled={false}
+        trafficPromptsEnabled={false}
+        trafficIncidentCardsEnabled={false}
         headerEnabled={true}
         footerEnabled={false}
-        tripProgressBarEnabled={true}
+        tripProgressBarEnabled={false}
         speedLimitIconEnabled={true}
         recenterButtonEnabled={true}
         reportIncidentButtonEnabled={false}
@@ -650,7 +722,7 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
         onMapViewControllerCreated={setMapViewController}
         onNavigationViewControllerCreated={setNavigationViewController}
         onMapClick={() => {
-          if (!isNavigating) {
+          if (!isNavCameraOwner) {
             setFollowPreference({ contextKey: cameraContextKey, following: false });
           }
         }}
@@ -660,16 +732,16 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
       {isInitializing && (
         <View
           pointerEvents="none"
-          className="absolute top-28 self-center flex-row items-center px-4 py-2 rounded-full bg-[#12131A]/95 border border-gold/40"
+          className="absolute top-28 self-center flex-row items-center px-4 py-2 rounded-full bg-[#111622]/95 border border-white/15"
         >
-          <ActivityIndicator size="small" color={THEME_COLORS.gold} />
+          <ActivityIndicator size="small" color={UBER_ROUTE_PRIMARY} />
           <Text className="text-platinum font-montserrat-semibold text-xs ml-2">
-            Calculando ruta giro a giro...
+            Calculando ruta 3D...
           </Text>
         </View>
       )}
 
-      {/* Controles flotantes de navegación activa (recentrar + voz + vista general) o dock en modo libre */}
+      {/* Controles flotantes de navegación activa (recentrar 3D + voz + vista general) o dock en modo libre */}
       {isNavigating ? (
         <View
           className="absolute right-4 gap-2.5"
@@ -681,10 +753,10 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
             }}
             activeOpacity={0.8}
             accessibilityRole="button"
-            accessibilityLabel="Centrar cámara en dirección de marcha"
-            className="w-12 h-12 rounded-full bg-[#12131A]/95 border border-gold/45 items-center justify-center shadow-lg shadow-black"
+            accessibilityLabel="Centrar cámara 3D en dirección de marcha"
+            className="w-12 h-12 rounded-full bg-[#111622]/95 border border-white/20 items-center justify-center shadow-lg shadow-black"
           >
-            <Ionicons name="navigate" size={20} color={THEME_COLORS.gold} />
+            <Ionicons name="navigate" size={20} color="#FFFFFF" />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -694,12 +766,12 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
             activeOpacity={0.8}
             accessibilityRole="button"
             accessibilityLabel={isMuted ? 'Activar voz de navegación' : 'Silenciar voz de navegación'}
-            className="w-12 h-12 rounded-full bg-[#12131A]/95 border border-white/15 items-center justify-center shadow-lg shadow-black"
+            className="w-12 h-12 rounded-full bg-[#111622]/95 border border-white/15 items-center justify-center shadow-lg shadow-black"
           >
             <Ionicons
               name={isMuted ? 'volume-mute' : 'volume-high'}
               size={20}
-              color={isMuted ? THEME_COLORS.ash : THEME_COLORS.gold}
+              color={isMuted ? THEME_COLORS.ash : '#FFFFFF'}
             />
           </TouchableOpacity>
 
@@ -708,7 +780,7 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
             activeOpacity={0.8}
             accessibilityRole="button"
             accessibilityLabel="Ver resumen completo de la ruta"
-            className="w-12 h-12 rounded-full bg-[#12131A]/95 border border-white/15 items-center justify-center shadow-lg shadow-black"
+            className="w-12 h-12 rounded-full bg-[#111622]/95 border border-white/15 items-center justify-center shadow-lg shadow-black"
           >
             <Ionicons name="map-outline" size={20} color={THEME_COLORS.platinum} />
           </TouchableOpacity>
