@@ -113,8 +113,6 @@ const withDriverOverlayKotlinFiles = (config) => {
         'tb_offer_executive_sonar.wav',
         'tb_offer_gold_chord.wav',
         'tb_offer_turbo_dispatch.wav',
-        'tb_offer_transfer_voice.wav',
-        'tb_offer_transfer_black_male.wav',
       ]) {
         const srcSound = path.join(soundsSourceDir, soundFile);
         if (fs.existsSync(srcSound)) {

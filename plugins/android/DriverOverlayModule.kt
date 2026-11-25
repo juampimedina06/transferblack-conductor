@@ -210,8 +210,6 @@ class DriverOverlayModule(reactContext: ReactApplicationContext) :
         stopOfferSoundInternal()
 
         val rawResName = when (tone) {
-          "transfer_voice" -> "tb_offer_transfer_voice"
-          "transfer_black_male" -> "tb_offer_transfer_black_male"
           "black_pulse" -> "tb_offer_black_pulse"
           "gold_chord", "chime" -> "tb_offer_gold_chord"
           "turbo_dispatch", "alarm" -> "tb_offer_turbo_dispatch"

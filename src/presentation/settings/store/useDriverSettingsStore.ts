@@ -7,9 +7,7 @@ export type OfferSoundTone =
   | 'black_pulse'
   | 'executive_sonar'
   | 'gold_chord'
-  | 'turbo_dispatch'
-  | 'transfer_voice'
-  | 'transfer_black_male';
+  | 'turbo_dispatch';
 export type PeerAlertRadiusKm = 3 | 5 | 10;
 
 const LEGACY_TONE_MAP: Record<string, OfferSoundTone> = {
@@ -24,8 +22,6 @@ const VALID_OFFER_TONES = new Set<OfferSoundTone>([
   'executive_sonar',
   'gold_chord',
   'turbo_dispatch',
-  'transfer_voice',
-  'transfer_black_male',
 ]);
 
 export function normalizeOfferSoundTone(value: unknown): OfferSoundTone {
