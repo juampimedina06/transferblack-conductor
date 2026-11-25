@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { queryClient } from '../../providers/QueryProvider';
 import {
   getPayoutMethod,
   getPayoutsHistory,
@@ -67,6 +68,7 @@ export const useWalletStore = create<WalletState>((set) => ({
     try {
       const summary = await getWalletSummary();
       set({ summary, isLoading: false });
+      void queryClient.invalidateQueries({ queryKey: ['driver', 'dashboard-stats'] });
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Error al obtener datos de la billetera',

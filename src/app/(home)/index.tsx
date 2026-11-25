@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Platform, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME_COLORS } from '../../core/constants/theme';
@@ -72,9 +72,29 @@ export default function DriverDashboardScreen() {
   const activeTripId = activeTrip?.id ?? null;
 
   const { location, errorMsg } = useDriverLocation(isAvailable || hasActiveTrip || hasActivePeerAlert);
-  const { stats } = useDashboardStats(isAvailable);
+  const { stats, refetch: refetchStats } = useDashboardStats(isAvailable);
   const { summary, fetchSummary } = useWalletStore();
   const { refreshAvatarUrl } = useProfileAvatar();
+
+  useFocusEffect(
+    useCallback(() => {
+      void fetchSummary();
+      void refetchStats();
+      void useDriverStatusStore.getState().fetchStatus();
+    }, [fetchSummary, refetchStats])
+  );
+
+  const synchronizedStats = stats ? {
+    ...stats,
+    balance: summary?.balance ? parseFloat(summary.balance) : stats.balance,
+  } : (summary ? {
+    earningsToday: parseFloat(summary.earningsToday || '0') || 0,
+    completedTripsToday: Number(summary.completedTripsToday || 0) || 0,
+    acceptanceRate: Math.round(Number(summary.acceptanceRate || 0)) || 0,
+    cancellationRate: Math.round(Number(summary.cancellationRate || 0)) || 0,
+    rating: parseFloat(summary.rating as any) || 5.0,
+    balance: parseFloat(summary.balance || '0') || 0,
+  } : null);
 
   useEffect(() => {
     fetchSummary();
@@ -274,7 +294,7 @@ export default function DriverDashboardScreen() {
         <ComplianceRenewalBanner />
 
         {/* Warning Banner */}
-        {summary?.is_cash_restricted && (
+        {summary?.is_cash_restricted && parseFloat(summary.balance || '0') < 0 && (
           <TouchableOpacity 
             activeOpacity={0.9}
             onPress={() => router.push('/wallet' as any)}
@@ -309,11 +329,11 @@ export default function DriverDashboardScreen() {
 
             {/* Center: Unified VIP Executive Console Dock (Bóveda + Caja/Saldo + Agenda) */}
             {!activeTrip && (() => {
-              const displayBalance = stats?.balance ?? 0;
+              const displayBalance = synchronizedStats?.balance ?? 0;
               const isNegative = displayBalance < 0;
               const formattedAmount = isNegative
                 ? `-$${Math.abs(displayBalance).toFixed(2)}`
-                : `$${(displayBalance > 0 ? displayBalance : (stats?.earningsToday ?? 0)).toFixed(2)}`;
+                : `$${(displayBalance > 0 ? displayBalance : (synchronizedStats?.earningsToday ?? 0)).toFixed(2)}`;
 
               return (
                 <View
@@ -440,7 +460,7 @@ export default function DriverDashboardScreen() {
         {/* Dashboard Carousel */}
         {isStatsExpanded && !activeTrip && (
           <DashboardCarousel 
-            stats={stats || undefined} 
+            stats={synchronizedStats || undefined} 
             onPressProgress={() => setIsProgressModalVisible(true)}
           />
         )}
@@ -502,7 +522,7 @@ export default function DriverDashboardScreen() {
       {/* Driver Progress & Performance Modal */}
       <DriverProgressModal 
         visible={isProgressModalVisible} 
-        stats={stats || undefined} 
+        stats={synchronizedStats || undefined} 
         onClose={() => setIsProgressModalVisible(false)} 
       />
 
