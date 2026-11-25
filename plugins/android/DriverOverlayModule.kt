@@ -256,7 +256,7 @@ class DriverOverlayModule(reactContext: ReactApplicationContext) :
             stopOfferSoundInternal()
           }
           activeSoundStopRunnable = safetyStop
-          mainHandler.postDelayed(safetyStop, if (loop) 22_000L else 3_600L)
+          mainHandler.postDelayed(safetyStop, if (loop) 22_000L else 2_400L)
 
           promise.resolve(true)
           return@runOnUiThread

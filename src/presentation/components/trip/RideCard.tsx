@@ -6,11 +6,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import Animated, {
-  FadeIn,
-  FadeOut,
-  LinearTransition,
-} from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -383,64 +378,57 @@ export const RideCard: React.FC<RideCardProps> = ({
 
   const telemetryText = [displayEta, displayDistance].filter(Boolean).join(' · ');
 
+  const isCompactInProgress = status === 'IN_PROGRESS';
+
   return (
-    <Animated.View
-      layout={LinearTransition.springify().damping(20).stiffness(140)}
-      className="w-full rounded-t-3xl bg-[#0E1015] border-t border-white/10 px-5 pt-2.5"
-      style={{ paddingBottom: Math.max(effectiveBottomInset, 16) }}
+    <View
+      className={`w-full rounded-t-3xl bg-[#0E1015] border-t border-white/10 px-4 ${
+        isCompactInProgress ? 'pt-3' : 'pt-3'
+      }`}
+      style={{ paddingBottom: Math.max(effectiveBottomInset, 12) }}
       accessible={true}
       accessibilityRole="summary"
     >
-      {/* Handle sutil */}
-      <View className="items-center pb-3">
-        <View className="w-9 h-1 rounded-full bg-white/20" />
-      </View>
+      {/* Header compacto (omitido en IN_PROGRESS para mantener la barra mínima) */}
+      {!isCompactInProgress && (
+        <>
+          <View className="flex-row items-center justify-between">
+            <View className="flex-1 items-start mr-2">
+              {status === 'SEARCHING' && (
+                <StatusBadge label="Buscando viaje" variant="gold" />
+              )}
+              {status === 'DRIVER_ASSIGNED' && (
+                <StatusBadge label="En camino al retiro" variant="gold" />
+              )}
+              {status === 'ARRIVING' && (
+                <StatusBadge
+                  label={isCourtesyExpired ? 'Tiempo tarifado' : 'En punto de retiro'}
+                  variant={isCourtesyExpired ? 'rose' : 'emerald'}
+                />
+              )}
+              {status === 'COMPLETED' && (
+                <StatusBadge label="Servicio finalizado" variant="gold" pulse={false} />
+              )}
+            </View>
 
-      {/* Header compacto: estado + telemetría inline */}
-      <View className="flex-row items-center justify-between">
-        <View className="flex-1 items-start mr-2">
-          {status === 'SEARCHING' && (
-            <StatusBadge label="Buscando viaje" variant="gold" />
-          )}
-          {status === 'DRIVER_ASSIGNED' && (
-            <StatusBadge label="En camino al retiro" variant="gold" />
-          )}
-          {status === 'ARRIVING' && (
-            <StatusBadge
-              label={isCourtesyExpired ? 'Tiempo tarifado' : 'En punto de retiro'}
-              variant={isCourtesyExpired ? 'rose' : 'emerald'}
-            />
-          )}
-          {status === 'IN_PROGRESS' && (
-            <StatusBadge label="Viaje en curso" variant="emerald" />
-          )}
-          {status === 'COMPLETED' && (
-            <StatusBadge label="Servicio finalizado" variant="gold" pulse={false} />
-          )}
-        </View>
+            {telemetryText.length > 0 && status !== 'COMPLETED' && (
+              <Text
+                className="font-montserrat-semibold text-xs text-white/75"
+                style={{ fontVariant: ['tabular-nums'] }}
+              >
+                {telemetryText}
+              </Text>
+            )}
+          </View>
 
-        {telemetryText.length > 0 &&
-          status !== 'COMPLETED' &&
-          status !== 'IN_PROGRESS' && (
-            <Text
-              className="font-montserrat-semibold text-xs text-white/75"
-              style={{ fontVariant: ['tabular-nums'] }}
-            >
-              {telemetryText}
-            </Text>
-          )}
-      </View>
-
-      <View className="h-px bg-white/[0.07] my-3.5" />
+          <View className="h-px bg-white/[0.07] my-2.5" />
+        </>
+      )}
 
       {/* ESTADO 1: SEARCHING */}
       {status === 'SEARCHING' && (
-        <Animated.View
-          entering={FadeIn.duration(180)}
-          exiting={FadeOut.duration(140)}
-          className="w-full"
-        >
-          <View className="flex-row items-center mb-3.5">
+        <View className="w-full">
+          <View className="flex-row items-center mb-3">
             <ActivityIndicator size="small" color={THEME_COLORS.gold} />
             <Text className="font-montserrat-medium text-xs text-white/70 ml-3 flex-1">
               Buscando solicitudes en tu zona...
@@ -459,22 +447,18 @@ export const RideCard: React.FC<RideCardProps> = ({
             activeOpacity={0.8}
             accessibilityRole="button"
             accessibilityLabel="Pausar conexión"
-            className="w-full h-[52px] rounded-2xl bg-white/[0.08] items-center justify-center mt-4 active:bg-white/15"
+            className="w-full h-[48px] rounded-2xl bg-white/[0.08] items-center justify-center mt-3.5 active:bg-white/15"
           >
             <Text className="font-montserrat-semibold text-sm text-white">
               Pausar conexión
             </Text>
           </TouchableOpacity>
-        </Animated.View>
+        </View>
       )}
 
       {/* ESTADO 2: DRIVER_ASSIGNED (En camino al retiro) */}
       {status === 'DRIVER_ASSIGNED' && (
-        <Animated.View
-          entering={FadeIn.duration(180)}
-          exiting={FadeOut.duration(140)}
-          className="w-full"
-        >
+        <View className="w-full">
           <PassengerProfileRow
             name={displayName}
             rating={displayRating}
@@ -484,12 +468,12 @@ export const RideCard: React.FC<RideCardProps> = ({
             onChat={onChat}
           />
 
-          <View className="h-px bg-white/[0.07] my-3.5" />
+          <View className="h-px bg-white/[0.07] my-2.5" />
 
-          <RouteAddressRow type="pickup" address={displayPickup} />
+          <RouteAddressRow type="pickup" address={displayPickup} isSingleLine />
 
           {displayStops.length > 0 && (
-            <View className="mt-2.5 pl-7 gap-1.5">
+            <View className="mt-2 pl-7 gap-1">
               {displayStops.map((stop, idx) => (
                 <View key={`${stop.latitude}-${stop.longitude}-${idx}`} className="flex-row items-center">
                   <View className="w-4 h-4 rounded-full bg-amber-500/20 items-center justify-center mr-2">
@@ -505,7 +489,7 @@ export const RideCard: React.FC<RideCardProps> = ({
             </View>
           )}
 
-          <View className="w-full mt-4">
+          <View className="w-full mt-3">
             <TouchableOpacity
               onPress={() => {
                 void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -516,7 +500,7 @@ export const RideCard: React.FC<RideCardProps> = ({
               accessibilityRole="button"
               accessibilityLabel="Notificar llegada al punto de retiro"
               accessibilityState={{ disabled: isLoading }}
-              className="w-full h-[52px] rounded-2xl bg-gold items-center justify-center active:opacity-90"
+              className="w-full h-[48px] rounded-2xl bg-gold items-center justify-center active:opacity-90"
             >
               {isLoading ? (
                 <ActivityIndicator size="small" color="#0A0A0C" />
@@ -533,7 +517,7 @@ export const RideCard: React.FC<RideCardProps> = ({
                 activeOpacity={0.7}
                 accessibilityRole="button"
                 accessibilityLabel="Cancelar viaje asignado"
-                className="min-h-[44px] items-center justify-center mt-1"
+                className="min-h-[40px] items-center justify-center mt-0.5"
               >
                 <Text className="font-montserrat-medium text-xs text-white/45">
                   Cancelar viaje
@@ -541,16 +525,12 @@ export const RideCard: React.FC<RideCardProps> = ({
               </TouchableOpacity>
             )}
           </View>
-        </Animated.View>
+        </View>
       )}
 
       {/* ESTADO 3: ARRIVING (En punto de retiro) */}
       {status === 'ARRIVING' && (
-        <Animated.View
-          entering={FadeIn.duration(180)}
-          exiting={FadeOut.duration(140)}
-          className="w-full"
-        >
+        <View className="w-full">
           <PassengerProfileRow
             name={displayName}
             rating={displayRating}
@@ -560,7 +540,7 @@ export const RideCard: React.FC<RideCardProps> = ({
             onChat={onChat}
           />
 
-          <View className="h-px bg-white/[0.07] my-3.5" />
+          <View className="h-px bg-white/[0.07] my-2.5" />
 
           {/* Cronómetro de cortesía inline */}
           <View className="flex-row items-center justify-between">
@@ -591,7 +571,7 @@ export const RideCard: React.FC<RideCardProps> = ({
           {/* PIN de seguridad */}
           {isPinRequired && (
             <>
-              <View className="h-px bg-white/[0.07] my-3.5" />
+              <View className="h-px bg-white/[0.07] my-2.5" />
               <TouchableOpacity
                 onPress={() => {
                   void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -623,7 +603,7 @@ export const RideCard: React.FC<RideCardProps> = ({
             </>
           )}
 
-          <View className="w-full mt-4">
+          <View className="w-full mt-3">
             <TouchableOpacity
               onPress={() => {
                 if (!canStart) {
@@ -643,7 +623,7 @@ export const RideCard: React.FC<RideCardProps> = ({
                   : 'Ingresar PIN para iniciar viaje'
               }
               accessibilityState={{ disabled: isLoading }}
-              className={`w-full h-[52px] rounded-2xl items-center justify-center ${
+              className={`w-full h-[48px] rounded-2xl items-center justify-center ${
                 canStart
                   ? 'bg-gold active:opacity-90'
                   : 'bg-gold/15 border border-gold/40 active:bg-gold/25'
@@ -663,7 +643,7 @@ export const RideCard: React.FC<RideCardProps> = ({
             </TouchableOpacity>
 
             {isPinRequired && !isPinComplete && (
-              <Text className="font-montserrat text-[11px] text-white/45 text-center mt-2">
+              <Text className="font-montserrat text-[11px] text-white/45 text-center mt-1.5">
                 El destino se habilitará al validar el PIN del pasajero.
               </Text>
             )}
@@ -674,7 +654,7 @@ export const RideCard: React.FC<RideCardProps> = ({
                 activeOpacity={0.7}
                 accessibilityRole="button"
                 accessibilityLabel="Cancelar viaje o reportar pasajero ausente"
-                className="min-h-[44px] items-center justify-center mt-1"
+                className="min-h-[40px] items-center justify-center mt-0.5"
               >
                 <Text className="font-montserrat-medium text-xs text-white/45">
                   Cancelar / Pasajero ausente
@@ -682,95 +662,82 @@ export const RideCard: React.FC<RideCardProps> = ({
               </TouchableOpacity>
             )}
           </View>
-        </Animated.View>
+        </View>
       )}
 
-      {/* ESTADO 4: IN_PROGRESS */}
+      {/* ESTADO 4: IN_PROGRESS — barra ultra compacta y estable (sin efecto rebote) */}
       {status === 'IN_PROGRESS' && (
-        <Animated.View
-          entering={FadeIn.duration(180)}
-          exiting={FadeOut.duration(140)}
-          className="w-full"
-        >
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => {
-              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setIsFinishActionExpanded((prev) => !prev);
-            }}
-            accessibilityRole="button"
-            accessibilityLabel={
-              isFinishActionExpanded
-                ? 'Ocultar control para finalizar viaje'
-                : 'Mostrar control para finalizar viaje'
-            }
-            className="w-full"
-          >
-            <View className="flex-row items-baseline justify-between mb-1">
-              <Text
-                style={{ fontVariant: ['tabular-nums'] }}
-                className="font-montserrat-bold text-3xl text-white tracking-tight"
-              >
-                {displayDistance || '0.0 km'}
-              </Text>
-              {displayEta && (
+        <View className="w-full">
+          <View className="flex-row items-center justify-between">
+            <View className="flex-1 mr-3">
+              <View className="flex-row items-center">
+                <View className="w-2 h-2 rounded-full bg-emerald-400 mr-2" />
                 <Text
                   style={{ fontVariant: ['tabular-nums'] }}
-                  className="font-montserrat-semibold text-sm text-gold"
+                  className="font-montserrat-bold text-base text-white"
+                  numberOfLines={1}
                 >
-                  {displayEta}
+                  {displayEta ? `${displayEta}` : 'En curso'}
+                  {displayDistance ? ` · ${displayDistance}` : ''}
                 </Text>
-              )}
-            </View>
-
-            <View className="flex-row items-center justify-between">
+              </View>
               <Text
                 numberOfLines={1}
-                className="font-montserrat-medium text-xs text-white/60 flex-1 mr-3"
+                className="font-montserrat-medium text-xs text-white/60 mt-0.5"
               >
                 {displayStops.length > 0
                   ? `${displayStops.length} ${displayStops.length === 1 ? 'parada' : 'paradas'} · ${displayDropoff}`
                   : displayDropoff}
               </Text>
-              <View className="flex-row items-center">
-                <Text className="font-montserrat-semibold text-xs text-gold mr-1">
-                  {isFinishActionExpanded ? 'Ocultar' : 'Finalizar'}
-                </Text>
-                <Ionicons
-                  name={isFinishActionExpanded ? 'chevron-down' : 'chevron-up'}
-                  size={14}
-                  color={THEME_COLORS.gold}
-                />
-              </View>
             </View>
 
-            {displayStops.length > 0 && (
-              <View className="mt-3 pt-3 border-t border-white/[0.07] gap-1.5">
-                {displayStops.map((stop, idx) => (
-                  <View
-                    key={`${stop.latitude}-${stop.longitude}-${idx}`}
-                    className="flex-row items-center"
-                  >
-                    <View className="w-4 h-4 rounded-full bg-amber-500/20 items-center justify-center mr-2">
-                      <Text className="font-montserrat-bold text-[9px] text-amber-300">
-                        {idx + 1}
-                      </Text>
-                    </View>
-                    <Text numberOfLines={1} className="font-montserrat text-xs text-white/75 flex-1">
-                      {stop.address || `Parada ${idx + 1}`}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            )}
-          </TouchableOpacity>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => {
+                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setIsFinishActionExpanded((prev) => !prev);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={
+                isFinishActionExpanded
+                  ? 'Ocultar control para finalizar viaje'
+                  : 'Mostrar control para finalizar viaje'
+              }
+              className="flex-row items-center px-3.5 min-h-[44px] rounded-xl bg-gold/15 border border-gold/35"
+            >
+              <Text className="font-montserrat-semibold text-xs text-gold mr-1">
+                {isFinishActionExpanded ? 'Ocultar' : 'Finalizar'}
+              </Text>
+              <Ionicons
+                name={isFinishActionExpanded ? 'chevron-down' : 'chevron-up'}
+                size={14}
+                color={THEME_COLORS.gold}
+              />
+            </TouchableOpacity>
+          </View>
 
           {isFinishActionExpanded && (
-            <Animated.View
-              entering={FadeIn.duration(180)}
-              exiting={FadeOut.duration(140)}
-              className="w-full mt-3.5 pt-3.5 border-t border-white/[0.07]"
-            >
+            <View className="w-full mt-3 pt-3 border-t border-white/[0.07]">
+              {displayStops.length > 0 && (
+                <View className="mb-2.5 gap-1">
+                  {displayStops.map((stop, idx) => (
+                    <View
+                      key={`${stop.latitude}-${stop.longitude}-${idx}`}
+                      className="flex-row items-center"
+                    >
+                      <View className="w-4 h-4 rounded-full bg-amber-500/20 items-center justify-center mr-2">
+                        <Text className="font-montserrat-bold text-[9px] text-amber-300">
+                          {idx + 1}
+                        </Text>
+                      </View>
+                      <Text numberOfLines={1} className="font-montserrat text-xs text-white/75 flex-1">
+                        {stop.address || `Parada ${idx + 1}`}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
               <SlideToComplete
                 theme={theme}
                 onComplete={() => {
@@ -781,18 +748,14 @@ export const RideCard: React.FC<RideCardProps> = ({
                 label="DESLIZAR PARA FINALIZAR"
                 loadingLabel="FINALIZANDO VIAJE..."
               />
-            </Animated.View>
+            </View>
           )}
-        </Animated.View>
+        </View>
       )}
 
       {/* ESTADO 5: COMPLETED */}
       {status === 'COMPLETED' && (
-        <Animated.View
-          entering={FadeIn.duration(180)}
-          exiting={FadeOut.duration(140)}
-          className="w-full"
-        >
+        <View className="w-full">
           <FareReceiptWidget
             amount={displayFare}
             earningsAmount={earningsAmount ?? trip?.driver_earnings}
@@ -824,8 +787,8 @@ export const RideCard: React.FC<RideCardProps> = ({
               Confirmar y finalizar
             </Text>
           </TouchableOpacity>
-        </Animated.View>
+        </View>
       )}
-    </Animated.View>
+    </View>
   );
 };

@@ -47,6 +47,9 @@ const DROPOFF_MARKER_ID = 'transferblack-dropoff-marker';
 const PEER_VEHICLE_MARKER_ID = 'transferblack-peer-vehicle-marker';
 const PEER_ROUTE_POLYLINE_ID = 'transferblack-peer-vehicle-route';
 
+// Distancia mínima (en metros) para mover la cámara en modo libre y evitar saltos por ruido de GPS
+const FREE_ROAM_MIN_MOVE_METERS = 15;
+
 // Colores de ruta limpios estilo Uber Driver (sin líneas amarillas ni trazos crudos)
 const UBER_ROUTE_PRIMARY = '#276EF1';
 const UBER_ROUTE_CASING = '#102A6B';
@@ -121,6 +124,19 @@ function toNavLatLng(coord: LatLng): NavLatLng {
   return { lat: coord.latitude, lng: coord.longitude };
 }
 
+function distanceMeters(a: LatLng, b: LatLng): number {
+  const R = 6371000;
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(b.latitude - a.latitude);
+  const dLng = toRad(b.longitude - a.longitude);
+  const lat1 = toRad(a.latitude);
+  const lat2 = toRad(b.latitude);
+  const sinLat = Math.sin(dLat / 2);
+  const sinLng = Math.sin(dLng / 2);
+  const h = sinLat * sinLat + Math.cos(lat1) * Math.cos(lat2) * sinLng * sinLng;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
 function computeBearingDegrees(from: LatLng, to: LatLng): number {
   const toRad = (deg: number) => (deg * Math.PI) / 180;
   const toDeg = (rad: number) => (rad * 180) / Math.PI;
@@ -187,6 +203,8 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
 
   const mapControllerRef = useRef<MapViewController | null>(null);
   const isMapReadyRef = useRef(false);
+  const lastFreeRoamTargetRef = useRef<LatLng | null>(null);
+
   useEffect(() => {
     mapControllerRef.current = mapViewController;
     isMapReadyRef.current = isMapReady;
@@ -256,6 +274,36 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
   // Mientras Navigation SDK tenga destino activo (o esté inicializando), él es dueño absoluto de la cámara 3D.
   const isNavCameraOwner = shouldNavigate || isNavigating || isInitializing;
 
+  // Padding real respetando el espacio exacto que ocupa el panel inferior (tanto en inicio como en viaje)
+  const effectiveBottomPadding = Math.max(Math.round(bottomOffset), 100) + 28;
+  const mapPadding = useMemo(
+    () => ({
+      top: isNavigating ? 16 : 92,
+      bottom: effectiveBottomPadding,
+      left: 12,
+      right: 12,
+    }),
+    [effectiveBottomPadding, isNavigating]
+  );
+
+  // Aplica padding al controlador nativo apenas cambia el alto del componente inferior y re-centra la cámara
+  useEffect(() => {
+    const controller = mapControllerRef.current;
+    if (!controller || !isMapReady) return;
+    try {
+      controller.setPadding(mapPadding);
+    } catch {
+      // No-op
+    }
+
+    if (isNavigating) {
+      const timer = setTimeout(() => {
+        void recenterNavigation();
+      }, 180);
+      return () => clearTimeout(timer);
+    }
+  }, [activeDestinationPhase, isMapReady, isNavigating, mapPadding, mapViewController, recenterNavigation]);
+
   // En punto de encuentro (`driver_arrived`), encuadramos una sola vez en perspectiva 3D apuntando al próximo destino
   useEffect(() => {
     if (!isMapReadyRef.current) return;
@@ -291,8 +339,8 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
       void Promise.resolve(
         controller.moveCamera({
           target: toNavLatLng(driverPos),
-          zoom: 17.6,
-          tilt: 52,
+          zoom: 17.5,
+          tilt: 48,
           bearing: arrivedBearing,
         })
       ).catch(() => {});
@@ -309,16 +357,6 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
     isNavigating,
     recenterNavigation,
   ]);
-
-  // Re-afirma perspectiva 3D cuando cambia la etapa de navegación o se estabiliza la tarjeta inferior
-  const roundedBottomBucket = Math.round(bottomOffset / 24) * 24;
-  useEffect(() => {
-    if (!isNavigating || !isMapReady) return;
-    const timer = setTimeout(() => {
-      void recenterNavigation();
-    }, 200);
-    return () => clearTimeout(timer);
-  }, [activeDestinationPhase, isMapReady, isNavigating, recenterNavigation, roundedBottomBucket]);
 
   // Coordenadas reales sobre calles para previsualizar oferta entrante (nunca líneas rectas diagonales)
   const offerRouteCoordinates = useMemo((): NavLatLng[] => {
@@ -440,7 +478,7 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
         controller.moveCamera({
           target: { lat: pickupLat, lng: pickupLng },
           zoom: 15,
-          tilt: 40,
+          tilt: 35,
           bearing: offerBearing,
         })
       );
@@ -531,7 +569,7 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
         mapControllerRef.current.moveCamera({
           target: { lat: followingPeerAlert.lat, lng: followingPeerAlert.lng },
           zoom: 16.5,
-          tilt: 45,
+          tilt: 40,
           bearing:
             typeof followingPeerAlert.heading === 'number' &&
             Number.isFinite(followingPeerAlert.heading)
@@ -574,7 +612,7 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
     }
   }, [isMapReady, isNavCameraOwner, isPolyline, mapViewController, userLocationList]);
 
-  // Seguimiento suave en modo libre (solo cuando NO hay viaje activo guiado ni espera en pickup)
+  // Seguimiento en modo libre: solo actualiza cuando el seguimiento está activo y el vehículo avanzó >= 15m
   useEffect(() => {
     const controller = mapControllerRef.current;
     if (
@@ -589,6 +627,15 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
       return;
     }
 
+    if (
+      lastFreeRoamTargetRef.current &&
+      distanceMeters(lastFreeRoamTargetRef.current, lastKnownLocation) < FREE_ROAM_MIN_MOVE_METERS
+    ) {
+      return;
+    }
+
+    lastFreeRoamTargetRef.current = lastKnownLocation;
+
     const heading =
       typeof lastKnownReading?.heading === 'number' &&
       Number.isFinite(lastKnownReading.heading) &&
@@ -600,8 +647,8 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
       void Promise.resolve(
         controller.moveCamera({
           target: toNavLatLng(lastKnownLocation),
-          zoom: 16.5,
-          tilt: 38,
+          zoom: 16,
+          tilt: 25,
           bearing: heading,
         })
       ).catch(() => {});
@@ -619,24 +666,34 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
     mapViewController,
   ]);
 
+  // Si el conductor toca o arrastra el mapa con el dedo en modo libre, soltamos el seguimiento automáticamente
+  const handleUserMapTouch = useCallback(() => {
+    if (!isNavCameraOwner && isFollowingUser) {
+      setFollowPreference({ contextKey: cameraContextKey, following: false });
+    }
+  }, [cameraContextKey, isFollowingUser, isNavCameraOwner]);
+
   const moveToCurrentLocation = useCallback(async () => {
     if (isNavigating || shouldNavigate) {
       await recenterNavigation();
       return;
     }
 
+    lastFreeRoamTargetRef.current = null;
     setFollowPreference({ contextKey: cameraContextKey, following: true });
     const target = lastKnownLocation || initialLocation;
-    const tiltAngle = activeTripStatus === 'driver_arrived' ? 52 : 38;
+    const tiltAngle = activeTripStatus === 'driver_arrived' ? 48 : 25;
     if (isMapReadyRef.current && mapControllerRef.current) {
       try {
+        mapControllerRef.current.setPadding(mapPadding);
         void Promise.resolve(
           mapControllerRef.current.moveCamera({
             target: toNavLatLng(target),
-            zoom: 17,
+            zoom: 16.5,
             tilt: tiltAngle,
           })
         ).catch(() => {});
+        lastFreeRoamTargetRef.current = target;
       } catch {
         // No-op
       }
@@ -648,10 +705,11 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
         void Promise.resolve(
           mapControllerRef.current.moveCamera({
             target: toNavLatLng(freshLocation),
-            zoom: 17,
+            zoom: 16.5,
             tilt: tiltAngle,
           })
         ).catch(() => {});
+        lastFreeRoamTargetRef.current = freshLocation;
       } catch {
         // No-op
       }
@@ -663,70 +721,67 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
     initialLocation,
     isNavigating,
     lastKnownLocation,
+    mapPadding,
     recenterNavigation,
     shouldNavigate,
   ]);
+
+  const handleToggleFollowUser = useCallback(() => {
+    const nextFollowing = !isFollowingUser;
+    if (nextFollowing) {
+      lastFreeRoamTargetRef.current = null;
+    }
+    setFollowPreference({
+      contextKey: cameraContextKey,
+      following: nextFollowing,
+    });
+  }, [cameraContextKey, isFollowingUser]);
 
   const initialCameraPosition = useMemo(
     () => ({
       target: toNavLatLng(initialLocation),
       zoom: 16,
-      tilt: 38,
+      tilt: 25,
     }),
     [initialLocation]
   );
 
-  // Mantiene amplio horizonte vertical en navegación para que Google Navigation SDK conserve el 3D inclinado
-  const mapPadding = useMemo(
-    () => ({
-      top: isNavigating ? 8 : 88,
-      bottom: isNavigating
-        ? Math.min(Math.max(Math.round(roundedBottomBucket * 0.7), 110), 210)
-        : Math.max(roundedBottomBucket, 100) + 16,
-      left: 12,
-      right: 12,
-    }),
-    [isNavigating, roundedBottomBucket]
-  );
-
   return (
     <View style={[styles.container, rest.style]} {...rest}>
-      <NavigationView
-        style={styles.map}
-        initialCameraPosition={initialCameraPosition}
-        mapColorScheme={MapColorScheme.DARK}
-        navigationNightMode={NavigationNightMode.FORCE_NIGHT}
-        navigationUIEnabledPreference={NavigationUIEnabledPreference.AUTOMATIC}
-        androidStylingOptions={ANDROID_NAV_STYLING}
-        iOSStylingOptions={IOS_NAV_STYLING}
-        mapStyle={UBER_CLEAN_DARK_STYLE_JSON}
-        mapPadding={mapPadding}
-        myLocationEnabled={showUserLocation && hasLocationPermission}
-        myLocationButtonEnabled={false}
-        compassEnabled={false}
-        mapToolbarEnabled={false}
-        buildingsEnabled={true}
-        trafficEnabled={false}
-        trafficPromptsEnabled={false}
-        trafficIncidentCardsEnabled={false}
-        headerEnabled={true}
-        footerEnabled={false}
-        tripProgressBarEnabled={false}
-        speedLimitIconEnabled={true}
-        recenterButtonEnabled={true}
-        reportIncidentButtonEnabled={false}
-        onRecenterButtonClick={() => {
-          void recenterNavigation();
-        }}
-        onMapReady={() => setIsMapReady(true)}
-        onMapViewControllerCreated={setMapViewController}
-        onNavigationViewControllerCreated={setNavigationViewController}
-        onMapClick={() => {
-          if (!isNavCameraOwner) {
-            setFollowPreference({ contextKey: cameraContextKey, following: false });
-          }
-        }}
-      />
+      <View style={styles.map} onTouchStart={handleUserMapTouch}>
+        <NavigationView
+          style={styles.map}
+          initialCameraPosition={initialCameraPosition}
+          mapColorScheme={MapColorScheme.DARK}
+          navigationNightMode={NavigationNightMode.FORCE_NIGHT}
+          navigationUIEnabledPreference={NavigationUIEnabledPreference.AUTOMATIC}
+          androidStylingOptions={ANDROID_NAV_STYLING}
+          iOSStylingOptions={IOS_NAV_STYLING}
+          mapStyle={UBER_CLEAN_DARK_STYLE_JSON}
+          mapPadding={mapPadding}
+          myLocationEnabled={showUserLocation && hasLocationPermission}
+          myLocationButtonEnabled={false}
+          compassEnabled={false}
+          mapToolbarEnabled={false}
+          buildingsEnabled={true}
+          trafficEnabled={false}
+          trafficPromptsEnabled={false}
+          trafficIncidentCardsEnabled={false}
+          headerEnabled={true}
+          footerEnabled={false}
+          tripProgressBarEnabled={false}
+          speedLimitIconEnabled={true}
+          recenterButtonEnabled={true}
+          reportIncidentButtonEnabled={false}
+          onRecenterButtonClick={() => {
+            void recenterNavigation();
+          }}
+          onMapReady={() => setIsMapReady(true)}
+          onMapViewControllerCreated={setMapViewController}
+          onNavigationViewControllerCreated={setNavigationViewController}
+          onMapClick={handleUserMapTouch}
+        />
+      </View>
 
       {/* Indicador discreto mientras inicializa la ruta giro a giro */}
       {isInitializing && (
@@ -745,7 +800,7 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
       {isNavigating ? (
         <View
           className="absolute right-4 gap-2.5"
-          style={{ bottom: Math.max(bottomOffset, 100) + 20 }}
+          style={{ bottom: Math.max(bottomOffset, 100) + 16 }}
         >
           <TouchableOpacity
             onPress={() => {
@@ -790,12 +845,7 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
           isPolyline={isPolyline}
           onTogglePolyline={() => setIsPolyline((prev) => !prev)}
           isFollowingUser={isFollowingUser}
-          onToggleFollowUser={() =>
-            setFollowPreference({
-              contextKey: cameraContextKey,
-              following: !isFollowingUser,
-            })
-          }
+          onToggleFollowUser={handleToggleFollowUser}
           onRecenter={() => {
             void moveToCurrentLocation();
           }}

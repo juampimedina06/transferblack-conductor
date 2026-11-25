@@ -218,7 +218,7 @@ export default function DriverSettingsScreen(): React.JSX.Element {
     } finally {
       setTimeout(() => {
         setIsTestingAlert(false);
-      }, 2800);
+      }, 1500);
     }
   };
 

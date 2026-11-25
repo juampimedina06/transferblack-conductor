@@ -15,6 +15,8 @@ const LEGACY_TONE_MAP: Record<string, OfferSoundTone> = {
   default: 'executive_sonar',
   chime: 'gold_chord',
   alarm: 'turbo_dispatch',
+  transfer_voice: 'executive_sonar',
+  transfer_black_male: 'executive_sonar',
 };
 
 const VALID_OFFER_TONES = new Set<OfferSoundTone>([

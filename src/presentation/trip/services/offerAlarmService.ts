@@ -111,7 +111,7 @@ class OfferAlarmService {
           if (!this.isPlaying) {
             void driverOverlay.stopOfferSound();
           }
-        }, 3400);
+        }, 2100);
         return;
       }
 

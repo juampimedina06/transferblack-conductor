@@ -184,17 +184,8 @@ export function useActiveTripNavigation({
       enforceNative3dFollow();
     });
 
-    setOnArrival((arrivalEvent) => {
-      const label =
-        targetPhaseRef.current === 'pickup'
-          ? 'Llegaste al punto de encuentro'
-          : 'Llegaste al destino del pasajero';
-
-      showBannerNotification({
-        type: 'trip',
-        title: label,
-        message: arrivalEvent.waypoint?.title || undefined,
-      });
+    setOnArrival(() => {
+      // Sin notificación interna invasiva al llegar; la UI del viaje ya refleja el estado
     });
 
     setOnRemainingTimeOrDistanceChanged((timeAndDistance) => {
@@ -336,6 +327,7 @@ export function useActiveTripNavigation({
           }
 
           isSessionInitializedRef.current = true;
+          navigationController.startUpdatingLocation();
           const navSettings = useDriverSettingsStore.getState();
           setIsMuted(!navSettings.navigationVoiceEnabled);
           await navigationController.setAudioGuidanceSettings({
@@ -428,6 +420,7 @@ export function useActiveTripNavigation({
   useEffect(() => {
     return () => {
       if (isSessionInitializedRef.current) {
+        navigationController.stopUpdatingLocation();
         void navigationController.stopGuidance().catch(() => {});
         void navigationController.clearDestinations().catch(() => {});
       }
