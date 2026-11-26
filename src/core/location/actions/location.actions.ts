@@ -14,7 +14,10 @@ export const getCurrentReading = async (): Promise<LocationReading> => {
       }
     }
 
-    const lastKnown = await Location.getLastKnownPositionAsync({});
+    const lastKnown = await Location.getLastKnownPositionAsync({
+      maxAge: 10_000,
+      requiredAccuracy: 100,
+    });
     if (lastKnown?.coords) {
       return {
         latitude: lastKnown.coords.latitude,

@@ -647,7 +647,7 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
       void Promise.resolve(
         controller.moveCamera({
           target: toNavLatLng(lastKnownLocation),
-          zoom: 16,
+          zoom: 16.5,
           tilt: 25,
           bearing: heading,
         })
@@ -679,10 +679,15 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
       return;
     }
 
-    lastFreeRoamTargetRef.current = null;
     setFollowPreference({ contextKey: cameraContextKey, following: true });
-    const target = lastKnownLocation || initialLocation;
     const tiltAngle = activeTripStatus === 'driver_arrived' ? 48 : 25;
+    const latestReading = useLocationStore.getState().lastKnownReading;
+    const isReadingFresh =
+      Boolean(lastKnownLocation) &&
+      typeof latestReading?.timestamp === 'number' &&
+      Date.now() - latestReading.timestamp < 15_000;
+
+    const target = lastKnownLocation || initialLocation;
     if (isMapReadyRef.current && mapControllerRef.current) {
       try {
         mapControllerRef.current.setPadding(mapPadding);
@@ -697,6 +702,11 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
       } catch {
         // No-op
       }
+    }
+
+    // Solo pedir lectura nueva si no tenemos una ubicación reciente del watcher (evita saltos a caché viejo)
+    if (isReadingFresh) {
+      return;
     }
 
     const freshLocation = await getLocation();
@@ -754,7 +764,7 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
           initialCameraPosition={initialCameraPosition}
           mapColorScheme={MapColorScheme.DARK}
           navigationNightMode={NavigationNightMode.FORCE_NIGHT}
-          navigationUIEnabledPreference={NavigationUIEnabledPreference.AUTOMATIC}
+          navigationUIEnabledPreference={NavigationUIEnabledPreference.DISABLED}
           androidStylingOptions={ANDROID_NAV_STYLING}
           iOSStylingOptions={IOS_NAV_STYLING}
           mapStyle={UBER_CLEAN_DARK_STYLE_JSON}
@@ -767,14 +777,16 @@ const GoogleNavigationMap: React.FC<GoogleNavigationMapProps> = ({
           trafficEnabled={false}
           trafficPromptsEnabled={false}
           trafficIncidentCardsEnabled={false}
-          headerEnabled={true}
+          headerEnabled={isNavigating}
           footerEnabled={false}
           tripProgressBarEnabled={false}
-          speedLimitIconEnabled={true}
-          recenterButtonEnabled={true}
+          speedLimitIconEnabled={isNavigating}
+          recenterButtonEnabled={isNavigating}
           reportIncidentButtonEnabled={false}
           onRecenterButtonClick={() => {
-            void recenterNavigation();
+            if (isNavigating) {
+              void recenterNavigation();
+            }
           }}
           onMapReady={() => setIsMapReady(true)}
           onMapViewControllerCreated={setMapViewController}

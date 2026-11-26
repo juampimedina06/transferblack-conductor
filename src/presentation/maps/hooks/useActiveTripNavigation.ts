@@ -231,15 +231,17 @@ export function useActiveTripNavigation({
     };
 
     const stopNavigationSession = async () => {
-      if (!activeRouteKeyRef.current && !isSessionInitializedRef.current) {
-        return;
-      }
-
+      const hadActiveSession = Boolean(activeRouteKeyRef.current || isSessionInitializedRef.current);
       activeRouteKeyRef.current = null;
+
       try {
-        await navigationController.stopGuidance();
-        await navigationController.clearDestinations();
+        // Siempre desactivar la UI nativa de navegación en modo libre (el Navigator nativo sobrevive a remounts)
         await navViewControllerRef.current?.setNavigationUIEnabled(false);
+        if (hadActiveSession) {
+          await navigationController.stopGuidance();
+          await navigationController.clearDestinations();
+          navigationController.stopUpdatingLocation();
+        }
       } catch {
         // Ignorar errores de limpieza si la sesión ya estaba detenida
       }
@@ -341,7 +343,8 @@ export function useActiveTripNavigation({
 
         if (isCancelled) return;
 
-        // 3. Calcular ruta hacia pickup o stops + dropoff del backend
+        // 3. Asegurar tracking activo del SDK nativo solo durante navegación y calcular ruta
+        navigationController.startUpdatingLocation();
         const navOptions = {
           routingOptions: {
             travelMode: TravelMode.DRIVING,
@@ -449,6 +452,7 @@ export function useActiveTripNavigation({
   ]);
 
   const recenterNavigation = useCallback(async () => {
+    if (!activeRouteKeyRef.current) return;
     try {
       await navViewControllerRef.current?.setNavigationUIEnabled(true);
       await navViewControllerRef.current?.setFollowingPerspective(
